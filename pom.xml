@@ -43,7 +43,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <maven.compiler.release>25</maven.compiler.release>
     <aquery.version>0.3.1-SNAPSHOT</aquery.version>
-    <bouncycastle.version>1.82</bouncycastle.version>
+    <bouncycastle.version>1.84</bouncycastle.version>
     <caffeine.version>3.2.4</caffeine.version>
     <cinder.version>0.1.0</cinder.version>
     <leadseal.version>0.2.0</leadseal.version>
