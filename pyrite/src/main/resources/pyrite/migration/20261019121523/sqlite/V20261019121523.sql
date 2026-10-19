@@ -1,0 +1,5 @@
+CREATE TABLE "pyrite_vault" ("name" TEXT NOT NULL, "sealed" BLOB NOT NULL, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), CONSTRAINT "pk_pyrite_vault" PRIMARY KEY ("name"));
+
+CREATE TABLE "pyrite_key" ("name" TEXT NOT NULL, "purpose" TEXT NOT NULL, "algorithm" TEXT, "ahead_millis" INTEGER NOT NULL, "kept_millis" INTEGER NOT NULL, "rotation_millis" INTEGER NOT NULL, "revision" INTEGER NOT NULL, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), CONSTRAINT "pk_pyrite_key" PRIMARY KEY ("name"));
+
+CREATE TABLE "pyrite_version" ("key_name" TEXT NOT NULL, "number" INTEGER NOT NULL, "origin" TEXT NOT NULL, "state" TEXT NOT NULL, "state_time" TEXT, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), "sealed" BLOB, "public_key" BLOB, "certificate" BLOB, CONSTRAINT "pk_pyrite_version" PRIMARY KEY ("key_name", "number"), CONSTRAINT "fk_pyrite_version_key_name" FOREIGN KEY ("key_name") REFERENCES "pyrite_key" ("name") ON DELETE CASCADE);
