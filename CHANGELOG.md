@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/zZHorizonZz/pyrite/compare/v0.2.0...v0.2.1) (2026-10-20)
+
+
+### Refactoring
+
+* name the database provider's Cinder backends after what they are. ([6d9904a](https://github.com/zZHorizonZz/pyrite/commit/6d9904a799720164eabe7f141ed17e35159787e9))
+
 ## [0.2.0](https://github.com/zZHorizonZz/pyrite/compare/v0.1.0...v0.2.0) (2026-10-20)
 
 
