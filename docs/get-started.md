@@ -31,7 +31,7 @@ Add the database provider, the Cinder driver for PostgreSQL, and the Vert.x Post
 <dependency>
   <groupId>dev.horizon</groupId>
   <artifactId>pyrite-database</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 <!-- x-release-please-end -->
