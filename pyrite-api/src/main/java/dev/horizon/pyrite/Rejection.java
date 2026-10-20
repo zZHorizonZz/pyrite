@@ -1,0 +1,15 @@
+package dev.horizon.pyrite;
+
+public enum Rejection {
+  MALFORMED,
+  ALGORITHM,
+  UNKNOWN_VERSION,
+  DISABLED_VERSION,
+  EXPIRED_VERSION,
+  SIGNATURE,
+  TYPE,
+  ISSUER,
+  AUDIENCE,
+  EXPIRED,
+  NOT_YET_VALID
+}

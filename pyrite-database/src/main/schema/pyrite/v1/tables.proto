@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package pyrite.v1;
+
+import "leadseal/v1/options.proto";
+
+option java_multiple_files = false;
+option java_outer_classname = "Tables";
+option java_package = "dev.horizon.pyrite.database.schema.v1";
+
+// The vault key, encrypted under the root key. It encrypts the material of every version, so rotating the root key
+// encrypts this one row again.
+message Vault {
+  option (leadseal.v1.table) = { name: "pyrite_vault" };
+
+  string name = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 16 } }];
+
+  bytes sealed = 2;
+
+  string create_time = 3 [(leadseal.v1.column) = { timestamp: { default_now: true } }];
+}
+
+// A key. Every change of the key or of one of its versions moves its revision.
+message Key {
+  option (leadseal.v1.table) = { name: "pyrite_key" };
+
+  string name = 1 [(leadseal.v1.column) = {
+    primary_key: true
+    text: {
+      length: 63
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+  }];
+
+  // ENCRYPTION, MAC or SIGNING.
+  string purpose = 2 [(leadseal.v1.column).text = { length: 16 }];
+
+  // The algorithm of a signing key: RS256, ES256 or EDDSA.
+  optional string algorithm = 3 [(leadseal.v1.column).text = { length: 16 }];
+
+  // How often the key gets a new primary version, in milliseconds; 0 for never.
+  int64 rotation_millis = 4;
+
+  // How long a new version is pending before it becomes primary, in milliseconds.
+  int64 pending_millis = 5;
+
+  // How long a version works after it is made, in milliseconds; none for a version that works until it is disabled.
+  optional int64 lifetime_millis = 6;
+
+  int64 revision = 7;
+
+  string create_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } }];
+}
+
+// A version of a key.
+message Version {
+  option (leadseal.v1.table) = { name: "pyrite_version" };
+
+  string key_name = 1 [(leadseal.v1.column) = {
+    primary_key: true
+    foreign_key: { message: "pyrite.v1.Key" on_delete: ACTION_CASCADE }
+    text: {
+      length: 63
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+  }];
+
+  // The number of the version in its key: 1 for the first, and one more for each after it.
+  int64 number = 2 [(leadseal.v1.column).primary_key = true];
+
+  // GENERATED, EXPORTED or UPLOADED.
+  string origin = 3 [(leadseal.v1.column).text = { length: 16 }];
+
+  // PENDING, PRIMARY, LIVE, DISABLED, EXPIRED or DESTROYED.
+  string state = 4 [(leadseal.v1.column).text = { length: 16 }];
+
+  // When a pending version becomes primary, since when a primary is primary, or when a version was disabled, expired or
+  // was destroyed. None for a live version.
+  optional string state_time = 5 [(leadseal.v1.column).timestamp = {}];
+
+  string create_time = 6 [(leadseal.v1.column) = { timestamp: { default_now: true } }];
+
+  // The secret material, encrypted under the vault key: the AES or HMAC key, or the PKCS#8 private key. None for a
+  // public key alone and for a destroyed version.
+  optional bytes sealed = 7;
+
+  // The X.509 SubjectPublicKeyInfo of a signing version.
+  optional bytes public_key = 8;
+
+  // When the version expires, as the key's validity said when it was made. None for a version that never does.
+  optional string expire_time = 9 [(leadseal.v1.column).timestamp = {}];
+}

@@ -1,0 +1,314 @@
+{
+  "version" : "20261020054401",
+  "name" : "create_pyrite_vault_and_2_more",
+  "to" : "2e33ae4fea301907",
+  "created" : "2026-10-20T05:44:01.880881600Z",
+  "changes" : [ {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.Vault",
+      "name" : "pyrite_vault",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "sealed",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "default_now"
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_vault",
+        "columns" : [ "name" ]
+      }, {
+        "kind" : "comment",
+        "text" : "The vault key, encrypted under the root key. It encrypts the material of every version, so rotating the root key\nencrypts this one row again."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.Key",
+      "name" : "pyrite_key",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 63
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "purpose",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "ENCRYPTION, MAC or SIGNING."
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "algorithm",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "The algorithm of a signing key: RS256, ES256 or EDDSA."
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "rotation_millis",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "How often the key gets a new primary version, in milliseconds; 0 for never."
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "pending_millis",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "How long a new version is pending before it becomes primary, in milliseconds."
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "lifetime_millis",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "How long a version works after it is made, in milliseconds; none for a version that works until it is disabled."
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "default_now"
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_key",
+        "columns" : [ "name" ]
+      }, {
+        "kind" : "comment",
+        "text" : "A key. Every change of the key or of one of its versions moves its revision."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.Version",
+      "name" : "pyrite_version",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "key_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 63
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "number",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The number of the version in its key: 1 for the first, and one more for each after it."
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "origin",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "GENERATED, EXPORTED or UPLOADED."
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "state",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "PENDING, PRIMARY, LIVE, DISABLED, EXPIRED or DESTROYED."
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "state_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "When a pending version becomes primary, since when a primary is primary, or when a version was disabled, expired or\nwas destroyed. None for a live version."
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "default_now"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "sealed",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "The secret material, encrypted under the vault key: the AES or HMAC key, or the PKCS#8 private key. None for a\npublic key alone and for a destroyed version."
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "public_key",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "The X.509 SubjectPublicKeyInfo of a signing version."
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "expire_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "When the version expires, as the key's validity said when it was made. None for a version that never does."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_version",
+        "columns" : [ "key_name", "number" ]
+      }, {
+        "kind" : "comment",
+        "text" : "A version of a key."
+      } ]
+    }
+  }, {
+    "change" : "add_table_attribute",
+    "table" : {
+      "name" : "pyrite_version"
+    },
+    "attribute" : {
+      "kind" : "foreign_key",
+      "name" : "fk_pyrite_version_key_name",
+      "columns" : [ "key_name" ],
+      "table" : {
+        "name" : "pyrite_key"
+      },
+      "referencedColumns" : [ "name" ],
+      "onDelete" : "CASCADE",
+      "onUpdate" : "NO_ACTION"
+    }
+  } ]
+}
