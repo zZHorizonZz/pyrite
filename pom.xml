@@ -50,7 +50,7 @@
     <leadseal.version>0.2.0</leadseal.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <protobuf.version>4.36.2</protobuf.version>
-    <tink.version>1.23.0</tink.version>
+    <tink.version>1.24.0</tink.version>
     <vertx.version>5.2.0</vertx.version>
 
     <junit.version>6.1.3</junit.version>
