@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>dev.horizon</groupId>
   <artifactId>pyrite-parent</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Pyrite</name>
   <description>Keys for Vert.x applications: encryption, fingerprints and signing, with versions that rotate, held by your
