@@ -4,10 +4,10 @@ import dev.horizon.cinder.Backend;
 import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.database.schema.v1.Tables;
 
-record VaultTable(Database database) implements Backend<Tables.Vault, String> {
+record KeyBackend(Database database) implements Backend<Tables.Key, String> {
 
   @Override
-  public Class<Tables.Vault> type() {
-    return Tables.Vault.class;
+  public Class<Tables.Key> type() {
+    return Tables.Key.class;
   }
 }

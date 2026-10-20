@@ -8,7 +8,7 @@ import io.vertx.core.Future;
 import java.util.List;
 import java.util.Optional;
 
-record VersionTable(Database database) implements Backend<Tables.Version, VersionTable.Id> {
+record VersionBackend(Database database) implements Backend<Tables.Version, VersionBackend.Id> {
 
   @Override
   public Class<Tables.Version> type() {

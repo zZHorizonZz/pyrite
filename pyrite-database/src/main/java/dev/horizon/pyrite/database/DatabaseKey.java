@@ -47,8 +47,8 @@ final class DatabaseKey implements KeyHandle {
   private final Rotation rotation;
   private final Validity validity;
   private final Database database;
-  private final KeyTable keys;
-  private final VersionTable versions;
+  private final KeyBackend keys;
+  private final VersionBackend versions;
   private final Vault vault;
   private final Generator generator;
 
@@ -58,8 +58,8 @@ final class DatabaseKey implements KeyHandle {
     this.rotation = ROTATION_MAPPER.read(row);
     this.validity = VALIDITY_MAPPER.read(row);
     this.database = database;
-    this.keys = new KeyTable(database);
-    this.versions = new VersionTable(database);
+    this.keys = new KeyBackend(database);
+    this.versions = new VersionBackend(database);
     this.vault = vault;
     this.generator = generator;
   }

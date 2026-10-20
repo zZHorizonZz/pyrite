@@ -101,12 +101,12 @@ class DatabaseProviderTest extends KeyringContract {
   @Test
   void aLostVaultKeyIsNotReplacedWhileSealedVersionsRemain() throws Exception {
     keyring.create("totp-seeds", new Encryption(), Rotation.never(), Validity.unlimited()).await(10, TimeUnit.SECONDS);
-    new VaultTable(database).deleteById("default").await(10, TimeUnit.SECONDS);
+    new VaultBackend(database).deleteById("default").await(10, TimeUnit.SECONDS);
 
     assertThatThrownBy(() -> DatabaseProvider.open(vertx, database, aead(root)).await(10,
         TimeUnit.SECONDS))
         .isInstanceOf(IllegalStateException.class);
-    assertThat(new VaultTable(database).findById("default").await(10, TimeUnit.SECONDS)).isEmpty();
+    assertThat(new VaultBackend(database).findById("default").await(10, TimeUnit.SECONDS)).isEmpty();
   }
 
   @Test

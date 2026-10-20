@@ -35,14 +35,14 @@ public final class DatabaseProvider implements Provider {
       EnumSet.allOf(Algorithm.class));
 
   private final Database database;
-  private final KeyTable keys;
+  private final KeyBackend keys;
   private final VaultKey vaultKey;
   private final Vault vault;
   private final Generator generator;
 
   private DatabaseProvider(Database database, VaultKey vaultKey, Vault vault, Generator generator) {
     this.database = database;
-    this.keys = new KeyTable(database);
+    this.keys = new KeyBackend(database);
     this.vaultKey = vaultKey;
     this.vault = vault;
     this.generator = generator;
@@ -55,7 +55,7 @@ public final class DatabaseProvider implements Provider {
       throw new IllegalArgumentException("The database cannot store Pyrite's tables, which are protobuf messages; build "
           + "it with .extension(new ProtobufExtension())", unknown);
     }
-    VaultKey vaultKey = new VaultKey(new VaultTable(database), new VersionTable(database), root);
+    VaultKey vaultKey = new VaultKey(new VaultBackend(database), new VersionBackend(database), root);
     return vaultKey.load()
         .map(key -> new DatabaseProvider(database, vaultKey, new Vault(key), new Generator(vertx)));
   }
