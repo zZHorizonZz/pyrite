@@ -37,8 +37,8 @@ serve the same clients, give them all the same page token key
 
 ## Root key and vault key
 
-The database provider uses envelope encryption, as Cloud KMS describes it: a data key encrypts the data, and a key
-encryption key encrypts the data key
+The database provider uses envelope encryption: a data key encrypts the data, and a key encryption key encrypts the
+data key
 ([Cloud KMS, envelope encryption](https://docs.cloud.google.com/kms/docs/envelope-encryption)). The provider protects
 versions with two keys:
 
