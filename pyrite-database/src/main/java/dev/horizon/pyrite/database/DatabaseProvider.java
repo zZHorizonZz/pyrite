@@ -4,9 +4,7 @@ import com.google.crypto.tink.Aead;
 import dev.horizon.aquery.aip158.Page;
 import dev.horizon.aquery.aip158.PageRequest;
 import dev.horizon.cinder.Database;
-import dev.horizon.cinder.Driver;
 import dev.horizon.cinder.DuplicateKeyException;
-import dev.horizon.cinder.protobuf.ProtobufExtension;
 import dev.horizon.pyrite.Algorithm;
 import dev.horizon.pyrite.Capabilities;
 import dev.horizon.pyrite.Capability;
@@ -25,7 +23,6 @@ import dev.horizon.pyrite.spi.KeyHandle;
 import dev.horizon.pyrite.spi.Provider;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.sqlclient.Pool;
 import java.time.Instant;
 import java.util.EnumSet;
 
@@ -51,8 +48,13 @@ public final class DatabaseProvider implements Provider {
     this.generator = generator;
   }
 
-  public static Future<DatabaseProvider> open(Vertx vertx, Pool pool, Driver driver, Aead root) {
-    Database database = Database.builder(pool, driver).extension(new ProtobufExtension()).build();
+  public static Future<DatabaseProvider> open(Vertx vertx, Database database, Aead root) {
+    try {
+      database.model(Tables.Key.class);
+    } catch (IllegalArgumentException unknown) {
+      throw new IllegalArgumentException("The database cannot store Pyrite's tables, which are protobuf messages; build "
+          + "it with .extension(new ProtobufExtension())", unknown);
+    }
     VaultKey vaultKey = new VaultKey(new VaultTable(database), new VersionTable(database), root);
     return vaultKey.load()
         .map(key -> new DatabaseProvider(database, vaultKey, new Vault(key), new Generator(vertx)));

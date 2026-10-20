@@ -16,6 +16,25 @@ Use `MemoryProvider` in tests. It loses every key when the process ends.
 Providers for Tink keyset files, Google Cloud KMS and AWS KMS are planned. A KMS provider will keep private keys in
 the KMS, so your process will send data to the KMS to sign.
 
+## The database
+
+`DatabaseProvider.open` takes a Cinder `Database` that you build, so you configure it as you need. The database must
+have the protobuf extension, because Pyrite's tables are protobuf messages. Without it, `open` throws
+`IllegalArgumentException`.
+
+```java
+Database database = Database.builder(pool, new PostgresDriver())
+    .extension(new ProtobufExtension())
+    .pageTokenKey(pageTokenKey)
+    .build();
+DatabaseProvider provider = DatabaseProvider.open(vertx, database, root).await(10, TimeUnit.SECONDS);
+```
+
+`Keyring.keys` returns page tokens that Cinder encrypts with the page token key, an AES key. If you do not set one,
+each process creates a random key, and a page token works only in the process that returned it. If several processes
+serve the same clients, give them all the same page token key
+([Cinder, list pages](https://github.com/zZHorizonZz/cinder/blob/main/docs/how-to/read-rows.md#list-pages)).
+
 ## Root key and vault key
 
 The database provider uses envelope encryption, as Cloud KMS describes it: a data key encrypts the data, and a key

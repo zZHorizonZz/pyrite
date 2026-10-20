@@ -5,8 +5,8 @@ that you only compare, and signs JWTs. Each key has versions that rotate on a sc
 that you set. The keys are stored by a provider, such as your application's database.
 
 ```java
-Keyring keyring = Keyring.create(vertx, DatabaseProvider.open(vertx, pool, new PostgresDriver(), root)
-    .await(10, TimeUnit.SECONDS));
+Database database = Database.builder(pool, new PostgresDriver()).extension(new ProtobufExtension()).build();
+Keyring keyring = Keyring.create(vertx, DatabaseProvider.open(vertx, database, root).await(10, TimeUnit.SECONDS));
 
 EncryptionKey seeds = keyring.encryption("totp-seeds").await(10, TimeUnit.SECONDS);
 byte[] sealed = seeds.encrypt(seed, "accounts/42").await(10, TimeUnit.SECONDS);

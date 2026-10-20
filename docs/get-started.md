@@ -84,18 +84,24 @@ Flyway.configure()
        InsecureSecretKeyAccess.get()).getPrimitive(RegistryConfiguration.get(), Aead.class);
    ```
 
-2. Open the provider on your connection pool, and create the keyring:
+2. Build a Cinder database on your connection pool, with the protobuf extension. Pyrite's tables are protobuf
+   messages, so the provider requires it:
 
    ```java
    Vertx vertx = Vertx.vertx();
    Pool pool = PgBuilder.pool().connectingTo("postgresql://app:secret@localhost:5432/app").using(vertx).build();
-   Keyring keyring = Keyring.create(vertx, DatabaseProvider.open(vertx, pool, new PostgresDriver(), root)
-       .await(10, TimeUnit.SECONDS));
+   Database database = Database.builder(pool, new PostgresDriver()).extension(new ProtobufExtension()).build();
+   ```
+
+3. Open the provider on the database, and create the keyring:
+
+   ```java
+   Keyring keyring = Keyring.create(vertx, DatabaseProvider.open(vertx, database, root).await(10, TimeUnit.SECONDS));
    ```
 
    The first time the provider opens on a database, it creates the vault key.
 
-3. Create a signing key. Do this once, when you set up the application:
+4. Create a signing key. Do this once, when you set up the application:
 
    ```java
    SigningKey sessions = keyring.create("sessions", new Signing(Algorithm.ES256),

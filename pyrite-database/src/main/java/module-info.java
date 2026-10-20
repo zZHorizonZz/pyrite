@@ -4,7 +4,7 @@ module dev.horizon.pyrite.database {
   requires transitive io.vertx.sql.client;
   requires transitive com.google.crypto.tink;
   requires dev.horizon.pyrite.internal;
-  requires dev.horizon.cinder.protobuf;
+  requires transitive dev.horizon.cinder.protobuf;
   requires dev.horizon.leadseal.protobuf;
   requires com.google.protobuf;
 

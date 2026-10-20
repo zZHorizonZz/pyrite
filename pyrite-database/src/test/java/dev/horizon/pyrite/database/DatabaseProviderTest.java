@@ -36,6 +36,7 @@ class DatabaseProviderTest extends KeyringContract {
 
   private KeysetHandle root;
   private Pool pool;
+  private Database database;
 
   @Override
   protected Provider provider(Vertx vertx, Clock clock) throws Exception {
@@ -51,7 +52,8 @@ class DatabaseProviderTest extends KeyringContract {
         .migrate();
     root = KeysetHandle.generateNew(PredefinedAeadParameters.AES256_GCM);
     pool = JDBCPool.pool(vertx, new JDBCConnectOptions().setJdbcUrl(url), new PoolOptions().setMaxSize(1));
-    return DatabaseProvider.open(vertx, pool, new SqliteDriver(), aead(root)).await(10, TimeUnit.SECONDS);
+    database = Database.builder(pool, new SqliteDriver()).extension(new ProtobufExtension()).build();
+    return DatabaseProvider.open(vertx, database, aead(root)).await(10, TimeUnit.SECONDS);
   }
 
   @Test
@@ -60,7 +62,7 @@ class DatabaseProviderTest extends KeyringContract {
         TimeUnit.SECONDS);
     byte[] sealed = seeds.encrypt(bytes("seed"), "accounts/42").await(10, TimeUnit.SECONDS);
 
-    Keyring reopened = keyring(DatabaseProvider.open(vertx, pool, new SqliteDriver(), aead(root))
+    Keyring reopened = keyring(DatabaseProvider.open(vertx, database, aead(root))
         .await(10, TimeUnit.SECONDS));
 
     assertThat(reopened.encryption("totp-seeds").await(10, TimeUnit.SECONDS).decrypt(sealed, "accounts/42").await(10,
@@ -83,13 +85,13 @@ class DatabaseProviderTest extends KeyringContract {
     trimmed.removeAt(0);
     KeysetHandle newest = trimmed.build();
 
-    DatabaseProvider rotating = DatabaseProvider.open(vertx, pool, new SqliteDriver(), aead(both)).await(10, TimeUnit.SECONDS);
-    assertThatThrownBy(() -> DatabaseProvider.open(vertx, pool, new SqliteDriver(), aead(newest)).await(10, TimeUnit.SECONDS))
+    DatabaseProvider rotating = DatabaseProvider.open(vertx, database, aead(both)).await(10, TimeUnit.SECONDS);
+    assertThatThrownBy(() -> DatabaseProvider.open(vertx, database, aead(newest)).await(10, TimeUnit.SECONDS))
         .isInstanceOf(IllegalStateException.class);
 
     rotating.rewrap().await(10, TimeUnit.SECONDS);
 
-    Keyring renewed = keyring(DatabaseProvider.open(vertx, pool, new SqliteDriver(), aead(newest))
+    Keyring renewed = keyring(DatabaseProvider.open(vertx, database, aead(newest))
         .await(10, TimeUnit.SECONDS));
     assertThat(
         renewed.encryption("totp-seeds").await(10, TimeUnit.SECONDS).decrypt(sealed, "accounts/42").await(10, TimeUnit.SECONDS))
@@ -99,13 +101,21 @@ class DatabaseProviderTest extends KeyringContract {
   @Test
   void aLostVaultKeyIsNotReplacedWhileSealedVersionsRemain() throws Exception {
     keyring.create("totp-seeds", new Encryption(), Rotation.never(), Validity.unlimited()).await(10, TimeUnit.SECONDS);
-    Database database = Database.builder(pool, new SqliteDriver()).extension(new ProtobufExtension()).build();
     new VaultTable(database).deleteById("default").await(10, TimeUnit.SECONDS);
 
-    assertThatThrownBy(() -> DatabaseProvider.open(vertx, pool, new SqliteDriver(), aead(root)).await(10,
+    assertThatThrownBy(() -> DatabaseProvider.open(vertx, database, aead(root)).await(10,
         TimeUnit.SECONDS))
         .isInstanceOf(IllegalStateException.class);
     assertThat(new VaultTable(database).findById("default").await(10, TimeUnit.SECONDS)).isEmpty();
+  }
+
+  @Test
+  void aDatabaseWithoutTheProtobufExtensionIsRefused() {
+    Database plain = Database.builder(pool, new SqliteDriver()).build();
+
+    assertThatThrownBy(() -> DatabaseProvider.open(vertx, plain, aead(root)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("ProtobufExtension");
   }
 
   private Aead aead(KeysetHandle keyset) throws GeneralSecurityException {
