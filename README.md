@@ -43,7 +43,7 @@ Pyrite.
 <dependency>
   <groupId>dev.horizon</groupId>
   <artifactId>pyrite-database</artifactId>
-  <version>0.2.2-SNAPSHOT</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 <!-- x-release-please-end -->
