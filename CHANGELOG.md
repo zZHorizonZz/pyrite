@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/zZHorizonZz/pyrite/compare/v0.2.1...v0.3.0) (2026-10-21)
+
+
+### Features
+
+* Metadata in pyrite-common, and the mappers on Cinder's ProtobufMapper. ([74b4610](https://github.com/zZHorizonZz/pyrite/commit/74b4610fc9d3bc90a7dfe8d9a85ec252c360e493))
+
 ## [0.2.1](https://github.com/zZHorizonZz/pyrite/compare/v0.2.0...v0.2.1) (2026-10-20)
 
 
