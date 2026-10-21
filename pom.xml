@@ -46,7 +46,7 @@
     <maven.compiler.release>25</maven.compiler.release>
     <aquery.version>0.3.1-SNAPSHOT</aquery.version>
     <caffeine.version>3.3.1</caffeine.version>
-    <cinder.version>0.1.0</cinder.version>
+    <cinder.version>0.2.1-SNAPSHOT</cinder.version>
     <leadseal.version>0.2.0</leadseal.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <protobuf.version>4.36.2</protobuf.version>

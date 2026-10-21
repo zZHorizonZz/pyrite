@@ -1,5 +1,6 @@
 package dev.horizon.pyrite.database;
 
+import dev.horizon.cinder.protobuf.ProtobufMapper;
 import dev.horizon.pyrite.Rotation;
 import dev.horizon.pyrite.database.schema.v1.Tables;
 import java.time.Duration;

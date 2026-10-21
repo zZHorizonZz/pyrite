@@ -10,7 +10,7 @@
 
   <artifactId>pyrite-common</artifactId>
   <name>Pyrite - Common</name>
-  <description>What the libraries built on Pyrite share: the subject of a call, revisions and failures.</description>
+  <description>What the libraries built on Pyrite share: the subject of a call, revisions, metadata and failures.</description>
 
   <dependencies>
     <dependency>

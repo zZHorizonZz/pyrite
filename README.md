@@ -48,13 +48,13 @@ Pyrite.
 ```
 <!-- x-release-please-end -->
 
-| Artifact          | Java module                   | Contents                                                                                  |
-| ----------------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
-| `pyrite-common`   | `dev.horizon.pyrite.common`   | `Subject`, `Revision` and the problem exceptions, shared by the libraries built on Pyrite |
-| `pyrite-api`      | `dev.horizon.pyrite.api`      | the interfaces of the keyring, keys and versions, and the provider interface              |
-| `pyrite-internal` | `dev.horizon.pyrite.internal` | the keyring, and the cryptography of the providers that run in the process                |
-| `pyrite-database` | `dev.horizon.pyrite.database` | the database provider and its migrations                                                  |
-| `pyrite-memory`   | `dev.horizon.pyrite.memory`   | the memory provider                                                                       |
+| Artifact          | Java module                   | Contents                                                                                              |
+| ----------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pyrite-common`   | `dev.horizon.pyrite.common`   | `Subject`, `Revision`, `Metadata` and the problem exceptions, shared by the libraries built on Pyrite |
+| `pyrite-api`      | `dev.horizon.pyrite.api`      | the interfaces of the keyring, keys and versions, and the provider interface                          |
+| `pyrite-internal` | `dev.horizon.pyrite.internal` | the keyring, and the cryptography of the providers that run in the process                            |
+| `pyrite-database` | `dev.horizon.pyrite.database` | the database provider and its migrations                                                              |
+| `pyrite-memory`   | `dev.horizon.pyrite.memory`   | the memory provider                                                                                   |
 
 Your code uses only `pyrite-api` and the class of its provider. Do not depend on `pyrite-internal` directly.
 

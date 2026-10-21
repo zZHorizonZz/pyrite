@@ -1,5 +1,6 @@
 package dev.horizon.pyrite.database;
 
+import dev.horizon.cinder.protobuf.ProtobufMapper;
 import dev.horizon.pyrite.Algorithm;
 import dev.horizon.pyrite.Encryption;
 import dev.horizon.pyrite.Mac;
