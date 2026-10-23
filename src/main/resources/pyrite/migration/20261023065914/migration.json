@@ -1,0 +1,1349 @@
+{
+  "version" : "20261023065914",
+  "name" : "create_pyrite_account_and_7_more",
+  "to" : "b98aa8ea94359c54",
+  "created" : "2026-10-23T06:59:14.797265700Z",
+  "changes" : [ {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.authentication.Account",
+      "name" : "pyrite_account",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "kind",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "HUMAN or SERVICE."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_account",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_account_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "comment",
+        "text" : "An account: the resource pyrite.dev/Account, whose principals are user:<id>."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.authentication.Identifier",
+      "name" : "pyrite_identifier",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "kind",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "EMAIL, PHONE or USERNAME."
+        } ]
+      }, {
+        "id" : "12",
+        "name" : "value",
+        "type" : {
+          "kind" : "text",
+          "length" : 320
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        }, {
+          "kind" : "comment",
+          "text" : "The address, the number in E.164, or the username, as Pyrite normalized it."
+        } ]
+      }, {
+        "id" : "13",
+        "name" : "verified",
+        "type" : {
+          "kind" : "boolean"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "14",
+        "name" : "primary",
+        "type" : {
+          "kind" : "boolean"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "Whether the account prefers it among its identifiers; the caller sets it."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_identifier",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_identifier_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_identifier_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_identifier_kind_value",
+        "columns" : [ "kind", "value" ],
+        "unique" : true
+      }, {
+        "kind" : "comment",
+        "text" : "An identifier of an account: the resource pyrite.dev/Identifier, under its account."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.authentication.Factor",
+      "name" : "pyrite_factor",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "kind",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "PASSWORD, TOTP, PASSKEY or RECOVERY_CODES."
+        } ]
+      }, {
+        "id" : "12",
+        "name" : "state",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "PENDING while it is enrolled, then ACTIVE."
+        } ]
+      }, {
+        "id" : "13",
+        "name" : "secret",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, or the recovery codes' MACs."
+        } ]
+      }, {
+        "id" : "14",
+        "name" : "credential_id",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "A passkey's credential id; empty for the others."
+        } ]
+      }, {
+        "id" : "15",
+        "name" : "counter",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "A passkey's signature counter, or the last TOTP step that signed in."
+        } ]
+      }, {
+        "id" : "16",
+        "name" : "user_verified",
+        "type" : {
+          "kind" : "boolean"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "Whether a passkey verified its user when it was registered."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_factor",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_factor_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_factor_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_factor_credential_id",
+        "columns" : [ "credential_id" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A factor of an account: the resource pyrite.dev/Factor, under its account."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.authentication.Session",
+      "name" : "pyrite_session",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "token_mac",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The MAC of the token's secret."
+        } ]
+      }, {
+        "id" : "12",
+        "name" : "expire_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "13",
+        "name" : "idle_expire_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_session",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_session_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_session_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A session of an account: the resource pyrite.dev/Session, under its account."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.authentication.Flow",
+      "name" : "pyrite_flow",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "id",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "definition",
+        "type" : {
+          "kind" : "text",
+          "length" : 63
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "account",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The account, or empty for a flow that names no account that exists."
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "identifier",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The identifier that the flow started with, if any."
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "stage",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT32"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The stage of the definition that the flow is in."
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "proofs",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "What the answers of the stage have proven, as JSON."
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "answers",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT32"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "expire_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "10",
+        "name" : "code_mac",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The MAC of the code that was sent, and when it stops working."
+        } ]
+      }, {
+        "id" : "11",
+        "name" : "code_expire_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "12",
+        "name" : "challenge",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The challenge of a passkey ceremony."
+        } ]
+      }, {
+        "id" : "13",
+        "name" : "factor",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The factor that the flow enrolls, if any."
+        } ]
+      }, {
+        "id" : "14",
+        "name" : "request_id",
+        "type" : {
+          "kind" : "text",
+          "length" : 64
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The id of the last answer's request, and the flow that it returned."
+        } ]
+      }, {
+        "id" : "15",
+        "name" : "response",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "16",
+        "name" : "done",
+        "type" : {
+          "kind" : "boolean"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "Whether the flow is done; a done flow takes no answers."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_flow",
+        "columns" : [ "id" ]
+      }, {
+        "kind" : "comment",
+        "text" : "A flow in progress. It is not a resource: only the Authentication service reads and writes it."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.declaration.Declaration",
+      "name" : "pyrite_declaration",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "id",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "declaration",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The pyrite.schema.v1.Declaration, serialized."
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "store_id",
+        "type" : {
+          "kind" : "text",
+          "length" : 26
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The OpenFGA store of the grants."
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "model_id",
+        "type" : {
+          "kind" : "text",
+          "length" : 26
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The authorization model that the declaration wrote to the store."
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_declaration",
+        "columns" : [ "id" ]
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_declaration_create_time",
+        "columns" : [ "create_time" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A declaration that pyrite.schema.v1.Schema wrote, with the OpenFGA store and model that it wrote for it. The latest\nis the one that every service reads."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.keys.Key",
+      "name" : "pyrite_key",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "purpose",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "ENCRYPTION, MAC or SIGNING."
+        } ]
+      }, {
+        "id" : "12",
+        "name" : "algorithm",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "AES256_GCM, HMAC_SHA256, RS256, ES256 or EDDSA."
+        } ]
+      }, {
+        "id" : "13",
+        "name" : "rotation_period",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "How often the key gets a new primary version, in seconds; 0 for never."
+        } ]
+      }, {
+        "id" : "14",
+        "name" : "next_rotation_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "When the key next gets a new primary version, if it rotates."
+        } ]
+      }, {
+        "id" : "15",
+        "name" : "primary_version",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The name of the version that encrypts and signs."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_key",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_key_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_key_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A key: the resource pyrite.dev/Key, with the standard fields and its own."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "pyrite.keys.KeyVersion",
+      "name" : "pyrite_key_version",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "number",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "1 for the first version of the key, and one more for each after it."
+        } ]
+      }, {
+        "id" : "12",
+        "name" : "state",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "ENABLED or DISABLED."
+        } ]
+      }, {
+        "id" : "13",
+        "name" : "algorithm",
+        "type" : {
+          "kind" : "text",
+          "length" : 16
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "14",
+        "name" : "public_key",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The public key of a signing version, as a JWK; empty for the others."
+        } ]
+      }, {
+        "id" : "15",
+        "name" : "sealed",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The key material, encrypted by the root key."
+        } ]
+      }, {
+        "id" : "16",
+        "name" : "public_key_info",
+        "type" : {
+          "kind" : "bytes"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "comment",
+          "text" : "The X.509 SubjectPublicKeyInfo of a signing version; empty for the others."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_pyrite_key_version",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_pyrite_key_version_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_pyrite_key_version_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A version of a key: the resource pyrite.dev/KeyVersion, under its key."
+      } ]
+    }
+  } ]
+}

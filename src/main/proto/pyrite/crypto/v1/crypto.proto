@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package pyrite.crypto.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CryptoProto";
+option java_package = "dev.horizon.pyrite.crypto.v1";
+
+// The operations of keys, the resources pyrite.dev/Key. A key's purpose decides what it does: an encryption key
+// encrypts and decrypts, a MAC key and a signing key sign and verify. Every call runs as its subject, which needs the
+// relation of the operation on the key: encrypter, decrypter, signer or verifier.
+service Cryptography {
+  // Encrypts with the key's primary version, under associated data that decrypting has to name again.
+  rpc Encrypt(EncryptRequest) returns (EncryptResponse);
+
+  // Decrypts with the version that encrypted, if it is enabled and not deleted.
+  rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+
+  // Signs data, or claims as a compact JWT, with the key's primary version: an HMAC for a MAC key, a signature for a
+  // signing key.
+  rpc Sign(SignRequest) returns (SignResponse);
+
+  // Verifies a signature, or a JWT and its claims. A signature that does not verify is a rejection, not an error.
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+}
+
+message EncryptRequest {
+  string subject = 1;
+
+  // The key's name, such as keys/payments.
+  string key = 2;
+
+  bytes plaintext = 3;
+
+  bytes associated_data = 4;
+}
+
+message EncryptResponse {
+  bytes ciphertext = 1;
+
+  // The name of the version that encrypted.
+  string key_version = 2;
+}
+
+message DecryptRequest {
+  string subject = 1;
+
+  string key = 2;
+
+  bytes ciphertext = 3;
+
+  bytes associated_data = 4;
+}
+
+message DecryptResponse {
+  bytes plaintext = 1;
+
+  string key_version = 2;
+}
+
+message SignRequest {
+  string subject = 1;
+
+  string key = 2;
+
+  oneof payload {
+    // Data to sign as it is.
+    bytes data = 3;
+
+    // Claims to sign as a JWT.
+    google.protobuf.Struct claims = 4;
+  }
+
+  // The typ of the JWT, such as at+jwt; JWT when empty.
+  string type = 5;
+}
+
+message SignResponse {
+  oneof result {
+    bytes signature = 1;
+
+    string token = 2;
+  }
+
+  string key_version = 3;
+}
+
+message VerifyRequest {
+  string subject = 1;
+
+  string key = 2;
+
+  oneof payload {
+    Detached detached = 3;
+
+    string token = 4;
+  }
+
+  // What a JWT has to be.
+  Expected expected = 5;
+}
+
+// Data and its signature.
+message Detached {
+  bytes data = 1;
+
+  bytes signature = 2;
+
+  // The version that signed, if known; every enabled version is tried when empty.
+  string key_version = 3;
+}
+
+message Expected {
+  // The typ of the JWT.
+  string type = 1;
+
+  // The iss, if it is checked.
+  string issuer = 2;
+
+  // An aud, if it is checked.
+  string audience = 3;
+
+  // How far exp and nbf may be off.
+  google.protobuf.Duration leeway = 4;
+}
+
+message VerifyResponse {
+  oneof result {
+    Verified verified = 1;
+
+    Rejected rejected = 2;
+  }
+}
+
+message Verified {
+  // The claims of a JWT; empty for a signature.
+  google.protobuf.Struct claims = 1;
+
+  string key_version = 2;
+}
+
+message Rejected {
+  Reason reason = 1;
+
+  string message = 2;
+
+  enum Reason {
+    REASON_UNSPECIFIED = 0;
+    MALFORMED = 1;
+    ALGORITHM = 2;
+    TYPE = 3;
+    UNKNOWN_VERSION = 4;
+    DISABLED_VERSION = 5;
+    SIGNATURE = 6;
+    ISSUER = 7;
+    AUDIENCE = 8;
+    EXPIRED = 9;
+    NOT_YET_VALID = 10;
+  }
+}

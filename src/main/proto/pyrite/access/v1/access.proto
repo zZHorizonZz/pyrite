@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package pyrite.access.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AccessProto";
+option java_package = "dev.horizon.pyrite.access.v1";
+
+// The grants on resources, as OpenFGA tuples, and the questions about them. Every call runs as its subject.
+service Access {
+  // Grants a relation on a resource. Granting it again changes nothing. The subject needs the type's grant
+  // permission on the resource.
+  rpc CreateGrant(CreateGrantRequest) returns (Grant);
+
+  // Revokes a grant. Revoking one that does not exist changes nothing. The subject needs the type's grant permission
+  // on the resource.
+  rpc DeleteGrant(DeleteGrantRequest) returns (google.protobuf.Empty);
+
+  // Answers whether a principal has a permission on a resource. The subject needs the grant permission on it to ask
+  // about another principal.
+  rpc Check(CheckRequest) returns (CheckResponse);
+
+  // Returns a page of the grants on a resource. The subject needs the grant permission on it.
+  rpc ListGrants(ListGrantsRequest) returns (ListGrantsResponse);
+
+  // Returns the principals of a type that have a permission on a resource. The subject needs the grant permission.
+  rpc ListSubjects(ListSubjectsRequest) returns (ListSubjectsResponse);
+
+  // Returns a page of the grants and revocations on the resources of a type, oldest first. A change appears only if
+  // the subject has the grant permission on its resource.
+  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+}
+
+// A relation on a resource, granted to a principal or to a set of them.
+message Grant {
+  // The resource's name, such as projects/ledger.
+  string object = 1;
+
+  // The relation, such as editor.
+  string relation = 2;
+
+  // The principal, such as user:anne, all of a type, such as user:*, or a set, such as group:finance#member.
+  string grantee = 3;
+
+  // The condition on the grant, if any.
+  Condition condition = 4;
+}
+
+// A condition that the declaration names, and the values of its parameters that the grant holds.
+message Condition {
+  string name = 1;
+
+  google.protobuf.Struct context = 2;
+}
+
+message CreateGrantRequest {
+  string subject = 1;
+
+  Grant grant = 2;
+}
+
+message DeleteGrantRequest {
+  string subject = 1;
+
+  Grant grant = 2;
+}
+
+message CheckRequest {
+  string subject = 1;
+
+  // The principal whose access is checked, such as user:bob.
+  string principal = 2;
+
+  // The resource's name.
+  string object = 3;
+
+  string permission = 4;
+
+  // The values that conditions read at the time of the check.
+  google.protobuf.Struct context = 5;
+}
+
+message CheckResponse {
+  bool allowed = 1;
+}
+
+message ListGrantsRequest {
+  string subject = 1;
+
+  // The resource's name.
+  string object = 2;
+
+  // Only the grants of this relation, if set.
+  string relation = 3;
+
+  // Only the grants to this grantee, if set.
+  string grantee = 4;
+
+  int32 page_size = 5;
+
+  string page_token = 6;
+}
+
+message ListGrantsResponse {
+  repeated Grant grants = 1;
+
+  string next_page_token = 2;
+}
+
+message ListSubjectsRequest {
+  string subject = 1;
+
+  // The resource's name.
+  string object = 2;
+
+  string permission = 3;
+
+  // The type of the principals, such as user, or a set, such as group#member.
+  string subject_type = 4;
+
+  google.protobuf.Struct context = 5;
+}
+
+message ListSubjectsResponse {
+  repeated string subjects = 1;
+}
+
+message ListChangesRequest {
+  string subject = 1;
+
+  // The declared type, such as acme.dev/Project.
+  string type = 2;
+
+  // Only the changes from this time, if set.
+  google.protobuf.Timestamp start_time = 3;
+
+  int32 page_size = 4;
+
+  string page_token = 5;
+}
+
+message ListChangesResponse {
+  repeated Change changes = 1;
+
+  string next_page_token = 2;
+}
+
+message Change {
+  Grant grant = 1;
+
+  Operation operation = 2;
+
+  google.protobuf.Timestamp time = 3;
+
+  enum Operation {
+    OPERATION_UNSPECIFIED = 0;
+    GRANTED = 1;
+    REVOKED = 2;
+  }
+}

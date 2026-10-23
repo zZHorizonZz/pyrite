@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+package pyrite.authentication.v1;
+
+import "leadseal/v1/options.proto";
+
+option java_multiple_files = false;
+option java_outer_classname = "Tables";
+option java_package = "dev.horizon.pyrite.schema.authentication.v1";
+
+// An account: the resource pyrite.dev/Account, whose principals are user:<id>.
+message Account {
+  option (leadseal.v1.table) = {
+    name: "pyrite_account"
+    index: [
+      { fields: ["name"] unique: true }
+    ]
+  };
+
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string name = 2 [(leadseal.v1.column).text = {
+    length: 255
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  string labels = 5 [(leadseal.v1.column).json = {}];
+
+  int64 revision = 6;
+
+  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+
+  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+
+  optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
+
+  // HUMAN or SERVICE.
+  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+}
+
+// An identifier of an account: the resource pyrite.dev/Identifier, under its account.
+message Identifier {
+  option (leadseal.v1.table) = {
+    name: "pyrite_identifier"
+    index: [
+      { fields: ["name"] unique: true },
+      { fields: ["parent"] },
+      { fields: ["kind", "value"] unique: true }
+    ]
+  };
+
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string name = 2 [(leadseal.v1.column).text = {
+    length: 255
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  string labels = 5 [(leadseal.v1.column).json = {}];
+
+  int64 revision = 6;
+
+  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+
+  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+
+  optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
+
+  // EMAIL, PHONE or USERNAME.
+  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+
+  // The address, the number in E.164, or the username, as Pyrite normalized it.
+  string value = 12 [(leadseal.v1.column).text = {
+    length: 320
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  bool verified = 13;
+
+  // Whether the account prefers it among its identifiers; the caller sets it.
+  bool primary = 14;
+}
+
+// A factor of an account: the resource pyrite.dev/Factor, under its account.
+message Factor {
+  option (leadseal.v1.table) = {
+    name: "pyrite_factor"
+    index: [
+      { fields: ["name"] unique: true },
+      { fields: ["parent"] },
+      { fields: ["credential_id"] }
+    ]
+  };
+
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string name = 2 [(leadseal.v1.column).text = {
+    length: 255
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  string labels = 5 [(leadseal.v1.column).json = {}];
+
+  int64 revision = 6;
+
+  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+
+  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+
+  optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
+
+  // PASSWORD, TOTP, PASSKEY or RECOVERY_CODES.
+  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+
+  // PENDING while it is enrolled, then ACTIVE.
+  string state = 12 [(leadseal.v1.column).text = { length: 16 }];
+
+  // The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, or the recovery codes' MACs.
+  bytes secret = 13;
+
+  // A passkey's credential id; empty for the others.
+  string credential_id = 14 [(leadseal.v1.column).text = { length: 255 }];
+
+  // A passkey's signature counter, or the last TOTP step that signed in.
+  int64 counter = 15;
+
+  // Whether a passkey verified its user when it was registered.
+  bool user_verified = 16;
+}
+
+// A session of an account: the resource pyrite.dev/Session, under its account.
+message Session {
+  option (leadseal.v1.table) = {
+    name: "pyrite_session"
+    index: [
+      { fields: ["name"] unique: true },
+      { fields: ["parent"] }
+    ]
+  };
+
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string name = 2 [(leadseal.v1.column).text = {
+    length: 255
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  string labels = 5 [(leadseal.v1.column).json = {}];
+
+  int64 revision = 6;
+
+  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+
+  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+
+  optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
+
+  // The MAC of the token's secret.
+  bytes token_mac = 11;
+
+  string expire_time = 12 [(leadseal.v1.column).timestamp = {}];
+
+  string idle_expire_time = 13 [(leadseal.v1.column).timestamp = {}];
+}
+
+// A flow in progress. It is not a resource: only the Authentication service reads and writes it.
+message Flow {
+  option (leadseal.v1.table) = { name: "pyrite_flow" };
+
+  string id = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string definition = 2 [(leadseal.v1.column).text = { length: 63 }];
+
+  // The account, or empty for a flow that names no account that exists.
+  string account = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  // The identifier that the flow started with, if any.
+  string identifier = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  int64 revision = 5;
+
+  // The stage of the definition that the flow is in.
+  int32 stage = 6;
+
+  // What the answers of the stage have proven, as JSON.
+  string proofs = 7 [(leadseal.v1.column).json = {}];
+
+  int32 answers = 8;
+
+  string expire_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  // The MAC of the code that was sent, and when it stops working.
+  bytes code_mac = 10;
+
+  optional string code_expire_time = 11 [(leadseal.v1.column).timestamp = {}];
+
+  // The challenge of a passkey ceremony.
+  bytes challenge = 12;
+
+  // The factor that the flow enrolls, if any.
+  string factor = 13 [(leadseal.v1.column).text = { length: 255 }];
+
+  // The id of the last answer's request, and the flow that it returned.
+  string request_id = 14 [(leadseal.v1.column).text = { length: 64 }];
+
+  bytes response = 15;
+
+  // Whether the flow is done; a done flow takes no answers.
+  bool done = 16;
+}

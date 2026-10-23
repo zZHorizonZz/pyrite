@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package pyrite.declaration.v1;
+
+import "leadseal/v1/options.proto";
+
+option java_multiple_files = false;
+option java_outer_classname = "Tables";
+option java_package = "dev.horizon.pyrite.schema.declaration.v1";
+
+// A declaration that pyrite.schema.v1.Schema wrote, with the OpenFGA store and model that it wrote for it. The latest
+// is the one that every service reads.
+message Declaration {
+  option (leadseal.v1.table) = {
+    name: "pyrite_declaration"
+    index: [
+      { fields: ["create_time"] }
+    ]
+  };
+
+  string id = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  // The pyrite.schema.v1.Declaration, serialized.
+  bytes declaration = 2;
+
+  // The OpenFGA store of the grants.
+  string store_id = 3 [(leadseal.v1.column).text = { length: 26 }];
+
+  // The authorization model that the declaration wrote to the store.
+  string model_id = 4 [(leadseal.v1.column).text = { length: 26 }];
+
+  string create_time = 5 [(leadseal.v1.column).timestamp = {}];
+}

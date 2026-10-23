@@ -1,0 +1,435 @@
+# proto-file: pyrite/schema/v1/schema.proto
+# proto-message: pyrite.schema.v1.Declaration
+
+types {
+  name: "acme.dev/Organization"
+  plural: "organizations"
+  table: "acme_organization"
+  fields { name: "name" kind: STRING }
+  fields { name: "uid" kind: STRING }
+  fields { name: "parent" kind: STRING }
+  fields { name: "display_name" kind: STRING }
+  fields { name: "labels" kind: MAP }
+  fields { name: "revision" kind: INTEGER }
+  fields { name: "create_time" kind: TIMESTAMP }
+  fields { name: "update_time" kind: TIMESTAMP }
+  fields { name: "delete_time" kind: TIMESTAMP }
+  fields { name: "purge_time" kind: TIMESTAMP }
+  definition {
+    type: "organization"
+    relations { key: "admin" value { this {} } }
+    relations {
+      key: "member"
+      value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
+    }
+    relations { key: "blocked" value { this {} } }
+    relations { key: "binding" value { this {} } }
+    relations {
+      key: "can_manage_stock"
+      value {
+        tuple_to_userset { tupleset { relation: "binding" } computed_userset { relation: "can_manage_stock" } }
+      }
+    }
+    metadata {
+      relations { key: "binding" value { directly_related_user_types { type: "binding" } } }
+      relations {
+        key: "admin"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+      relations {
+        key: "member"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+      relations {
+        key: "blocked"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+    }
+  }
+  permissions { create: "" read: "member" update: "admin" delete: "admin" grant: "admin" }
+  grantable: ["admin", "member", "blocked", "binding"]
+  creator: "admin"
+  retention { seconds: 2592000 }
+}
+
+types {
+  name: "acme.dev/Group"
+  plural: "groups"
+  parents: "acme.dev/Organization"
+  table: "acme_group"
+  fields { name: "name" kind: STRING }
+  fields { name: "uid" kind: STRING }
+  fields { name: "parent" kind: STRING }
+  fields { name: "display_name" kind: STRING }
+  fields { name: "labels" kind: MAP }
+  fields { name: "revision" kind: INTEGER }
+  fields { name: "create_time" kind: TIMESTAMP }
+  fields { name: "update_time" kind: TIMESTAMP }
+  fields { name: "delete_time" kind: TIMESTAMP }
+  fields { name: "purge_time" kind: TIMESTAMP }
+  definition {
+    type: "group"
+    relations { key: "member" value { this {} } }
+    relations {
+      key: "manager"
+      value {
+        union {
+          child { this {} }
+          child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
+        }
+      }
+    }
+    relations {
+      key: "viewer"
+      value {
+        union {
+          child { computed_userset { relation: "member" } }
+          child { computed_userset { relation: "manager" } }
+        }
+      }
+    }
+    metadata {
+      relations {
+        key: "member"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+      relations { key: "manager" value { directly_related_user_types { type: "user" } } }
+    }
+  }
+  permissions { create: "admin" read: "viewer" update: "manager" delete: "manager" grant: "manager" }
+  grantable: ["member", "manager"]
+  creator: "manager"
+  retention { seconds: 604800 }
+}
+
+types {
+  name: "acme.dev/Project"
+  plural: "projects"
+  parents: "acme.dev/Organization"
+  table: "acme_project"
+  fields { name: "name" kind: STRING }
+  fields { name: "uid" kind: STRING }
+  fields { name: "parent" kind: STRING }
+  fields { name: "display_name" kind: STRING }
+  fields { name: "labels" kind: MAP }
+  fields { name: "revision" kind: INTEGER }
+  fields { name: "create_time" kind: TIMESTAMP }
+  fields { name: "update_time" kind: TIMESTAMP }
+  fields { name: "delete_time" kind: TIMESTAMP }
+  fields { name: "purge_time" kind: TIMESTAMP }
+  fields { name: "billing_account" kind: STRING }
+  definition {
+    type: "project"
+    relations { key: "owner" value { this {} } }
+    relations {
+      key: "editor"
+      value {
+        union {
+          child { this {} }
+          child { computed_userset { relation: "owner" } }
+          child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
+        }
+      }
+    }
+    relations {
+      key: "viewer"
+      value {
+        union {
+          child { this {} }
+          child { computed_userset { relation: "editor" } }
+          child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "member" } } }
+        }
+      }
+    }
+    relations {
+      key: "blocked"
+      value {
+        union {
+          child { this {} }
+          child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "blocked" } } }
+        }
+      }
+    }
+    relations { key: "binding" value { this {} } }
+    relations {
+      key: "can_manage_stock"
+      value {
+        union {
+          child {
+            tuple_to_userset { tupleset { relation: "binding" } computed_userset { relation: "can_manage_stock" } }
+          }
+          child {
+            tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "can_manage_stock" } }
+          }
+        }
+      }
+    }
+    relations {
+      key: "can_view"
+      value {
+        difference {
+          base { computed_userset { relation: "viewer" } }
+          subtract { computed_userset { relation: "blocked" } }
+        }
+      }
+    }
+    relations {
+      key: "can_edit"
+      value {
+        difference {
+          base { computed_userset { relation: "editor" } }
+          subtract { computed_userset { relation: "blocked" } }
+        }
+      }
+    }
+    metadata {
+      relations { key: "binding" value { directly_related_user_types { type: "binding" } } }
+      relations {
+        key: "owner"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+      relations {
+        key: "editor"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "user" condition: "not_expired" }
+        }
+      }
+      relations {
+        key: "viewer"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "user" wildcard {} }
+        }
+      }
+      relations {
+        key: "blocked"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+    }
+  }
+  permissions { create: "admin" read: "can_view" update: "can_edit" delete: "owner" grant: "owner" }
+  grantable: ["owner", "editor", "viewer", "blocked", "binding"]
+  creator: "owner"
+  retention { seconds: 2592000 }
+}
+
+types {
+  name: "acme.dev/Role"
+  plural: "roles"
+  parents: "acme.dev/Organization"
+  table: "acme_role"
+  fields { name: "name" kind: STRING }
+  fields { name: "uid" kind: STRING }
+  fields { name: "parent" kind: STRING }
+  fields { name: "display_name" kind: STRING }
+  fields { name: "labels" kind: MAP }
+  fields { name: "revision" kind: INTEGER }
+  fields { name: "create_time" kind: TIMESTAMP }
+  fields { name: "update_time" kind: TIMESTAMP }
+  fields { name: "delete_time" kind: TIMESTAMP }
+  fields { name: "purge_time" kind: TIMESTAMP }
+  definition {
+    type: "role"
+    relations {
+      key: "admin"
+      value { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
+    }
+    relations { key: "can_manage_stock" value { this {} } }
+    metadata {
+      relations { key: "can_manage_stock" value { directly_related_user_types { type: "user" wildcard {} } } }
+    }
+  }
+  permissions { create: "admin" read: "admin" update: "admin" delete: "admin" grant: "admin" }
+  grantable: ["can_manage_stock"]
+  retention { seconds: 2592000 }
+}
+
+types {
+  name: "acme.dev/Binding"
+  plural: "bindings"
+  parents: "acme.dev/Organization"
+  table: "acme_binding"
+  fields { name: "name" kind: STRING }
+  fields { name: "uid" kind: STRING }
+  fields { name: "parent" kind: STRING }
+  fields { name: "display_name" kind: STRING }
+  fields { name: "labels" kind: MAP }
+  fields { name: "revision" kind: INTEGER }
+  fields { name: "create_time" kind: TIMESTAMP }
+  fields { name: "update_time" kind: TIMESTAMP }
+  fields { name: "delete_time" kind: TIMESTAMP }
+  fields { name: "purge_time" kind: TIMESTAMP }
+  definition {
+    type: "binding"
+    relations {
+      key: "admin"
+      value { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
+    }
+    relations { key: "role" value { this {} } }
+    relations { key: "member" value { this {} } }
+    relations {
+      key: "can_manage_stock"
+      value {
+        intersection {
+          child { computed_userset { relation: "member" } }
+          child { tuple_to_userset { tupleset { relation: "role" } computed_userset { relation: "can_manage_stock" } } }
+        }
+      }
+    }
+    metadata {
+      relations { key: "role" value { directly_related_user_types { type: "role" } } }
+      relations {
+        key: "member"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+    }
+  }
+  permissions { create: "admin" read: "admin" update: "admin" delete: "admin" grant: "admin" }
+  grantable: ["role", "member"]
+  retention { seconds: 2592000 }
+}
+
+types {
+  name: "pyrite.dev/Key"
+  parents: "acme.dev/Organization"
+  definition {
+    type: "key"
+    relations {
+      key: "admin"
+      value {
+        union {
+          child { this {} }
+          child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
+        }
+      }
+    }
+    relations {
+      key: "viewer"
+      value {
+        union {
+          child { this {} }
+          child { computed_userset { relation: "admin" } }
+          child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "member" } } }
+        }
+      }
+    }
+    relations {
+      key: "encrypter"
+      value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
+    }
+    relations {
+      key: "decrypter"
+      value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
+    }
+    relations {
+      key: "signer"
+      value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
+    }
+    relations {
+      key: "verifier"
+      value { union { child { this {} } child { computed_userset { relation: "signer" } } } }
+    }
+    metadata {
+      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+      relations {
+        key: "encrypter"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+      relations {
+        key: "decrypter"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "group" relation: "member" }
+        }
+      }
+      relations { key: "signer" value { directly_related_user_types { type: "user" } } }
+      relations {
+        key: "verifier"
+        value {
+          directly_related_user_types { type: "user" }
+          directly_related_user_types { type: "user" wildcard {} }
+        }
+      }
+    }
+  }
+  permissions { create: "admin" read: "viewer" update: "admin" delete: "admin" grant: "admin" }
+  grantable: ["admin", "viewer", "encrypter", "decrypter", "signer", "verifier"]
+  creator: "admin"
+  retention { seconds: 2592000 }
+}
+
+types {
+  name: "pyrite.dev/Account"
+  definition {
+    type: "user"
+    relations { key: "owner" value { this {} } }
+    relations {
+      key: "admin"
+      value { union { child { this {} } child { computed_userset { relation: "owner" } } } }
+    }
+    relations {
+      key: "viewer"
+      value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
+    }
+    metadata {
+      relations { key: "owner" value { directly_related_user_types { type: "user" } } }
+      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+    }
+  }
+  permissions { create: "" read: "viewer" update: "admin" delete: "admin" grant: "admin" }
+  grantable: ["admin", "viewer"]
+  retention { seconds: 2592000 }
+}
+
+conditions {
+  key: "not_expired"
+  value {
+    name: "not_expired"
+    expression: "current_time < expires_at"
+    parameters { key: "current_time" value { type_name: TYPE_NAME_TIMESTAMP } }
+    parameters { key: "expires_at" value { type_name: TYPE_NAME_TIMESTAMP } }
+  }
+}
+
+flows { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
+flows { name: "sign-in-with-two-factors" input: IDENTIFIER stages { factors: 2 } completes: ISSUE_SESSION }
+flows { name: "verify" input: SUBJECT_IDENTIFIER stages { identifier: true } completes: MARK_VERIFIED }
+flows {
+  name: "recover"
+  input: IDENTIFIER
+  stages { identifier: true }
+  stages { enrol: PASSWORD }
+  completes: [ACTIVATE_FACTOR, END_SESSIONS]
+}
+flows { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
+flows { name: "enrol-totp" input: SUBJECT stages { enrol: TOTP } completes: ACTIVATE_FACTOR }
+flows { name: "enrol-recovery-codes" input: SUBJECT stages { enrol: RECOVERY_CODES } completes: ACTIVATE_FACTOR }

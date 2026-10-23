@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package pyrite.schema.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "openfga/v1/authzmodel.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SchemaProto";
+option java_package = "dev.horizon.pyrite.schema.v1";
+
+// The declaration of the application's types, conditions and flows, which every other service of Pyrite reads.
+service Schema {
+  // Checks a declaration, writes its authorization model to OpenFGA, and makes it the latest. Every service uses the
+  // latest declaration from then on.
+  rpc WriteDeclaration(WriteDeclarationRequest) returns (WriteDeclarationResponse);
+
+  // Gives a declaration: the one that the request names, or the latest.
+  rpc ReadDeclaration(ReadDeclarationRequest) returns (ReadDeclarationResponse);
+}
+
+message Declaration {
+  repeated Type types = 1;
+
+  // The conditions that relations name, by name.
+  map<string, openfga.v1.Condition> conditions = 2;
+
+  repeated FlowDefinition flows = 3;
+}
+
+// A type of resource. Pyrite's own types, pyrite.dev/Key and pyrite.dev/Account, leave plural, table and fields
+// empty: their tables are Pyrite's.
+message Type {
+  // The type's name, such as acme.dev/Project.
+  string name = 1;
+
+  // The first segment of its resources' names, such as projects.
+  string plural = 2;
+
+  // The types that its resources can be under; none for a type at the top.
+  repeated string parents = 3;
+
+  // The application's table that holds its resources.
+  string table = 4;
+
+  // The columns of the table: the standard fields of a resource, and the type's own.
+  repeated Field fields = 5;
+
+  // The OpenFGA type: its name, which is the type's singular name, its relations, and the types that each takes
+  // directly. A relation reads from the parent through a tuple to userset whose tupleset is parent, which Pyrite
+  // walks over its hierarchy.
+  openfga.v1.TypeDefinition definition = 6;
+
+  // The relations that the methods of pyrite.data.v1.Data check.
+  Permissions permissions = 7;
+
+  // The relations that pyrite.access.v1.Access grants and revokes.
+  repeated string grantable = 8;
+
+  // The relation that the creator of a resource is granted on it; empty for none.
+  string creator = 9;
+
+  // How long a deleted resource is kept before it is purged.
+  google.protobuf.Duration retention = 10;
+}
+
+message Field {
+  string name = 1;
+
+  Kind kind = 2;
+
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    STRING = 1;
+    INTEGER = 2;
+    DOUBLE = 3;
+    BOOLEAN = 4;
+    BYTES = 5;
+    TIMESTAMP = 6;
+    MAP = 7;
+    ARRAY = 8;
+  }
+}
+
+message Permissions {
+  // The relation on the parent that creates a resource; empty for a type without parents.
+  string create = 1;
+
+  string read = 2;
+
+  string update = 3;
+
+  string delete = 4;
+
+  string grant = 5;
+}
+
+// A flow of pyrite.authentication.v1.Authentication: what it takes, what has to be proven, stage by stage, and what
+// follows.
+message FlowDefinition {
+  // The name, such as sign-in.
+  string name = 1;
+
+  Input input = 2;
+
+  repeated Stage stages = 3;
+
+  repeated Completion completes = 4;
+
+  enum Input {
+    INPUT_UNSPECIFIED = 0;
+    // An identifier, such as an email address.
+    IDENTIFIER = 1;
+    // The account that calls.
+    SUBJECT = 2;
+    // The account that calls, and one of its identifiers.
+    SUBJECT_IDENTIFIER = 3;
+  }
+
+  enum Completion {
+    COMPLETION_UNSPECIFIED = 0;
+    ISSUE_SESSION = 1;
+    MARK_VERIFIED = 2;
+    ACTIVATE_FACTOR = 3;
+    END_SESSIONS = 4;
+  }
+}
+
+// What one stage of a flow requires: distinct factors, phishing resistance, a code sent to the identifier, or the
+// enrolment of a factor, which is a stage of its own.
+message Stage {
+  int32 factors = 1;
+
+  bool phishing_resistant = 2;
+
+  bool identifier = 3;
+
+  Factor enrol = 4;
+
+  enum Factor {
+    FACTOR_UNSPECIFIED = 0;
+    PASSWORD = 1;
+    TOTP = 2;
+    PASSKEY = 3;
+    RECOVERY_CODES = 4;
+  }
+}
+
+message WriteDeclarationRequest {
+  Declaration declaration = 1;
+}
+
+message WriteDeclarationResponse {
+  // The id of the declaration.
+  string id = 1;
+}
+
+message ReadDeclarationRequest {
+  // The id of the declaration; empty for the latest.
+  string id = 1;
+}
+
+message ReadDeclarationResponse {
+  string id = 1;
+
+  Declaration declaration = 2;
+
+  google.protobuf.Timestamp create_time = 3;
+}

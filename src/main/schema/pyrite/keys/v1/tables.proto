@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package pyrite.keys.v1;
+
+import "leadseal/v1/options.proto";
+
+option java_multiple_files = false;
+option java_outer_classname = "Tables";
+option java_package = "dev.horizon.pyrite.schema.keys.v1";
+
+// A key: the resource pyrite.dev/Key, with the standard fields and its own.
+message Key {
+  option (leadseal.v1.table) = {
+    name: "pyrite_key"
+    index: [
+      { fields: ["name"] unique: true },
+      { fields: ["parent"] }
+    ]
+  };
+
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string name = 2 [(leadseal.v1.column).text = {
+    length: 255
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  string labels = 5 [(leadseal.v1.column).json = {}];
+
+  int64 revision = 6;
+
+  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+
+  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+
+  optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
+
+  // ENCRYPTION, MAC or SIGNING.
+  string purpose = 11 [(leadseal.v1.column).text = { length: 16 }];
+
+  // AES256_GCM, HMAC_SHA256, RS256, ES256 or EDDSA.
+  string algorithm = 12 [(leadseal.v1.column).text = { length: 16 }];
+
+  // How often the key gets a new primary version, in seconds; 0 for never.
+  int64 rotation_period = 13;
+
+  // When the key next gets a new primary version, if it rotates.
+  optional string next_rotation_time = 14 [(leadseal.v1.column).timestamp = {}];
+
+  // The name of the version that encrypts and signs.
+  string primary_version = 15 [(leadseal.v1.column).text = { length: 255 }];
+}
+
+// A version of a key: the resource pyrite.dev/KeyVersion, under its key.
+message KeyVersion {
+  option (leadseal.v1.table) = {
+    name: "pyrite_key_version"
+    index: [
+      { fields: ["name"] unique: true },
+      { fields: ["parent"] }
+    ]
+  };
+
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  string name = 2 [(leadseal.v1.column).text = {
+    length: 255
+    collation: [
+      { key: "postgresql" value: "C" },
+      { key: "mariadb" value: "utf8mb4_bin" },
+      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+    ]
+  }];
+
+  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+
+  string labels = 5 [(leadseal.v1.column).json = {}];
+
+  int64 revision = 6;
+
+  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+
+  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+
+  optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
+
+  optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
+
+  // 1 for the first version of the key, and one more for each after it.
+  int64 number = 11;
+
+  // ENABLED or DISABLED.
+  string state = 12 [(leadseal.v1.column).text = { length: 16 }];
+
+  string algorithm = 13 [(leadseal.v1.column).text = { length: 16 }];
+
+  // The public key of a signing version, as a JWK; empty for the others.
+  string public_key = 14 [(leadseal.v1.column).json = {}];
+
+  // The key material, encrypted by the root key.
+  bytes sealed = 15;
+
+  // The X.509 SubjectPublicKeyInfo of a signing version; empty for the others.
+  bytes public_key_info = 16;
+}

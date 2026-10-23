@@ -1,0 +1,185 @@
+syntax = "proto3";
+
+package pyrite.authentication.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "pyrite/data/v1/data.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AuthenticationProto";
+option java_package = "dev.horizon.pyrite.authentication.v1";
+
+// Sign-in, verification, recovery and enrolment, as flows that the declaration defines, and the credentials that
+// they issue. Accounts, identifiers, factors and sessions are resources of Data.
+service Authentication {
+  // Starts a flow of a definition. It gives the challenges that the flow takes first; a flow that needs none is
+  // done at once.
+  rpc StartFlow(StartFlowRequest) returns (Flow);
+
+  // Answers a challenge of a flow. It gives the next challenges, or the result once the flow is done. A wrong answer
+  // fails, and counts against the flow's answers.
+  rpc ContinueFlow(ContinueFlowRequest) returns (Flow);
+
+  // Gives the principal of a credential, such as a session token.
+  rpc Authenticate(AuthenticateRequest) returns (Principal);
+}
+
+message StartFlowRequest {
+  // The account that starts it, for a flow whose input is SUBJECT or SUBJECT_IDENTIFIER; empty otherwise.
+  string subject = 1;
+
+  // The name of the flow definition, such as sign-in.
+  string definition = 2;
+
+  // The kind and value of the identifier, for a flow whose input is IDENTIFIER or SUBJECT_IDENTIFIER.
+  IdentifierKind identifier_kind = 3;
+
+  string identifier = 4;
+}
+
+enum IdentifierKind {
+  IDENTIFIER_KIND_UNSPECIFIED = 0;
+  EMAIL = 1;
+  PHONE = 2;
+  USERNAME = 3;
+}
+
+message Flow {
+  // The name, such as flows/0b0d....
+  string name = 1;
+
+  string definition = 2;
+
+  // The revision that an answer names.
+  int64 revision = 3;
+
+  google.protobuf.Timestamp expire_time = 4;
+
+  // The answers that the flow takes next; empty once it is done.
+  repeated Challenge challenges = 5;
+
+  // The codes that the caller sends.
+  repeated Delivery deliveries = 6;
+
+  // What the flow did, once it is done.
+  Result result = 7;
+}
+
+message Challenge {
+  // The full name of the answer's message, such as pyrite.authentication.v1.PasswordAnswer.
+  string method = 1;
+
+  // What the answer needs, such as PasskeyOptions or TotpProvisioning; empty for most.
+  google.protobuf.Any parameters = 2;
+}
+
+message Delivery {
+  Channel channel = 1;
+
+  // The email address or the phone number.
+  string to = 2;
+
+  string code = 3;
+
+  google.protobuf.Timestamp expire_time = 4;
+
+  enum Channel {
+    CHANNEL_UNSPECIFIED = 0;
+    EMAIL = 1;
+    SMS = 2;
+  }
+}
+
+message Result {
+  // The resources that the flow created or changed.
+  repeated pyrite.data.v1.Resource resources = 1;
+
+  // The credentials that are shown once, such as a SessionToken or RecoveryCodes.
+  repeated google.protobuf.Any issued = 2;
+}
+
+message ContinueFlowRequest {
+  // The flow's name.
+  string flow = 1;
+
+  // The flow's revision that the answer answers.
+  int64 revision = 2;
+
+  // An id that the caller chooses, so that a retry gives the first result.
+  string request_id = 3;
+
+  // The answer: one of the answer messages, whose type is its method.
+  google.protobuf.Any answer = 4;
+}
+
+message AuthenticateRequest {
+  oneof credential {
+    string session_token = 1;
+  }
+}
+
+message Principal {
+  // The subject, such as user:anne.
+  string subject = 1;
+
+  // The account, such as accounts/anne.
+  string account = 2;
+
+  // The session, for a session token.
+  string session = 3;
+
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+// A password: the account's, when signing in, or a new one, when enrolling.
+message PasswordAnswer {
+  string password = 1;
+}
+
+message TotpAnswer {
+  string code = 1;
+}
+
+message RecoveryCodeAnswer {
+  string code = 1;
+}
+
+message CodeAnswer {
+  string code = 1;
+}
+
+// A WebAuthn credential in JSON: an assertion when signing in, an attestation when enrolling.
+message PasskeyAnswer {
+  string credential = 1;
+}
+
+// The WebAuthn options in JSON: request options when signing in, creation options when enrolling.
+message PasskeyOptions {
+  string options = 1;
+}
+
+message TotpProvisioning {
+  // The otpauth URI for the authenticator app.
+  string uri = 1;
+}
+
+message CodeSent {
+  Delivery.Channel channel = 1;
+
+  // Where the code went, with most of it hidden.
+  string to = 2;
+}
+
+message SessionToken {
+  string token = 1;
+
+  // The session's name, such as sessions/....
+  string session = 2;
+
+  google.protobuf.Timestamp expire_time = 3;
+}
+
+message RecoveryCodes {
+  repeated string codes = 1;
+}
