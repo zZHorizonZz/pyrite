@@ -18,7 +18,7 @@ Add Pyrite, the Cinder driver of your database, its Vert.x client, and the Vert.
 <dependency>
   <groupId>dev.horizon</groupId>
   <artifactId>pyrite</artifactId>
-  <version>0.1.1-SNAPSHOT</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 <!-- x-release-please-end -->
