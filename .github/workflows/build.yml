@@ -16,6 +16,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [ postgres, mariadb, sqlserver, sqlite ]
+    name: build (${{ matrix.database }})
     permissions:
       contents: read
       checks: write
@@ -30,7 +35,9 @@ jobs:
           cache: maven
 
       - name: Verify
-        run: mvn --batch-mode --settings .github/maven-settings.xml --no-transfer-progress verify
+        run: >-
+          mvn --batch-mode --settings .github/maven-settings.xml --no-transfer-progress verify
+          -Dpyrite.test.database=${{ matrix.database }}
         env:
           MAVEN_USERNAME: ${{ github.actor }}
           MAVEN_TOKEN: ${{ secrets.GITHUB_TOKEN }}

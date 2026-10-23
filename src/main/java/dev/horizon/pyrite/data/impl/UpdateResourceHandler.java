@@ -36,7 +36,7 @@ public final class UpdateResourceHandler extends UnaryHandler<UpdateResourceRequ
       throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The update mask names no fields.");
     }
     return schema.require(request.getResource().getName())
-        .compose(found -> found.require(subject, found.type().permissions().getUpdate()))
+        .compose(found -> found.require(subject, found.type().permissions().getUpdate(), request.getContext()))
         .compose(found -> {
           Map<String, Object> changes = new HashMap<>();
           for (String path : request.getUpdateMask().getPathsList()) {

@@ -44,7 +44,9 @@ A walk stops after `maxDepth` ancestors, 64 by default. For the option, refer to
 ## Conditions
 
 A grant can carry a condition that the declaration names, such as `not_expired`, with values for some of its
-parameters. A check gives the values of the rest in its `context`:
+parameters. The caller gives the values of the rest, such as `current_time`, in the `context` of its request. Every
+request that checks a permission has a `context`: the calls of the data, access and cryptography services. Without
+the values that a condition on the path needs, the call fails with `INVALID_ARGUMENT`.
 
 ```java
 access.check(CheckRequest.newBuilder().setSubject("user:anne").setPrincipal("user:bob")

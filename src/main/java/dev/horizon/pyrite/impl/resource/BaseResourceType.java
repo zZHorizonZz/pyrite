@@ -150,9 +150,10 @@ public abstract class BaseResourceType<R extends Resource> implements ResourceTy
   }
 
   @Override
-  public Future<Page<R>> query(Subject subject, String permission, PageRequest request, boolean showDeleted) {
+  public Future<Page<R>> query(Subject subject, String permission, PageRequest request, boolean showDeleted,
+      Struct context) {
     relation(permission);
-    return new ResourceQuery<>(this, subject, permission, Struct.getDefaultInstance()).page(request, showDeleted);
+    return new ResourceQuery<>(this, subject, permission, context).page(request, showDeleted);
   }
 
   @Override
@@ -163,6 +164,10 @@ public abstract class BaseResourceType<R extends Resource> implements ResourceTy
             + " request names " + parent + ".");
       }
       return Future.succeededFuture(Optional.empty());
+    }
+    if (parent.isEmpty()) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "A resource of the type " + name() + " is under one of "
+          + declared.parents() + ", but the request names no parent.");
     }
     return schema.require(parent).map(found -> {
       if (!declared.parents().contains(found.type().name())) {
@@ -175,7 +180,8 @@ public abstract class BaseResourceType<R extends Resource> implements ResourceTy
   }
 
   @Override
-  public Future<R> create(Subject creator, String parent, String id, Map<String, Object> values) {
+  public Future<R> create(Subject creator, String parent, String id, Map<String, Object> values,
+      Struct context) {
     if (!ID.matcher(id).matches()) {
       throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The id " + id + " does not match " + ID.pattern()
           + ".");
@@ -188,7 +194,7 @@ public abstract class BaseResourceType<R extends Resource> implements ResourceTy
     }
     return place(parent)
         .compose(found -> found.isEmpty() ? Future.succeededFuture(found)
-            : found.get().require(creator, permissions().getCreate()).map(found))
+            : found.get().require(creator, permissions().getCreate(), context).map(found))
         .compose(found -> insert(found, id, values))
         .compose(created -> declared.creator().isEmpty() ? Future.succeededFuture(created)
             : schema.adapter().write(TupleKey.newBuilder().setUser(creator.toString())
@@ -203,8 +209,7 @@ public abstract class BaseResourceType<R extends Resource> implements ResourceTy
     row.putAll(values);
     row.put(Resource.NAME, name);
     row.put(Resource.UID, UUID.randomUUID().toString());
-    row.put(Resource.PARENT, parent.map(Resource::name).orElse(""));
-    row.computeIfAbsent(Resource.DISPLAY_NAME, ignored -> "");
+    row.put(Resource.PARENT, parent.map(Resource::name).orElse(null));
     row.computeIfAbsent(Resource.LABELS, ignored -> new JsonObject());
     row.put(Resource.REVISION, 1L);
     row.put(Resource.CREATE_TIME, now);

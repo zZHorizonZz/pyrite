@@ -32,7 +32,7 @@ public final class CheckHandler extends UnaryHandler<CheckRequest, CheckResponse
     return schema.require(request.getObject()).compose(found -> {
       found.type().relation(request.getPermission());
       Future<Resource> asked = principal.equals(subject) ? Future.succeededFuture(found)
-          : found.require(subject, found.type().permissions().getGrant());
+          : found.require(subject, found.type().permissions().getGrant(), request.getContext());
       return asked.compose(ignored -> found.check(principal.toString(), request.getPermission(),
           request.getContext()));
     }).map(allowed -> CheckResponse.newBuilder().setAllowed(allowed).build());

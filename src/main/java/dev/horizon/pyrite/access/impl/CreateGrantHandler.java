@@ -28,8 +28,8 @@ public final class CreateGrantHandler extends UnaryHandler<CreateGrantRequest, G
   private Future<Grant> execute(CreateGrantRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
     return schema.require(request.getGrant().getObject())
-        .compose(target -> target.require(subject, target.type().permissions().getGrant()))
-        .compose(target -> target.grant(request.getGrant()))
+        .compose(target -> target.require(subject, target.type().permissions().getGrant(), request.getContext()))
+        .compose(target -> target.grant(request.getGrant(), request.getContext()))
         .map(request.getGrant());
   }
 }

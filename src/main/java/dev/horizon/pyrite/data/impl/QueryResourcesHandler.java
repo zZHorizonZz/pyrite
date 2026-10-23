@@ -33,7 +33,8 @@ public final class QueryResourcesHandler extends UnaryHandler<QueryResourcesRequ
     ResourceType<?> type = schema.type(request.getType());
     String permission = request.getPermission().isEmpty() ? type.permissions().getRead() : request.getPermission();
     return type.query(subject, permission, new PageRequest(request.getFilter(), request.getOrderBy(),
-        schema.options().pageSize(request.getPageSize()), request.getPageToken()), request.getShowDeleted())
+        schema.options().pageSize(request.getPageSize()), request.getPageToken()), request.getShowDeleted(),
+        request.getContext())
         .map(page -> QueryResourcesResponse.newBuilder()
             .addAllResources(page.items().stream().map(Resource::toMessage).toList())
             .setNextPageToken(page.nextPageToken()).build());

@@ -28,7 +28,7 @@ public final class DeleteGrantHandler extends UnaryHandler<DeleteGrantRequest, E
   private Future<Empty> execute(DeleteGrantRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
     return schema.require(request.getGrant().getObject())
-        .compose(target -> target.require(subject, target.type().permissions().getGrant()))
+        .compose(target -> target.require(subject, target.type().permissions().getGrant(), request.getContext()))
         .compose(target -> target.revoke(request.getGrant()))
         .map(Empty.getDefaultInstance());
   }

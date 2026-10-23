@@ -23,8 +23,8 @@ The `fields` map of a `pyrite.data.v1.Resource` holds the columns of the type's 
 | -------------- | ---------- | ------------------------------------------------- |
 | `name`         | Pyrite     | The name, such as `projects/ledger`               |
 | `uid`          | Pyrite     | A UUID that Pyrite generates                      |
-| `parent`       | Pyrite     | The parent's name, or an empty string at the top  |
-| `display_name` | The caller | A name for people                                 |
+| `parent`       | Pyrite     | The parent's name; unset at the top               |
+| `display_name` | The caller | A name for people; unset when none is given       |
 | `labels`       | The caller | A map of strings, such as `env: "prod"`           |
 | `revision`     | Pyrite     | `1` at creation, one more at each change          |
 | `create_time`  | Pyrite     | When the resource was created                     |

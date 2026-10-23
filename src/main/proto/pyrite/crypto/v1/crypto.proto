@@ -36,6 +36,9 @@ message EncryptRequest {
   bytes plaintext = 3;
 
   bytes associated_data = 4;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 5;
 }
 
 message EncryptResponse {
@@ -53,6 +56,9 @@ message DecryptRequest {
   bytes ciphertext = 3;
 
   bytes associated_data = 4;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 5;
 }
 
 message DecryptResponse {
@@ -76,6 +82,9 @@ message SignRequest {
 
   // The typ of the JWT, such as at+jwt; JWT when empty.
   string type = 5;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 6;
 }
 
 message SignResponse {
@@ -101,6 +110,9 @@ message VerifyRequest {
 
   // What a JWT has to be.
   Expected expected = 5;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 6;
 }
 
 // Data and its signature.

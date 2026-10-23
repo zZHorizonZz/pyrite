@@ -71,9 +71,10 @@ default, the flow fails with `RESOURCE_EXHAUSTED`. A flow expires after `flowLif
 ## Codes
 
 A stage with `identifier` proves that the caller receives messages at the identifier. Pyrite generates a code of six
-digits, and returns it in the flow's `deliveries`, with the channel and the address. Pyrite does not send messages.
-Your application sends the code by email or SMS, and the person answers it with a `CodeAnswer`. A code expires after
-`codeLifetime`, 10 minutes by default.
+digits, and returns it in the flow's `deliveries`, with the channel and the address. Only a verified address gets a
+code, except in a flow whose input is `SUBJECT_IDENTIFIER`, which is how an address gets verified. Pyrite does not send
+messages. Your application sends the code by email or SMS, and the person answers it with a `CodeAnswer`. A code expires
+after `codeLifetime`, 10 minutes by default.
 
 ## Unknown identifiers
 

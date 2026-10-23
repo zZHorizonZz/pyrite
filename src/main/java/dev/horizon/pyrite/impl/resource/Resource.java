@@ -72,7 +72,7 @@ public interface Resource {
    *
    * @return the parent's name; empty for a resource of a type without parents
    */
-  String parentName();
+  Optional<String> parentName();
 
   /**
    * Gives the resource's revision: {@code 1} at creation, one more at each change.
@@ -161,9 +161,10 @@ public interface Resource {
    *
    * @param subject the subject
    * @param relation the relation
+   * @param context the values that the conditions of grants read
    * @return the resource, or a failure with {@code PERMISSION_DENIED}
    */
-  Future<Resource> require(Subject subject, String relation);
+  Future<Resource> require(Subject subject, String relation, Struct context);
 
   /**
    * Changes the fields of the resource that a request may change.
@@ -205,9 +206,10 @@ public interface Resource {
    * Grants a relation on the resource. Granting it again changes nothing.
    *
    * @param grant the relation, which the type lists as grantable, the grantee and the condition
+   * @param context the values that the conditions of grants read, while the cycle check walks them
    * @return when granted, or a failure with {@code FAILED_PRECONDITION} for a grant that makes a cycle
    */
-  Future<Void> grant(Grant grant);
+  Future<Void> grant(Grant grant, Struct context);
 
   /**
    * Revokes a grant on the resource. Revoking one that does not exist changes nothing.

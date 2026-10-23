@@ -30,7 +30,7 @@ public final class VerifyHandler extends UnaryHandler<VerifyRequest, VerifyRespo
           + " verify.");
     }
     return deployment.schema().compose(schema -> schema.type(TypeSystem.KEY, KeyType.class).signing(request.getKey()))
-        .compose(key -> key.require(subject, "verifier").map(key))
+        .compose(key -> key.require(subject, "verifier", request.getContext()).map(key))
         .compose(key -> request.hasDetached()
             ? key.verify(request.getDetached().getData().toByteArray(),
                 request.getDetached().getSignature().toByteArray(), request.getDetached().getKeyVersion())

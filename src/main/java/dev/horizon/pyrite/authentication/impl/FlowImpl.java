@@ -86,7 +86,7 @@ final class FlowImpl implements Flow {
   }
 
   Future<Optional<AccountImpl>> account() {
-    if (row.getAccount().isEmpty()) {
+    if (!row.hasAccount()) {
       return Future.succeededFuture(Optional.empty());
     }
     return type.schema().get(row.getAccount()).map(found -> found.filter(account -> !account.isDeleted())
@@ -100,14 +100,14 @@ final class FlowImpl implements Flow {
   }
 
   Future<Optional<Identifier>> identifier() {
-    if (row.getIdentifier().isEmpty()) {
+    if (!row.hasIdentifier()) {
       return Future.succeededFuture(Optional.empty());
     }
     return type.schema().get(row.getIdentifier()).map(found -> found.map(Identifier.class::cast));
   }
 
   Future<Optional<Identifier>> recipient() {
-    if (row.getAccount().isEmpty()) {
+    if (!row.hasAccount()) {
       return Future.succeededFuture(Optional.empty());
     }
     return identifier().map(found -> found.filter(identifier -> identifier.isDeliverable()
@@ -125,7 +125,7 @@ final class FlowImpl implements Flow {
   }
 
   Optional<byte[]> code() {
-    return row.getCodeMac().isEmpty() || !row.hasCodeExpireTime()
+    return !row.hasCodeMac() || !row.hasCodeExpireTime()
         || !type.schema().clock().instant().isBefore(Instant.parse(row.getCodeExpireTime())) ? Optional.empty()
             : Optional.of(row.getCodeMac().toByteArray());
   }
@@ -143,7 +143,7 @@ final class FlowImpl implements Flow {
   }
 
   boolean hasEnrolment() {
-    return !row.getFactor().isEmpty();
+    return row.hasFactor();
   }
 
   <F extends Factor> Future<F> enrolment(Class<F> kind) {

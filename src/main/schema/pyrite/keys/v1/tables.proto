@@ -29,9 +29,9 @@ message Key {
     ]
   }];
 
-  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
-  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   string labels = 5 [(leadseal.v1.column).json = {}];
 
@@ -82,9 +82,9 @@ message KeyVersion {
     ]
   }];
 
-  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
-  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   string labels = 5 [(leadseal.v1.column).json = {}];
 
@@ -107,11 +107,11 @@ message KeyVersion {
   string algorithm = 13 [(leadseal.v1.column).text = { length: 16 }];
 
   // The public key of a signing version, as a JWK; empty for the others.
-  string public_key = 14 [(leadseal.v1.column).json = {}];
+  optional string public_key = 14 [(leadseal.v1.column).json = {}];
 
   // The key material, encrypted by the root key.
   bytes sealed = 15;
 
   // The X.509 SubjectPublicKeyInfo of a signing version; empty for the others.
-  bytes public_key_info = 16;
+  optional bytes public_key_info = 16;
 }

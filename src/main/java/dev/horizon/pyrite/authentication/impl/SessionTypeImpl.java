@@ -1,5 +1,6 @@
 package dev.horizon.pyrite.authentication.impl;
 
+import com.google.protobuf.Struct;
 import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.authentication.v1.Principal;
@@ -30,7 +31,8 @@ public final class SessionTypeImpl extends BaseResourceType<Session> implements 
   }
 
   @Override
-  public Future<Session> create(Subject creator, String parent, String id, Map<String, Object> values) {
+  public Future<Session> create(Subject creator, String parent, String id, Map<String, Object> values,
+      Struct context) {
     throw new PyriteException(GrpcStatus.FAILED_PRECONDITION, "Sessions are issued by flows of"
         + " pyrite.authentication.v1.Authentication, not created.");
   }

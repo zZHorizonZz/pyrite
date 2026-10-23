@@ -24,7 +24,7 @@ public final class DecryptHandler extends UnaryHandler<DecryptRequest, DecryptRe
   protected Future<DecryptResponse> execute(DecryptRequest request) {
     Subject subject = Subject.parse(request.getSubject());
     return deployment.schema().compose(schema -> schema.type(TypeSystem.KEY, KeyType.class).encryption(request.getKey()))
-        .compose(key -> key.require(subject, "decrypter").map(key))
+        .compose(key -> key.require(subject, "decrypter", request.getContext()).map(key))
         .compose(key -> key.decrypt(request.getCiphertext().toByteArray(),
             request.getAssociatedData().toByteArray()));
   }

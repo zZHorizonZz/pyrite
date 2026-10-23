@@ -33,7 +33,7 @@ public final class CreateResourceHandler extends UnaryHandler<CreateResourceRequ
     ResourceType<?> type = schema.type(request.getResource().getType());
     Map<String, Object> values = new HashMap<>();
     request.getResource().getFieldsMap().forEach((field, value) -> values.put(field, type.parse(field, value)));
-    return type.create(subject, request.getParent(), request.getResourceId(), values)
+    return type.create(subject, request.getParent(), request.getResourceId(), values, request.getContext())
         .map(dev.horizon.pyrite.impl.resource.Resource::toMessage);
   }
 }

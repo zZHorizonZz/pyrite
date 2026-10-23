@@ -38,7 +38,7 @@ each of the type's own fields.
 
    ```sql
    CREATE TABLE "acme_project" ("uid" varchar(36) NOT NULL, "name" varchar(255) COLLATE "C" NOT NULL,
-     "parent" varchar(255) NOT NULL, "display_name" varchar(255) NOT NULL, "labels" jsonb NOT NULL,
+     "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL,
      "revision" bigint NOT NULL, "create_time" timestamptz NOT NULL, "update_time" timestamptz NOT NULL,
      "delete_time" timestamptz, "purge_time" timestamptz, "billing_account" varchar(64),
      CONSTRAINT "pk_acme_project" PRIMARY KEY ("uid"));

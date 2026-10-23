@@ -1,5 +1,6 @@
 package dev.horizon.pyrite.authentication.impl;
 
+import com.google.protobuf.Struct;
 import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.impl.model.DeclaredType;
@@ -40,7 +41,8 @@ public final class FactorTypeImpl extends BaseResourceType<Factor> implements Fa
   }
 
   @Override
-  public Future<Factor> create(Subject creator, String parent, String id, Map<String, Object> values) {
+  public Future<Factor> create(Subject creator, String parent, String id, Map<String, Object> values,
+      Struct context) {
     throw new PyriteException(GrpcStatus.FAILED_PRECONDITION, "Factors are enrolled by flows of"
         + " pyrite.authentication.v1.Authentication, not created.");
   }

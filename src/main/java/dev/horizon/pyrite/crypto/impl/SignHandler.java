@@ -29,7 +29,7 @@ public final class SignHandler extends UnaryHandler<SignRequest, SignResponse> {
       throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names neither data nor claims to sign.");
     }
     return deployment.schema().compose(schema -> schema.type(TypeSystem.KEY, KeyType.class).signing(request.getKey()))
-        .compose(key -> key.require(subject, "signer").map(key))
+        .compose(key -> key.require(subject, "signer", request.getContext()).map(key))
         .compose(key -> request.hasClaims() ? key.jwt(request.getType(), request.getClaims())
             : key.sign(request.getData().toByteArray()));
   }

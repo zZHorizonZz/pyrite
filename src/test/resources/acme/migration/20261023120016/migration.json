@@ -1,0 +1,613 @@
+{
+  "version" : "20261023120016",
+  "name" : "create_acme_organization_and_4_more",
+  "to" : "7874dc19a5531e38",
+  "created" : "2026-10-23T12:00:16.346811400Z",
+  "changes" : [ {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "acme.Organization",
+      "name" : "acme_organization",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_acme_organization",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_acme_organization_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "comment",
+        "text" : "An organization: the resource acme.dev/Organization, at the top."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "acme.Group",
+      "name" : "acme_group",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_acme_group",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_acme_group_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_acme_group_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A group of an organization: the resource acme.dev/Group."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "acme.Project",
+      "name" : "acme_project",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "11",
+        "name" : "billing_account",
+        "type" : {
+          "kind" : "text",
+          "length" : 64
+        },
+        "attributes" : [ {
+          "kind" : "comment",
+          "text" : "The billing account that pays for the project."
+        } ]
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_acme_project",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_acme_project_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_acme_project_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A project of an organization: the resource acme.dev/Project."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "acme.Role",
+      "name" : "acme_role",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_acme_role",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_acme_role_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_acme_role_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A role that an organization defines at runtime: the resource acme.dev/Role."
+      } ]
+    }
+  }, {
+    "change" : "create_table",
+    "definition" : {
+      "id" : "acme.Binding",
+      "name" : "acme_binding",
+      "columns" : [ {
+        "id" : "1",
+        "name" : "uid",
+        "type" : {
+          "kind" : "text",
+          "length" : 36
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "2",
+        "name" : "name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        }, {
+          "kind" : "collation",
+          "dialect" : "postgresql",
+          "name" : "C"
+        }, {
+          "kind" : "collation",
+          "dialect" : "mariadb",
+          "name" : "utf8mb4_bin"
+        }, {
+          "kind" : "collation",
+          "dialect" : "sqlserver",
+          "name" : "Latin1_General_100_BIN2"
+        } ]
+      }, {
+        "id" : "3",
+        "name" : "parent",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "4",
+        "name" : "display_name",
+        "type" : {
+          "kind" : "text",
+          "length" : 255
+        }
+      }, {
+        "id" : "5",
+        "name" : "labels",
+        "type" : {
+          "kind" : "json"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "6",
+        "name" : "revision",
+        "type" : {
+          "kind" : "integer",
+          "size" : "INT64"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "7",
+        "name" : "create_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "8",
+        "name" : "update_time",
+        "type" : {
+          "kind" : "timestamp"
+        },
+        "attributes" : [ {
+          "kind" : "not_null"
+        } ]
+      }, {
+        "id" : "9",
+        "name" : "delete_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      }, {
+        "id" : "10",
+        "name" : "purge_time",
+        "type" : {
+          "kind" : "timestamp"
+        }
+      } ],
+      "attributes" : [ {
+        "kind" : "primary_key",
+        "name" : "pk_acme_binding",
+        "columns" : [ "uid" ]
+      }, {
+        "kind" : "index",
+        "name" : "ux_acme_binding_name",
+        "columns" : [ "name" ],
+        "unique" : true
+      }, {
+        "kind" : "index",
+        "name" : "ix_acme_binding_parent",
+        "columns" : [ "parent" ],
+        "unique" : false
+      }, {
+        "kind" : "comment",
+        "text" : "A role bound to members: the resource acme.dev/Binding."
+      } ]
+    }
+  } ]
+}

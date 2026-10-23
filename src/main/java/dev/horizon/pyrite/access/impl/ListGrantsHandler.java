@@ -28,7 +28,7 @@ public final class ListGrantsHandler extends UnaryHandler<ListGrantsRequest, Lis
   private Future<ListGrantsResponse> execute(ListGrantsRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
     return schema.require(request.getObject())
-        .compose(found -> found.require(subject, found.type().permissions().getGrant()))
+        .compose(found -> found.require(subject, found.type().permissions().getGrant(), request.getContext()))
         .compose(found -> found.grants(request.getRelation(), request.getGrantee(),
             schema.options().pageSize(request.getPageSize()), request.getPageToken()))
         .map(page -> ListGrantsResponse.newBuilder().addAllGrants(page.items())

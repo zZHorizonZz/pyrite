@@ -41,7 +41,7 @@ public final class ListChangesHandler extends UnaryHandler<ListChangesRequest, L
         request.hasStartTime() ? Optional.of(request.getStartTime()) : Optional.empty())
         .compose(changes -> {
           List<Future<Optional<Change>>> visible = changes.getChangesList().stream()
-              .map(change -> visible(schema, subject, change)).toList();
+              .map(change -> visible(schema, subject, change, request.getContext())).toList();
           return Future.all(visible).map(done -> {
             ListChangesResponse.Builder response = ListChangesResponse.newBuilder()
                 .setNextPageToken(changes.getContinuationToken());
@@ -51,7 +51,8 @@ public final class ListChangesHandler extends UnaryHandler<ListChangesRequest, L
         });
   }
 
-  private static Future<Optional<Change>> visible(Schema schema, Subject subject, TupleChange change) {
+  private static Future<Optional<Change>> visible(Schema schema, Subject subject, TupleChange change,
+      Struct context) {
     Optional<Grant> grant = schema.grant(change.getTupleKey());
     if (grant.isEmpty()) {
       return Future.succeededFuture(Optional.empty());
@@ -59,7 +60,7 @@ public final class ListChangesHandler extends UnaryHandler<ListChangesRequest, L
     return schema.get(grant.get().getObject())
         .compose(found -> found.isEmpty() ? Future.succeededFuture(false)
             : found.get().check(subject.toString(), found.get().type().permissions().getGrant(),
-                Struct.getDefaultInstance()))
+                context))
         .map(allowed -> allowed ? Optional.of(Change.newBuilder().setGrant(grant.get())
             .setOperation(change.getOperation() == TupleOperation.TUPLE_OPERATION_DELETE
                 ? Change.Operation.REVOKED

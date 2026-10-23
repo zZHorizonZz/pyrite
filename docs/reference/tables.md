@@ -69,18 +69,18 @@ type of each field's kind:
 
 The standard columns:
 
-| Column         | Kind        | PostgreSQL                 | Constraint          |
-| -------------- | ----------- | -------------------------- | ------------------- |
-| `uid`          | `STRING`    | `varchar(36)`              | Primary key         |
-| `name`         | `STRING`    | `varchar(255) COLLATE "C"` | Unique index        |
-| `parent`       | `STRING`    | `varchar(255)`             | Index, with parents |
-| `display_name` | `STRING`    | `varchar(255)`             | `NOT NULL`          |
-| `labels`       | `MAP`       | `jsonb`                    | `NOT NULL`          |
-| `revision`     | `INTEGER`   | `bigint`                   | `NOT NULL`          |
-| `create_time`  | `TIMESTAMP` | `timestamptz`              | `NOT NULL`          |
-| `update_time`  | `TIMESTAMP` | `timestamptz`              | `NOT NULL`          |
-| `delete_time`  | `TIMESTAMP` | `timestamptz`              | Nullable            |
-| `purge_time`   | `TIMESTAMP` | `timestamptz`              | Nullable            |
+| Column         | Kind        | PostgreSQL                 | Constraint                       |
+| -------------- | ----------- | -------------------------- | -------------------------------- |
+| `uid`          | `STRING`    | `varchar(36)`              | Primary key                      |
+| `name`         | `STRING`    | `varchar(255) COLLATE "C"` | Unique index                     |
+| `parent`       | `STRING`    | `varchar(255)`             | Nullable; an index, with parents |
+| `display_name` | `STRING`    | `varchar(255)`             | Nullable                         |
+| `labels`       | `MAP`       | `jsonb`                    | `NOT NULL`                       |
+| `revision`     | `INTEGER`   | `bigint`                   | `NOT NULL`                       |
+| `create_time`  | `TIMESTAMP` | `timestamptz`              | `NOT NULL`                       |
+| `update_time`  | `TIMESTAMP` | `timestamptz`              | `NOT NULL`                       |
+| `delete_time`  | `TIMESTAMP` | `timestamptz`              | Nullable                         |
+| `purge_time`   | `TIMESTAMP` | `timestamptz`              | Nullable                         |
 
 Give `name` a binary collation, so that its order and uniqueness match the bytes of the name: `COLLATE "C"` on
 PostgreSQL, `utf8mb4_bin` on MariaDB and `Latin1_General_100_BIN2` on SQL Server.

@@ -42,7 +42,7 @@
     <caffeine.version>3.3.1</caffeine.version>
     <cel.version>0.14.0</cel.version>
     <guava.version>33.6.0-jre</guava.version>
-    <cinder.version>0.3.0</cinder.version>
+    <cinder.version>0.3.1</cinder.version>
     <leadseal.version>0.2.0</leadseal.version>
     <openfga-language.version>0.2.1</openfga-language.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
@@ -55,9 +55,14 @@
     <junit.version>6.1.3</junit.version>
     <assertj.version>3.27.7</assertj.version>
     <flyway.version>13.10.3</flyway.version>
+    <testcontainers.version>2.0.5</testcontainers.version>
+    <postgresql.version>42.7.14</postgresql.version>
+    <mariadb-client.version>3.5.10</mariadb-client.version>
+    <mssql-jdbc.version>13.6.1.jre11</mssql-jdbc.version>
     <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
     <google-common-protos.version>2.76.0</google-common-protos.version>
     <pyrite.migrations>${project.basedir}/src/main/resources/pyrite/migration</pyrite.migrations>
+    <acme.migrations>${project.basedir}/src/test/resources/acme/migration</acme.migrations>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -175,6 +180,58 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <groupId>dev.horizon</groupId>
+        <artifactId>cinder-database-postgres</artifactId>
+        <version>${cinder.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.horizon</groupId>
+        <artifactId>cinder-database-mariadb</artifactId>
+        <version>${cinder.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.horizon</groupId>
+        <artifactId>cinder-database-sqlserver</artifactId>
+        <version>${cinder.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-database-postgresql</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-mysql</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-sqlserver</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mariadb.jdbc</groupId>
+        <artifactId>mariadb-java-client</artifactId>
+        <version>${mariadb-client.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.microsoft.sqlserver</groupId>
+        <artifactId>mssql-jdbc</artifactId>
+        <version>${mssql-jdbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
         <version>${junit.version}</version>
@@ -286,6 +343,86 @@
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>dev.horizon</groupId>
+      <artifactId>cinder-database-postgres</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>dev.horizon</groupId>
+      <artifactId>cinder-database-mariadb</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>dev.horizon</groupId>
+      <artifactId>cinder-database-sqlserver</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-pg-client</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-mysql-client</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-mssql-client</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-sqlserver</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-mariadb</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-mssqlserver</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.webauthn4j</groupId>
+      <artifactId>webauthn4j-test</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -413,6 +550,28 @@
                   <version>${leadseal.version}</version>
                   <options>migrations=${pyrite.migrations},prefix=pyrite_,dialect=postgresql,dialect=mariadb,dialect=sqlserver,dialect=sqlite</options>
                   <outputDirectory>${pyrite.migrations}</outputDirectory>
+                  <registerAsCompilationRoot>false</registerAsCompilationRoot>
+                </plugin>
+              </plugins>
+            </configuration>
+          </execution>
+          <execution>
+            <id>acme-tables</id>
+            <goals>
+              <goal>generate-test</goal>
+            </goals>
+            <configuration>
+              <javaEnabled>false</javaEnabled>
+              <sourceDirectories>
+                <sourceDirectory>${project.basedir}/src/test/schema</sourceDirectory>
+              </sourceDirectories>
+              <plugins>
+                <plugin kind="jvm-maven">
+                  <groupId>dev.horizon</groupId>
+                  <artifactId>leadseal-protoc</artifactId>
+                  <version>${leadseal.version}</version>
+                  <options>migrations=${acme.migrations},prefix=acme_,dialect=postgresql,dialect=mariadb,dialect=sqlserver,dialect=sqlite</options>
+                  <outputDirectory>${acme.migrations}</outputDirectory>
                   <registerAsCompilationRoot>false</registerAsCompilationRoot>
                 </plugin>
               </plugins>

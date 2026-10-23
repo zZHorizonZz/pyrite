@@ -45,8 +45,8 @@ public abstract class BaseResource implements Resource {
   }
 
   @Override
-  public String parentName() {
-    return row.string(PARENT);
+  public Optional<String> parentName() {
+    return Optional.ofNullable(row.string(PARENT));
   }
 
   @Override
@@ -107,7 +107,8 @@ public abstract class BaseResource implements Resource {
 
   @Override
   public Future<Optional<Resource>> parent() {
-    return parentName().isEmpty() ? Future.succeededFuture(Optional.empty()) : type.schema().get(parentName());
+    return parentName().isEmpty() ? Future.succeededFuture(Optional.empty())
+        : type.schema().get(parentName().get());
   }
 
   @Override
@@ -122,8 +123,8 @@ public abstract class BaseResource implements Resource {
   }
 
   @Override
-  public Future<Resource> require(Subject subject, String relation) {
-    return check(subject.toString(), relation, Struct.getDefaultInstance())
+  public Future<Resource> require(Subject subject, String relation, Struct context) {
+    return check(subject.toString(), relation, context)
         .compose(allowed -> allowed ? Future.succeededFuture(this)
             : Future.failedFuture(new PyriteException(GrpcStatus.PERMISSION_DENIED, "The subject " + subject
                 + " has no " + relation + " on " + name() + ".")));
@@ -181,7 +182,7 @@ public abstract class BaseResource implements Resource {
   }
 
   @Override
-  public Future<Void> grant(Grant grant) {
+  public Future<Void> grant(Grant grant, Struct context) {
     grantable(grant);
     TupleKey.Builder tuple = TupleKey.newBuilder().setUser(grant.getGrantee()).setRelation(grant.getRelation())
         .setObject(object());
@@ -189,7 +190,7 @@ public abstract class BaseResource implements Resource {
       tuple.setCondition(RelationshipCondition.newBuilder().setName(grant.getCondition().getName())
           .setContext(grant.getCondition().getContext()));
     }
-    return acyclic(grant).compose(ignored -> type.schema().adapter().write(tuple.build()));
+    return acyclic(grant, context).compose(ignored -> type.schema().adapter().write(tuple.build()));
   }
 
   @Override
@@ -260,7 +261,7 @@ public abstract class BaseResource implements Resource {
     }
   }
 
-  private Future<Void> acyclic(Grant grant) {
+  private Future<Void> acyclic(Grant grant, Struct context) {
     int hash = grant.getGrantee().indexOf('#');
     if (hash < 0 || type.schema().types().readsFromParent(type.declaration(), grant.getRelation())) {
       return Future.succeededFuture();
@@ -271,7 +272,7 @@ public abstract class BaseResource implements Resource {
           + grant.getRelation() + " on " + name() + " to its own " + grant.getGrantee() + " makes a cycle."));
     }
     return type.schema().adapter().check(object() + "#" + grant.getRelation(),
-        grant.getGrantee().substring(hash + 1), set, Struct.getDefaultInstance())
+        grant.getGrantee().substring(hash + 1), set, context)
         .compose(within -> within
             ? Future.failedFuture(new PyriteException(GrpcStatus.FAILED_PRECONDITION, "Granting "
                 + grant.getRelation() + " on " + name() + " to " + grant.getGrantee() + " makes a cycle."))

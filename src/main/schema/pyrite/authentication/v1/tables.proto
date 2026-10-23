@@ -28,9 +28,9 @@ message Account {
     ]
   }];
 
-  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
-  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   string labels = 5 [(leadseal.v1.column).json = {}];
 
@@ -70,9 +70,9 @@ message Identifier {
     ]
   }];
 
-  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
-  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   string labels = 5 [(leadseal.v1.column).json = {}];
 
@@ -127,9 +127,9 @@ message Factor {
     ]
   }];
 
-  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
-  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   string labels = 5 [(leadseal.v1.column).json = {}];
 
@@ -183,9 +183,9 @@ message Session {
     ]
   }];
 
-  string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
-  string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   string labels = 5 [(leadseal.v1.column).json = {}];
 
@@ -215,11 +215,11 @@ message Flow {
 
   string definition = 2 [(leadseal.v1.column).text = { length: 63 }];
 
-  // The account, or empty for a flow that names no account that exists.
-  string account = 3 [(leadseal.v1.column).text = { length: 255 }];
+  // The account; unset for a flow that names no account that exists.
+  optional string account = 3 [(leadseal.v1.column).text = { length: 255 }];
 
   // The identifier that the flow started with, if any.
-  string identifier = 4 [(leadseal.v1.column).text = { length: 255 }];
+  optional string identifier = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   int64 revision = 5;
 
@@ -234,20 +234,20 @@ message Flow {
   string expire_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   // The MAC of the code that was sent, and when it stops working.
-  bytes code_mac = 10;
+  optional bytes code_mac = 10;
 
   optional string code_expire_time = 11 [(leadseal.v1.column).timestamp = {}];
 
   // The challenge of a passkey ceremony.
-  bytes challenge = 12;
+  optional bytes challenge = 12;
 
   // The factor that the flow enrolls, if any.
-  string factor = 13 [(leadseal.v1.column).text = { length: 255 }];
+  optional string factor = 13 [(leadseal.v1.column).text = { length: 255 }];
 
   // The id of the last answer's request, and the flow that it returned.
-  string request_id = 14 [(leadseal.v1.column).text = { length: 64 }];
+  optional string request_id = 14 [(leadseal.v1.column).text = { length: 64 }];
 
-  bytes response = 15;
+  optional bytes response = 15;
 
   // Whether the flow is done; a done flow takes no answers.
   bool done = 16;

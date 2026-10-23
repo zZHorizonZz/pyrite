@@ -91,11 +91,25 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`.
 
 ## Run the tests
 
-The tests run every service over the Vert.x event bus, against SQLite in process, with Spectrum as OpenFGA:
+The suites run against one database at a time: PostgreSQL, MariaDB or SQL Server in Docker through
+Testcontainers, or SQLite in process. Each suite serves Pyrite and Spectrum over the event bus. One suite checks Pyrite's checks, queries and
+lists against plain OpenFGA on the same grants.
 
-```sh
-mvn verify
-```
+1. Start Docker.
+2. Run the build, here on PostgreSQL:
+
+   ```sh
+   mvn verify -Dpyrite.test.database=postgres
+   ```
+
+The tests run on SQLite unless `pyrite.test.database` names another database: `postgres`, `mariadb`,
+`sqlserver` or `sqlite`. CI runs all four. To test another server version, set its image with a system property:
+
+| Property                      | Default                                      |
+| ----------------------------- | -------------------------------------------- |
+| `pyrite.test.postgres.image`  | `postgres:17-alpine`                         |
+| `pyrite.test.mariadb.image`   | `mariadb:13.0`                               |
+| `pyrite.test.sqlserver.image` | `mcr.microsoft.com/mssql/server:2022-latest` |
 
 ## Resources
 

@@ -28,7 +28,7 @@ public final class UndeleteResourceHandler extends UnaryHandler<UndeleteResource
   private Future<Resource> execute(UndeleteResourceRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
     return schema.require(request.getName())
-        .compose(found -> found.require(subject, found.type().permissions().getDelete()))
+        .compose(found -> found.require(subject, found.type().permissions().getDelete(), request.getContext()))
         .compose(found -> found.undelete(request.getRevision()))
         .map(dev.horizon.pyrite.impl.resource.Resource::toMessage);
   }

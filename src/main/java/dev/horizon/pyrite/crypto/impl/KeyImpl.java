@@ -38,9 +38,10 @@ abstract class KeyImpl extends BaseResource {
   }
 
   public Future<KeyVersion> version(String version) {
-    return type().versions().get(version).map(found -> found.filter(candidate -> candidate.parentName().equals(name()))
-        .orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The key " + name() + " has no"
-            + " version " + version + ".")));
+    return type().versions().get(version)
+        .map(found -> found.filter(candidate -> candidate.parentName().equals(Optional.of(name())))
+            .orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The key " + name() + " has no"
+                + " version " + version + ".")));
   }
 
   public Future<KeyVersion> primary() {

@@ -50,13 +50,13 @@ Pyrite brings Spectrum, which serves OpenFGA's API from the same database. Pyrit
 
    ```sql
    CREATE TABLE "acme_organization" ("uid" varchar(36) NOT NULL, "name" varchar(255) COLLATE "C" NOT NULL,
-     "parent" varchar(255) NOT NULL, "display_name" varchar(255) NOT NULL, "labels" jsonb NOT NULL,
+     "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL,
      "revision" bigint NOT NULL, "create_time" timestamptz NOT NULL, "update_time" timestamptz NOT NULL,
      "delete_time" timestamptz, "purge_time" timestamptz, CONSTRAINT "pk_acme_organization" PRIMARY KEY ("uid"));
    CREATE UNIQUE INDEX "ux_acme_organization_name" ON "acme_organization" ("name");
 
    CREATE TABLE "acme_project" ("uid" varchar(36) NOT NULL, "name" varchar(255) COLLATE "C" NOT NULL,
-     "parent" varchar(255) NOT NULL, "display_name" varchar(255) NOT NULL, "labels" jsonb NOT NULL,
+     "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL,
      "revision" bigint NOT NULL, "create_time" timestamptz NOT NULL, "update_time" timestamptz NOT NULL,
      "delete_time" timestamptz, "purge_time" timestamptz, CONSTRAINT "pk_acme_project" PRIMARY KEY ("uid"));
    CREATE UNIQUE INDEX "ux_acme_project_name" ON "acme_project" ("name");

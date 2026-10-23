@@ -24,7 +24,7 @@ public final class EncryptHandler extends UnaryHandler<EncryptRequest, EncryptRe
   protected Future<EncryptResponse> execute(EncryptRequest request) {
     Subject subject = Subject.parse(request.getSubject());
     return deployment.schema().compose(schema -> schema.type(TypeSystem.KEY, KeyType.class).encryption(request.getKey()))
-        .compose(key -> key.require(subject, "encrypter").map(key))
+        .compose(key -> key.require(subject, "encrypter", request.getContext()).map(key))
         .compose(key -> key.encrypt(request.getPlaintext().toByteArray(), request.getAssociatedData().toByteArray()));
   }
 }

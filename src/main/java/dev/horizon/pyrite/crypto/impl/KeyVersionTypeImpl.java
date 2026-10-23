@@ -1,6 +1,7 @@
 package dev.horizon.pyrite.crypto.impl;
 
 import com.google.crypto.tink.Aead;
+import com.google.protobuf.Struct;
 import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.impl.model.DeclaredType;
@@ -9,7 +10,6 @@ import dev.horizon.pyrite.impl.resource.SchemaImpl;
 import dev.horizon.pyrite.impl.resource.Subject;
 import dev.horizon.pyrite.impl.storage.Row;
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import io.vertx.grpc.common.GrpcStatus;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -37,13 +37,14 @@ public final class KeyVersionTypeImpl extends BaseResourceType<KeyVersion> imple
   }
 
   @Override
-  public Future<KeyVersion> create(Subject creator, String parent, String id, Map<String, Object> values) {
+  public Future<KeyVersion> create(Subject creator, String parent, String id, Map<String, Object> values,
+      Struct context) {
     if (!id.isEmpty() || !values.isEmpty()) {
       throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "Pyrite names and fills the versions of a key; the"
           + " request names no id and sets no fields.");
     }
     return place(parent)
-        .compose(key -> key.orElseThrow().require(creator, permissions().getCreate()))
+        .compose(key -> key.orElseThrow().require(creator, permissions().getCreate(), context))
         .compose(key -> ((Key) key).rotate())
         .compose(key -> key.version(key.primaryVersion()));
   }
@@ -63,8 +64,8 @@ public final class KeyVersionTypeImpl extends BaseResourceType<KeyVersion> imple
           values.put(PUBLIC_KEY, algorithm.scheme().jwk(pair.publicKey(), id));
           values.put(PUBLIC_KEY_INFO, pair.publicKey().getEncoded());
         } else {
-          values.put(PUBLIC_KEY, new JsonObject());
-          values.put(PUBLIC_KEY_INFO, new byte[0]);
+          values.put(PUBLIC_KEY, null);
+          values.put(PUBLIC_KEY_INFO, null);
         }
         try {
           values.put(SEALED, root.encrypt(material.secret(), associatedData(name)));

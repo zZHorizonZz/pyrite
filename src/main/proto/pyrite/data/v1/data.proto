@@ -85,12 +85,18 @@ message CreateResourceRequest {
 
   // The type and the fields to set. The standard fields are Pyrite's, except display_name and labels.
   Resource resource = 4;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 5;
 }
 
 message GetResourceRequest {
   string subject = 1;
 
   string name = 2;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 3;
 }
 
 message QueryResourcesRequest {
@@ -114,6 +120,9 @@ message QueryResourcesRequest {
 
   // Whether deleted resources are included.
   bool show_deleted = 8;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 9;
 }
 
 message QueryResourcesResponse {
@@ -134,6 +143,9 @@ message UpdateResourceRequest {
 
   // The revision that the subject read.
   int64 revision = 4;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 5;
 }
 
 message MoveResourceRequest {
@@ -145,6 +157,9 @@ message MoveResourceRequest {
   string parent = 3;
 
   int64 revision = 4;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 5;
 }
 
 message DeleteResourceRequest {
@@ -153,6 +168,9 @@ message DeleteResourceRequest {
   string name = 2;
 
   int64 revision = 3;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 4;
 }
 
 message UndeleteResourceRequest {
@@ -161,6 +179,9 @@ message UndeleteResourceRequest {
   string name = 2;
 
   int64 revision = 3;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 4;
 }
 
 message PurgeResourcesRequest {

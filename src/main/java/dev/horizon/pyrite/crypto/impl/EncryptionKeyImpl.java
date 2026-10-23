@@ -10,6 +10,7 @@ import io.vertx.grpc.common.GrpcStatus;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Optional;
 
 final class EncryptionKeyImpl extends KeyImpl implements EncryptionKey {
 
@@ -36,15 +37,19 @@ final class EncryptionKeyImpl extends KeyImpl implements EncryptionKey {
     }
     String name = type().versions().declaration().resource(new String(ciphertext, 1, length,
         StandardCharsets.US_ASCII));
-    return version(name).map(version -> {
-      if (!version.isUsable()) {
-        throw new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The version " + name + " that encrypted is"
-            + " disabled or deleted.");
-      }
-      byte[] plaintext = ((KeyVersionImpl) version).cipher().decrypt(Arrays.copyOfRange(ciphertext, 1 + length,
-          ciphertext.length), bound(associatedData));
-      return DecryptResponse.newBuilder().setPlaintext(ByteString.copyFrom(plaintext)).setKeyVersion(name).build();
-    });
+    return type()
+        .versions().get(name).map(found -> found.filter(candidate -> candidate.parentName().equals(Optional.of(name())))
+            .orElseThrow(() -> new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The ciphertext was not made by the key "
+                + name() + ".")))
+        .map(version -> {
+          if (!version.isUsable()) {
+            throw new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The version " + name + " that encrypted is"
+                + " disabled or deleted.");
+          }
+          byte[] plaintext = ((KeyVersionImpl) version).cipher().decrypt(Arrays.copyOfRange(ciphertext, 1 + length,
+              ciphertext.length), bound(associatedData));
+          return DecryptResponse.newBuilder().setPlaintext(ByteString.copyFrom(plaintext)).setKeyVersion(name).build();
+        });
   }
 
   private byte[] bound(byte[] associatedData) {

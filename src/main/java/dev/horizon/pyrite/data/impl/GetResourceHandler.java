@@ -28,7 +28,7 @@ public final class GetResourceHandler extends UnaryHandler<GetResourceRequest, R
   private Future<Resource> execute(GetResourceRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
     return schema.require(request.getName())
-        .compose(found -> found.require(subject, found.type().permissions().getRead()))
+        .compose(found -> found.require(subject, found.type().permissions().getRead(), request.getContext()))
         .map(dev.horizon.pyrite.impl.resource.Resource::toMessage);
   }
 }

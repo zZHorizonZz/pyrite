@@ -8,6 +8,7 @@ import dev.horizon.pyrite.schema.v1.Declaration;
 import dev.horizon.spectrum.openfga.v1.TypeDefinition;
 import dev.horizon.spectrum.openfga.v1.Userset;
 import dev.horizon.spectrum.openfga.v1.WriteAuthorizationModelRequest;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class TypeSystemTest {
@@ -37,7 +38,8 @@ class TypeSystemTest {
       """.formatted(STANDARD);
 
   @Test
-  void aRelationThatReadsFromParentReachesSpectrumAsItsDirectTypes() throws Exception {
+  @DisplayName("A relation that reads from the parent reaches OpenFGA as its direct types")
+  void split() throws Exception {
     TypeSystem types = new TypeSystemImpl(declaration(ORGANIZATION + """
         types {
           name: "acme.dev/Project" plural: "projects" parents: "acme.dev/Organization" table: "acme_project" %s
@@ -75,14 +77,16 @@ class TypeSystemTest {
   }
 
   @Test
-  void aTypeHasEveryStandardField() {
+  @DisplayName("A type has every standard field")
+  void standardFields() {
     assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace(
         "fields { name: \"revision\" kind: INTEGER }", ""))))
         .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("revision");
   }
 
   @Test
-  void aDeclarationNamesOnlyWhatItDeclares() {
+  @DisplayName("A declaration names only what it declares")
+  void references() {
     assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace("{ type: \"user\" }",
         "{ type: \"team\" relation: \"member\" }")))).hasMessageContaining("team");
     assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace("value { this {} }",
@@ -99,7 +103,8 @@ class TypeSystemTest {
   }
 
   @Test
-  void aSetThatIsGrantedCannotReadFromParent() {
+  @DisplayName("A set that is granted cannot read from the parent")
+  void grantedSet() {
     assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION + """
         types {
           name: "acme.dev/Team" plural: "teams" parents: "acme.dev/Organization" table: "acme_team" %s

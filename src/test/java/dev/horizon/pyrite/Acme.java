@@ -6,12 +6,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-final class Acme {
+public final class Acme {
 
   private Acme() {
   }
 
-  static Declaration declaration() throws IOException {
+  public static Declaration declaration() throws IOException {
     Declaration.Builder declaration = Declaration.newBuilder();
     try (InputStream text = Acme.class.getResourceAsStream("/acme/declaration.textproto")) {
       TextFormat.merge(new String(text.readAllBytes(), StandardCharsets.UTF_8), declaration);

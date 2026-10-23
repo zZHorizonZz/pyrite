@@ -30,14 +30,15 @@ public final class MoveResourceHandler extends UnaryHandler<MoveResourceRequest,
   private Future<Resource> execute(MoveResourceRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
     return schema.require(request.getName())
-        .compose(found -> found.require(subject, found.type().permissions().getUpdate()))
+        .compose(found -> found.require(subject, found.type().permissions().getUpdate(), request.getContext()))
         .compose(found -> {
           if (found.type().declaration().parents().isEmpty()) {
             throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + found.type().name() + " has no"
                 + " parents; its resources do not move.");
           }
           return found.type().place(request.getParent())
-              .compose(parent -> parent.orElseThrow().require(subject, found.type().permissions().getCreate()))
+              .compose(
+                  parent -> parent.orElseThrow().require(subject, found.type().permissions().getCreate(), request.getContext()))
               .compose(parent -> found.move(parent, request.getRevision()));
         })
         .map(dev.horizon.pyrite.impl.resource.Resource::toMessage);

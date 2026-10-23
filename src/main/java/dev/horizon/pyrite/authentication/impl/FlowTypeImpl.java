@@ -34,12 +34,14 @@ public final class FlowTypeImpl implements FlowType {
   @Override
   public Future<dev.horizon.pyrite.authentication.v1.Flow> start(StartFlowRequest request) {
     FlowDefinition definition = definition(request.getDefinition());
-    return find(definition, request).compose(found -> new FlowImpl(this, definition, Tables.Flow.newBuilder()
-        .setId(UUID.randomUUID().toString()).setDefinition(definition.getName())
-        .setAccount(found.account().map(Resource::name).orElse(""))
-        .setIdentifier(found.identifier().map(Resource::name).orElse(""))
-        .setRevision(1).setProofs(Evidence.NOTHING.json().encode())
-        .setExpireTime(schema.clock().instant().plus(options().flowLifetime()).toString())).enter());
+    return find(definition, request).compose(found -> {
+      Tables.Flow.Builder row = Tables.Flow.newBuilder().setId(UUID.randomUUID().toString())
+          .setDefinition(definition.getName()).setRevision(1).setProofs(Evidence.NOTHING.json().encode())
+          .setExpireTime(schema.clock().instant().plus(options().flowLifetime()).toString());
+      found.account().map(Resource::name).ifPresent(row::setAccount);
+      found.identifier().map(Resource::name).ifPresent(row::setIdentifier);
+      return new FlowImpl(this, definition, row).enter();
+    });
   }
 
   @Override
@@ -82,13 +84,13 @@ public final class FlowTypeImpl implements FlowType {
     return switch (definition.getInput()) {
       case IDENTIFIER -> identifier(request).compose(identifier -> identifier.isEmpty()
           ? Future.succeededFuture(new Found(Optional.empty(), Optional.empty()))
-          : schema.get(identifier.get().parentName()).map(account -> new Found(account
+          : schema.get(identifier.get().parentName().orElseThrow()).map(account -> new Found(account
               .filter(candidate -> !candidate.isDeleted()).map(Account.class::cast), identifier)));
       case SUBJECT -> accounts().account(Subject.parse(request.getSubject()))
           .map(account -> new Found(Optional.of(account), Optional.empty()));
       case SUBJECT_IDENTIFIER -> accounts().account(Subject.parse(request.getSubject()))
           .compose(account -> identifier(request).map(identifier -> {
-            if (identifier.isEmpty() || !identifier.get().parentName().equals(account.name())) {
+            if (identifier.isEmpty() || !identifier.get().parentName().equals(Optional.of(account.name()))) {
               throw new PyriteException(GrpcStatus.NOT_FOUND, "The account " + account.name() + " has no "
                   + request.getIdentifierKind() + " " + request.getIdentifier() + ".");
             }

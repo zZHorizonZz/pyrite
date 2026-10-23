@@ -1,5 +1,6 @@
 package dev.horizon.pyrite.impl.resource;
 
+import com.google.protobuf.Struct;
 import dev.horizon.aquery.aip158.Page;
 import dev.horizon.aquery.aip158.PageRequest;
 import dev.horizon.pyrite.data.v1.Value;
@@ -82,9 +83,10 @@ public interface ResourceType<R extends Resource> {
    * @param parent the parent's name; empty for a type without parents
    * @param id the resource's id, the last segment of its name
    * @param values the values of the fields that a request may set
+   * @param context the values that the conditions of grants read
    * @return the resource
    */
-  Future<R> create(Subject creator, String parent, String id, Map<String, Object> values);
+  Future<R> create(Subject creator, String parent, String id, Map<String, Object> values, Struct context);
 
   /**
    * Lists a page of the resources of the type on which a subject has a permission. Pyrite finds where the permission
@@ -94,9 +96,11 @@ public interface ResourceType<R extends Resource> {
    * @param permission the permission
    * @param request the filter, the order and the page
    * @param showDeleted whether deleted resources are listed too
+   * @param context the values that the conditions of grants read
    * @return the page, which can hold fewer resources than its size
    */
-  Future<Page<R>> query(Subject subject, String permission, PageRequest request, boolean showDeleted);
+  Future<Page<R>> query(Subject subject, String permission, PageRequest request, boolean showDeleted,
+      Struct context);
 
   /**
    * Reads the parent that a resource of the type would have, and checks that its type is a parent type.

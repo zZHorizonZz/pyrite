@@ -61,12 +61,18 @@ message CreateGrantRequest {
   string subject = 1;
 
   Grant grant = 2;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 3;
 }
 
 message DeleteGrantRequest {
   string subject = 1;
 
   Grant grant = 2;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 3;
 }
 
 message CheckRequest {
@@ -103,6 +109,9 @@ message ListGrantsRequest {
   int32 page_size = 5;
 
   string page_token = 6;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 7;
 }
 
 message ListGrantsResponse {
@@ -141,6 +150,9 @@ message ListChangesRequest {
   int32 page_size = 4;
 
   string page_token = 5;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 6;
 }
 
 message ListChangesResponse {

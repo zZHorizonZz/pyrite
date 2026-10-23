@@ -7,6 +7,8 @@ recovery also ends every session of the account, in case someone else holds one.
 
 - Set up accounts and password sign-in. For more information, refer to
   [Sign in with a password](sign-in-with-a-password.md).
+- Verify the address. Pyrite sends a recovery code only to a verified address. For more information, refer to
+  [Verify an email address](verify-an-email-address.md).
 - Have a way to send email from your application.
 
 ## Recover the account
