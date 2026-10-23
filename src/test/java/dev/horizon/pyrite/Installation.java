@@ -5,8 +5,6 @@ import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
-import dev.horizon.aquery.ParameterStyle;
-import dev.horizon.basepoint.sqlite.SqliteDialect;
 import dev.horizon.cinder.sqlite.SqliteDriver;
 import dev.horizon.pyrite.access.AccessService;
 import dev.horizon.pyrite.access.v1.AccessGrpcClient;
@@ -68,7 +66,8 @@ final class Installation implements AutoCloseable {
     }
     Pool pool = JDBCPool.pool(vertx, new JDBCConnectOptions().setJdbcUrl(url), new PoolOptions().setMaxSize(1));
     EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await(10, TimeUnit.SECONDS);
-    server.addService(OpenFgaService.create(vertx, pool, new SqliteDialect(ParameterStyle.QUESTION_MARK)));
+    SqliteDriver driver = new SqliteDriver();
+    server.addService(OpenFgaService.create(vertx, pool, driver));
     EventBusGrpcClient client = EventBusGrpcClient.client(vertx).await(10, TimeUnit.SECONDS);
     OpenFGAServiceGrpcClient openFga = OpenFGAServiceGrpcClient.create(client);
     AeadConfig.register();
@@ -80,7 +79,6 @@ final class Installation implements AutoCloseable {
             new PyriteServiceOptions.RelyingParty("acme.dev", "Acme", List.of("https://acme.dev")), "Acme",
             Duration.ofDays(30), Duration.ofDays(7), Duration.ofMinutes(15), Duration.ofMinutes(10), 3,
             new PyriteServiceOptions.Argon2(1024, 1, 1)));
-    SqliteDriver driver = new SqliteDriver();
     server.addService(SchemaService.create(vertx, pool, driver, openFga, options));
     server.addService(DataService.create(vertx, pool, driver, openFga, options));
     server.addService(AccessService.create(vertx, pool, driver, openFga, options));

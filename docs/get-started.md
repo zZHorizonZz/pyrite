@@ -11,8 +11,7 @@ projects, create one of each, grant a relation on the organization, and read the
 
 ## 1. Add the dependencies
 
-Add Pyrite, the Cinder driver and Basepoint dialect of your database, its Vert.x client, and the Vert.x gRPC event
-bus:
+Add Pyrite, the Cinder driver of your database, its Vert.x client, and the Vert.x gRPC event bus:
 
 <!-- x-release-please-start-version -->
 ```xml
@@ -28,11 +27,6 @@ bus:
 <dependency>
   <groupId>dev.horizon</groupId>
   <artifactId>cinder-database-postgres</artifactId>
-  <version>0.3.0</version>
-</dependency>
-<dependency>
-  <groupId>dev.horizon</groupId>
-  <artifactId>basepoint-dialect-postgres</artifactId>
   <version>0.3.0</version>
 </dependency>
 <dependency>
@@ -175,10 +169,10 @@ Pool pool = PgBuilder.pool().connectingTo("postgresql://app:secret@localhost:543
 
 EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await();
 EventBusGrpcClient client = EventBusGrpcClient.client(vertx).await();
-server.addService(OpenFgaService.create(vertx, pool, new PostgresDialect()));
+PostgresDriver driver = new PostgresDriver();
+server.addService(OpenFgaService.create(vertx, pool, driver));
 OpenFGAServiceGrpcClient openFga = OpenFGAServiceGrpcClient.create(client);
 
-PostgresDriver driver = new PostgresDriver();
 PyriteServiceOptions options = new PyriteServiceOptions();
 server.addService(SchemaService.create(vertx, pool, driver, openFga, options));
 server.addService(DataService.create(vertx, pool, driver, openFga, options));

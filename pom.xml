@@ -47,7 +47,7 @@
     <openfga-language.version>0.2.1</openfga-language.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <protobuf.version>4.36.2</protobuf.version>
-    <spectrum.version>0.1.0</spectrum.version>
+    <spectrum.version>0.2.0</spectrum.version>
     <tink.version>1.24.0</tink.version>
     <vertx.version>5.2.1</vertx.version>
     <webauthn4j.version>0.31.8.RELEASE</webauthn4j.version>
@@ -94,11 +94,6 @@
       <dependency>
         <groupId>dev.horizon</groupId>
         <artifactId>basepoint-dialect</artifactId>
-        <version>${basepoint.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>dev.horizon</groupId>
-        <artifactId>basepoint-dialect-sqlite</artifactId>
         <version>${basepoint.version}</version>
       </dependency>
       <dependency>
@@ -276,11 +271,6 @@
     <dependency>
       <groupId>dev.horizon</groupId>
       <artifactId>cinder-database-sqlite</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>dev.horizon</groupId>
-      <artifactId>basepoint-dialect-sqlite</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
