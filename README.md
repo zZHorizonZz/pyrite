@@ -64,7 +64,7 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`.
 <dependency>
   <groupId>dev.horizon</groupId>
   <artifactId>pyrite</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 <!-- x-release-please-end -->
