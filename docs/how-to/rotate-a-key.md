@@ -10,52 +10,71 @@ readable until you disable those versions.
 
 ## Rotate on a schedule
 
-Give the key a rotation period in seconds when you create it. Here, 90 days:
+Give the key a rotation period when you create it. Here, 90 days:
 
 ```java
-data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-    .setResourceId("payments").setResource(Resource.newBuilder().setType("pyrite.dev/Key")
-        .putFields("purpose", Value.newBuilder().setStringValue("ENCRYPTION").build())
-        .putFields("algorithm", Value.newBuilder().setStringValue("AES256_GCM").build())
-        .putFields("rotation_period", Value.newBuilder().setIntegerValue(7_776_000).build()))
-    .build()).await();
+cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("payments")
+    .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM)
+    .setRotationPeriod(Duration.newBuilder().setSeconds(7_776_000)).build()).await();
 ```
 
-The key rotates at its first operation after `next_rotation_time`. A period of `0` turns scheduled rotation off.
+The key rotates at its first operation after `next_rotation_time`.
+
+To change the period of a key that exists, name the key's revision that you read:
+
+```java
+Key key = cryptography.getKey(GetKeyRequest.newBuilder().setSubject("user:anne").setName("keys/payments").build())
+    .await();
+cryptography.updateKey(UpdateKeyRequest.newBuilder().setSubject("user:anne").setName("keys/payments")
+    .setRotationPeriod(Duration.newBuilder().setSeconds(2_592_000)).setRevision(key.getRevision()).build()).await();
+```
+
+A period of zero turns scheduled rotation off.
 
 ## Rotate now
 
-1. Create a version under the key, with no id and no fields:
+1. Rotate the key:
 
    ```java
-   Resource version = data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne")
-       .setParent("keys/payments").setResource(Resource.newBuilder().setType("pyrite.dev/KeyVersion")).build())
-       .await();
+   Key rotated = cryptography.rotateKey(RotateKeyRequest.newBuilder().setSubject("user:anne")
+       .setName("keys/payments").build()).await();
    ```
 
-2. Check the new primary. `version.getName()` is the next version, such as `keyVersions/payments-2`. New encryptions
-   name it in `key_version`.
+2. Check the new primary. `rotated.getPrimaryVersion()` is the next version, such as `keyVersions/payments-2`. New
+   encryptions name it in `key_version`.
 
 ## Retire an old version
 
 1. Re-encrypt what the old version encrypted. Each ciphertext's `key_version` tells you which version made it.
 
-2. Disable the old version:
+2. List the versions, to read the old version's revision:
 
    ```java
-   data.updateResource(UpdateResourceRequest.newBuilder().setSubject("user:anne")
-       .setResource(Resource.newBuilder().setName("keyVersions/payments-1")
-           .putFields("state", Value.newBuilder().setStringValue("DISABLED").build()))
-       .setUpdateMask(FieldMask.newBuilder().addPaths("state")).setRevision(1).build()).await();
+   KeyVersion old = cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder().setSubject("user:anne")
+       .setKey("keys/payments").build()).await().getVersions(0);
    ```
 
-   A disabled version no longer decrypts or verifies. Set `state` to `ENABLED` to undo it.
+   The versions come oldest first.
 
-3. Delete the version when nothing needs it.
+3. Disable the old version:
 
-   WARNING: A version that is purged cannot decrypt anything again. Data that only it encrypted is lost.
+   ```java
+   cryptography.updateKeyVersion(UpdateKeyVersionRequest.newBuilder().setSubject("user:anne")
+       .setName(old.getName()).setState(KeyVersion.State.DISABLED).setRevision(old.getRevision()).build()).await();
+   ```
 
-The primary version cannot be disabled or deleted. Both fail with `FAILED_PRECONDITION`.
+   A disabled version no longer decrypts or verifies. Set the state to `ENABLED` to undo it.
+
+4. Destroy the version when nothing needs it:
+
+   ```java
+   cryptography.deleteKeyVersion(DeleteKeyVersionRequest.newBuilder().setSubject("user:anne")
+       .setName(old.getName()).build()).await();
+   ```
+
+   WARNING: A destroyed version cannot decrypt anything again. Data that only it encrypted is lost.
+
+The primary version cannot be disabled or destroyed. Both fail with `FAILED_PRECONDITION`.
 
 ## Related resources
 

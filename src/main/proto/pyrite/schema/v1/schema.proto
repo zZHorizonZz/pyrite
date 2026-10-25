@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package pyrite.schema.v1;
 
-import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "openfga/v1/authzmodel.proto";
 
@@ -10,7 +9,8 @@ option java_multiple_files = true;
 option java_outer_classname = "SchemaProto";
 option java_package = "dev.horizon.pyrite.schema.v1";
 
-// The declaration of the application's types, conditions and flows, which every other service of Pyrite reads.
+// The declaration of the application's types, conditions, identifier kinds and flows, which every other service of
+// Pyrite reads.
 service Schema {
   // Checks a declaration, writes its authorization model to OpenFGA, and makes it the latest. Every service uses the
   // latest declaration from then on.
@@ -27,10 +27,34 @@ message Declaration {
   map<string, openfga.v1.Condition> conditions = 2;
 
   repeated FlowDefinition flows = 3;
+
+  // The kinds of identifiers that accounts have, such as email or username. A flow that starts from what a person
+  // typed takes the first kind, in this order, whose match the value meets.
+  repeated IdentifierKind identifier_kinds = 4;
 }
 
-// A type of resource. Pyrite's own types, pyrite.dev/Key and pyrite.dev/Account, leave plural, table and fields
-// empty: their tables are Pyrite's.
+// A kind of identifier that the application gives accounts. Pyrite stores and compares identifiers; the application
+// decides what they look like and sends the codes that prove them.
+message IdentifierKind {
+  // The kind's name, such as email or employee-id: a lowercase letter, then lowercase letters, digits and hyphens.
+  string name = 1;
+
+  // A CEL expression over value, the string as given, which is true when the value is of this kind, such as
+  // value.matches('^[^@\\s]+@[^@\\s]+$'). It can use the strings extension.
+  string match = 2;
+
+  // A CEL expression over value that gives the string that Pyrite stores and compares, such as
+  // value.trim().lowerAscii(). Leave it empty to keep the value as given. The normalized value must still match.
+  string normalize = 3;
+
+  // Whether the application sends codes to identifiers of this kind, so that a flow verifies one or signs in with a
+  // code sent to it. A username takes no codes; an email address does.
+  bool receives_codes = 4;
+}
+
+// A type of the application's resources, as Pyrite knows it: where it sits in the hierarchy and who may do what on
+// its resources. The application keeps the resources themselves. Pyrite's own types, pyrite.dev/Key and
+// pyrite.dev/Account, leave plural empty.
 message Type {
   // The type's name, such as acme.dev/Project.
   string name = 1;
@@ -41,18 +65,15 @@ message Type {
   // The types that its resources can be under; none for a type at the top.
   repeated string parents = 3;
 
-  // The application's table that holds its resources.
-  string table = 4;
-
-  // The columns of the table: the standard fields of a resource, and the type's own.
-  repeated Field fields = 5;
+  reserved 4, 5, 10;
+  reserved "table", "fields", "retention";
 
   // The OpenFGA type: its name, which is the type's singular name, its relations, and the types that each takes
-  // directly. A relation reads from the parent through a tuple to userset whose tupleset is parent, which Pyrite
-  // walks over its hierarchy.
+  // directly. A relation reads from the parent through a tuple to userset whose tupleset is parent; Pyrite adds the
+  // relation parent to a type that has parents.
   openfga.v1.TypeDefinition definition = 6;
 
-  // The relations that the methods of pyrite.data.v1.Data check.
+  // The relations that pyrite.access.v1.Access checks.
   Permissions permissions = 7;
 
   // The relations that pyrite.access.v1.Access grants and revokes.
@@ -60,39 +81,16 @@ message Type {
 
   // The relation that the creator of a resource is granted on it; empty for none.
   string creator = 9;
-
-  // How long a deleted resource is kept before it is purged.
-  google.protobuf.Duration retention = 10;
-}
-
-message Field {
-  string name = 1;
-
-  Kind kind = 2;
-
-  enum Kind {
-    KIND_UNSPECIFIED = 0;
-    STRING = 1;
-    INTEGER = 2;
-    DOUBLE = 3;
-    BOOLEAN = 4;
-    BYTES = 5;
-    TIMESTAMP = 6;
-    MAP = 7;
-    ARRAY = 8;
-  }
 }
 
 message Permissions {
-  // The relation on the parent that creates a resource; empty for a type without parents.
+  // The relation on the parent that creates a resource under it; empty for a type without parents.
   string create = 1;
 
-  string read = 2;
+  reserved 2, 3, 4;
+  reserved "read", "update", "delete";
 
-  string update = 3;
-
-  string delete = 4;
-
+  // The relation that grants, revokes and lists the grants on a resource.
   string grant = 5;
 }
 

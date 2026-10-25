@@ -1,62 +1,61 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.authentication.v1.Delivery;
-import dev.horizon.pyrite.authentication.v1.IdentifierKind;
-import dev.horizon.pyrite.impl.resource.Resource;
 import io.vertx.core.Future;
 
 /**
- * An identifier of an account, of the type {@code pyrite.dev/Identifier}: an email address, a phone number or a
- * username. Its kind and value are set at creation, and a {@code MARK_VERIFIED} flow verifies it.
+ * An identifier of an account, of a kind that the declaration names, such as an email address, normalized as its
+ * kind says. A kind that receives codes takes codes, which the application sends.
  */
-public interface Identifier extends Resource {
+public interface Identifier {
+
+  /**
+   * Gives the identifier's name.
+   *
+   * @return the name, such as {@code identifiers/0b0d...}
+   */
+  String name();
+
+  /**
+   * Gives the name of the identifier's account.
+   *
+   * @return the name, such as {@code accounts/anne}
+   */
+  String account();
 
   /**
    * Gives the identifier's kind.
    *
-   * @return the kind
+   * @return the kind, as the declaration names it, such as {@code email}
    */
-  IdentifierKind kind();
+  String kind();
 
   /**
-   * Gives the identifier's value, as Pyrite normalized it at creation.
+   * Gives the identifier's value.
    *
-   * @return the value, such as {@code anne@acme.dev}
+   * @return the value, as its kind normalizes it
    */
   String value();
 
-  /**
-   * Tells whether a flow proved that the account receives codes at the identifier.
-   *
-   * @return whether it is verified
-   */
   boolean isVerified();
 
   /**
    * Tells whether a code can be sent to the identifier.
    *
-   * @return whether it is an active email address or phone number
+   * @return true when its kind receives codes and it is not removed
    */
   boolean isDeliverable();
 
   /**
-   * Gives the channel that a code goes by.
-   *
-   * @return email for an email address, SMS for a phone number
-   */
-  Delivery.Channel channel();
-
-  /**
-   * Gives the value with most of it hidden, to show the person where a code went.
-   *
-   * @return the masked value
-   */
-  String mask();
-
-  /**
-   * Marks the identifier as verified.
+   * Marks the identifier verified.
    *
    * @return the verified identifier
    */
   Future<Identifier> verify();
+
+  /**
+   * Gives the identifier as a message.
+   *
+   * @return the message of {@code pyrite.authentication.v1}
+   */
+  dev.horizon.pyrite.authentication.v1.Identifier message();
 }

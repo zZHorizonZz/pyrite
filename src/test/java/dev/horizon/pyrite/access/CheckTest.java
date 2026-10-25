@@ -15,7 +15,6 @@ import dev.horizon.pyrite.access.v1.Condition;
 import dev.horizon.pyrite.access.v1.CreateGrantRequest;
 import dev.horizon.pyrite.access.v1.Grant;
 import io.vertx.grpc.common.GrpcStatus;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,8 +24,8 @@ class CheckTest extends PyriteTest {
 
   @BeforeEach
   void open() throws Exception {
-    pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-    pyrite.create(ANNE, "organizations/acme", "acme.dev/Project", "ledger", Map.of());
+    pyrite.create(ANNE, "organizations/acme", "");
+    pyrite.create(ANNE, "projects/ledger", "organizations/acme");
   }
 
   private boolean check(String subject, String principal, String permission, Struct context) throws Exception {

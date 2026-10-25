@@ -1,52 +1,60 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.authentication.v1.Delivery;
-import dev.horizon.pyrite.authentication.v1.IdentifierKind;
-import dev.horizon.pyrite.impl.resource.BaseResource;
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.impl.model.DeclaredKind;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
-import java.util.Map;
 
-final class IdentifierImpl extends BaseResource implements Identifier {
+final class IdentifierImpl implements Identifier {
 
-  IdentifierImpl(IdentifierTypeImpl type, Row row) {
-    super(type, row);
+  private final AccountTypeImpl type;
+  private final Tables.Identifier row;
+
+  IdentifierImpl(AccountTypeImpl type, Tables.Identifier row) {
+    this.type = type;
+    this.row = row;
   }
 
   @Override
-  public IdentifierKind kind() {
-    return IdentifierKind.valueOf((String) field(IdentifierType.KIND));
+  public String name() {
+    return row.getName();
+  }
+
+  @Override
+  public String account() {
+    return row.getParent();
+  }
+
+  @Override
+  public String kind() {
+    return row.getKind();
   }
 
   @Override
   public String value() {
-    return field(IdentifierType.VALUE);
+    return row.getValue();
   }
 
   @Override
   public boolean isVerified() {
-    return field(IdentifierType.VERIFIED);
+    return row.getVerified();
   }
 
   @Override
   public boolean isDeliverable() {
-    return kind() != IdentifierKind.USERNAME && !isDeleted();
-  }
-
-  @Override
-  public Delivery.Channel channel() {
-    return kind() == IdentifierKind.PHONE ? Delivery.Channel.SMS : Delivery.Channel.EMAIL;
-  }
-
-  @Override
-  public String mask() {
-    String value = value();
-    return kind() == IdentifierKind.EMAIL ? value.charAt(0) + "***" + value.substring(value.indexOf('@'))
-        : "***" + value.substring(Math.max(0, value.length() - 2));
+    return !row.hasDeleteTime() && type.schema().types().identifierKind(kind()).map(DeclaredKind::receivesCodes)
+        .orElse(false);
   }
 
   @Override
   public Future<Identifier> verify() {
-    return change(Map.of(IdentifierType.VERIFIED, true)).map(Identifier.class::cast);
+    return type.identifierRows().update(row.toBuilder().setVerified(true).setRevision(row.getRevision() + 1)
+        .setUpdateTime(type.schema().clock().instant().toString()).build(), row.getUid(), row.getRevision(), name())
+        .map(changed -> new IdentifierImpl(type, changed));
+  }
+
+  @Override
+  public dev.horizon.pyrite.authentication.v1.Identifier message() {
+    return dev.horizon.pyrite.authentication.v1.Identifier.newBuilder().setName(name()).setAccount(account())
+        .setKind(kind()).setValue(value()).setVerified(isVerified()).setPrimary(row.getPrimary()).build();
   }
 }

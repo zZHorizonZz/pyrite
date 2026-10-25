@@ -19,9 +19,8 @@ import javax.crypto.SecretKey;
  * Give every service of Pyrite on the same database the same options. A page token works only at a service with the
  * key that made it, and a key version only with the root key that encrypted it.
  *
- * @param defaultPageSize the page size of a list or query that names none
+ * @param defaultPageSize the page size of a list that names none
  * @param maxPageSize the largest page; a request for a larger one gets this size
- * @param maxDepth the most ancestors that a check or a query walks
  * @param tuplesPerRead the page size of Pyrite's reads of tuples from OpenFGA
  * @param pageTokenKey the AES key that encrypts page tokens
  * @param root the Tink {@link Aead} that encrypts the material of key versions; a declaration with
@@ -30,17 +29,16 @@ import javax.crypto.SecretKey;
  * needs them
  * @param clock the clock of every time that Pyrite stores and compares
  */
-public record PyriteServiceOptions(int defaultPageSize, int maxPageSize, int maxDepth, int tuplesPerRead,
+public record PyriteServiceOptions(int defaultPageSize, int maxPageSize, int tuplesPerRead,
     SecretKey pageTokenKey, Optional<Aead> root, Optional<Authentication> authentication, Clock clock) {
 
   private static final int DEFAULT_PAGE_SIZE = 50;
   private static final int MAX_PAGE_SIZE = 1000;
-  private static final int MAX_DEPTH = 64;
   private static final int TUPLES_PER_READ = 100;
   private static final int PAGE_TOKEN_KEY_BITS = 256;
 
   public PyriteServiceOptions {
-    if (defaultPageSize < 1 || maxPageSize < defaultPageSize || maxDepth < 1 || tuplesPerRead < 1) {
+    if (defaultPageSize < 1 || maxPageSize < defaultPageSize || tuplesPerRead < 1) {
       throw new IllegalArgumentException("Every limit is at least 1, and the largest page is at least the default.");
     }
     Objects.requireNonNull(pageTokenKey, "pageTokenKey");
@@ -50,11 +48,11 @@ public record PyriteServiceOptions(int defaultPageSize, int maxPageSize, int max
   }
 
   /**
-   * Creates the default options: a page size of 50, a largest page of 1000, a depth of 64, reads of 100 tuples, a
+   * Creates the default options: a page size of 50, a largest page of 1000, reads of 100 tuples, a
    * random page token key, no root key, no options of authentication, and the system clock in UTC.
    */
   public PyriteServiceOptions() {
-    this(DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_DEPTH, TUPLES_PER_READ, randomKey(), Optional.empty(),
+    this(DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TUPLES_PER_READ, randomKey(), Optional.empty(),
         Optional.empty(), Clock.systemUTC());
   }
 
@@ -66,7 +64,7 @@ public record PyriteServiceOptions(int defaultPageSize, int maxPageSize, int max
    * @return the options, with the other values unchanged
    */
   public PyriteServiceOptions withRoot(Aead root) {
-    return new PyriteServiceOptions(defaultPageSize, maxPageSize, maxDepth, tuplesPerRead, pageTokenKey,
+    return new PyriteServiceOptions(defaultPageSize, maxPageSize, tuplesPerRead, pageTokenKey,
         Optional.of(root), authentication, clock);
   }
 
@@ -77,7 +75,7 @@ public record PyriteServiceOptions(int defaultPageSize, int maxPageSize, int max
    * @return the options, with the other values unchanged
    */
   public PyriteServiceOptions withAuthentication(Authentication authentication) {
-    return new PyriteServiceOptions(defaultPageSize, maxPageSize, maxDepth, tuplesPerRead, pageTokenKey, root,
+    return new PyriteServiceOptions(defaultPageSize, maxPageSize, tuplesPerRead, pageTokenKey, root,
         Optional.of(authentication), clock);
   }
 
@@ -88,7 +86,7 @@ public record PyriteServiceOptions(int defaultPageSize, int maxPageSize, int max
    * @return the options, with the other values unchanged
    */
   public PyriteServiceOptions withClock(Clock clock) {
-    return new PyriteServiceOptions(defaultPageSize, maxPageSize, maxDepth, tuplesPerRead, pageTokenKey, root,
+    return new PyriteServiceOptions(defaultPageSize, maxPageSize, tuplesPerRead, pageTokenKey, root,
         authentication, clock);
   }
 

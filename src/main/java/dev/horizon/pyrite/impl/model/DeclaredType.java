@@ -1,17 +1,14 @@
 package dev.horizon.pyrite.impl.model;
 
-import dev.horizon.pyrite.schema.v1.Field;
 import dev.horizon.pyrite.schema.v1.Permissions;
 import dev.horizon.pyrite.schema.v1.Type;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-public record DeclaredType(Type type, Map<String, Definition> relations, Map<String, Field.Kind> fields) {
+public record DeclaredType(Type type, Map<String, Definition> relations) {
 
   public DeclaredType {
     relations = Map.copyOf(relations);
-    fields = Map.copyOf(fields);
   }
 
   public String name() {
@@ -30,10 +27,6 @@ public record DeclaredType(Type type, Map<String, Definition> relations, Map<Str
     return type.getParentsList();
   }
 
-  public String table() {
-    return type.getTable();
-  }
-
   public Permissions permissions() {
     return type.getPermissions();
   }
@@ -46,15 +39,15 @@ public record DeclaredType(Type type, Map<String, Definition> relations, Map<Str
     return type.getCreator();
   }
 
-  public Duration retention() {
-    return Duration.ofSeconds(type.getRetention().getSeconds(), type.getRetention().getNanos());
-  }
-
   public String resource(String id) {
     return plural() + "/" + id;
   }
 
   public String object(String id) {
     return singular() + ":" + id;
+  }
+
+  public String id(String resource) {
+    return resource.substring(plural().length() + 1);
   }
 }

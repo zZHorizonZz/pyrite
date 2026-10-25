@@ -1,43 +1,52 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.impl.resource.Resource;
 import io.vertx.core.Future;
 
 /**
- * A factor of an account, of the type {@code pyrite.dev/Factor}: a password, a TOTP secret, a passkey or a set of
- * recovery codes.
- *
- * <p>
- * An enrolment flow creates a factor as {@code PENDING}, and activates it when the flow completes. Only flows create
- * factors.
+ * A factor of an account: a password, an authenticator app, a passkey or recovery codes. A flow enrols a factor as
+ * pending, and activates it once it is proven; activating one replaces the active factor of its kind.
  */
-public interface Factor extends Resource {
+public interface Factor {
 
   /**
-   * Tells whether the factor is active and not removed.
+   * Gives the factor's name.
    *
-   * @return whether it is active
+   * @return the name, such as {@code factors/0b0d...}
+   */
+  String name();
+
+  /**
+   * Tells whether the factor proves the account.
+   *
+   * @return true when it is active and not removed
    */
   boolean isActive();
 
   /**
-   * Reads the factor's account.
+   * Gives the factor's account.
    *
    * @return the account
    */
   Future<Account> account();
 
   /**
-   * Activates a pending factor, and removes the active factor of the same kind that it replaces.
+   * Activates the factor, and removes the active factor of its kind.
    *
    * @return the active factor
    */
   Future<Factor> activate();
 
   /**
-   * Removes the factor.
+   * Removes the factor. The purge deletes it.
    *
-   * @return when removed
+   * @return a future that completes once it is removed
    */
   Future<Void> remove();
+
+  /**
+   * Gives the factor as a message.
+   *
+   * @return the message of {@code pyrite.authentication.v1}
+   */
+  dev.horizon.pyrite.authentication.v1.Factor message();
 }

@@ -4,7 +4,6 @@ import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.authentication.v1.AuthenticateRequest;
 import dev.horizon.pyrite.authentication.v1.Principal;
 import dev.horizon.pyrite.impl.UnaryHandler;
-import dev.horizon.pyrite.impl.model.TypeSystem;
 import dev.horizon.pyrite.impl.resource.Deployment;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
@@ -24,8 +23,8 @@ public final class AuthenticateHandler extends UnaryHandler<AuthenticateRequest,
   @Override
   protected Future<Principal> execute(AuthenticateRequest request) {
     return switch (request.getCredentialCase()) {
-      case SESSION_TOKEN -> deployment.schema().compose(schema -> schema.type(TypeSystem.SESSION,
-          SessionType.class).authenticate(request.getSessionToken()));
+      case SESSION_TOKEN -> deployment.schema().compose(schema -> schema.accounts()
+          .authenticate(request.getSessionToken()));
       case CREDENTIAL_NOT_SET -> throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names no"
           + " credential.");
     };

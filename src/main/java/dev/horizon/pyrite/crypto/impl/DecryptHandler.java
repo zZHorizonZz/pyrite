@@ -3,7 +3,6 @@ package dev.horizon.pyrite.crypto.impl;
 import dev.horizon.pyrite.crypto.v1.DecryptRequest;
 import dev.horizon.pyrite.crypto.v1.DecryptResponse;
 import dev.horizon.pyrite.impl.UnaryHandler;
-import dev.horizon.pyrite.impl.model.TypeSystem;
 import dev.horizon.pyrite.impl.resource.Deployment;
 import dev.horizon.pyrite.impl.resource.Subject;
 import io.vertx.core.Future;
@@ -23,8 +22,8 @@ public final class DecryptHandler extends UnaryHandler<DecryptRequest, DecryptRe
   @Override
   protected Future<DecryptResponse> execute(DecryptRequest request) {
     Subject subject = Subject.parse(request.getSubject());
-    return deployment.schema().compose(schema -> schema.type(TypeSystem.KEY, KeyType.class).encryption(request.getKey()))
-        .compose(key -> key.require(subject, "decrypter", request.getContext()).map(key))
+    return deployment.schema().compose(schema -> schema.keys().encryption(request.getKey()))
+        .compose(key -> key.resource().require(subject, "decrypter", request.getContext()).map(key))
         .compose(key -> key.decrypt(request.getCiphertext().toByteArray(),
             request.getAssociatedData().toByteArray()));
   }

@@ -1,37 +1,40 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.impl.resource.BaseResource;
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 
-abstract sealed class FactorImpl extends BaseResource
+abstract sealed class FactorImpl implements Factor
     permits PasswordFactor, TotpFactor, PasskeyFactor, RecoveryCodesFactor {
 
   static final String PENDING = "PENDING";
   static final String ACTIVE = "ACTIVE";
 
-  FactorImpl(FactorTypeImpl type, Row row) {
-    super(type, row);
+  private final AccountTypeImpl type;
+  private final Tables.Factor row;
+
+  FactorImpl(AccountTypeImpl type, Tables.Factor row) {
+    this.type = type;
+    this.row = row;
   }
 
   @Override
-  public FactorTypeImpl type() {
-    return (FactorTypeImpl) super.type();
+  public String name() {
+    return row.getName();
   }
 
+  @Override
   public boolean isActive() {
-    return ACTIVE.equals(field(FactorType.STATE)) && !isDeleted();
+    return ACTIVE.equals(row.getState()) && !row.hasDeleteTime();
   }
 
+  @Override
   public Future<Account> account() {
-    return parent().map(parent -> (Account) parent.orElseThrow());
+    return type.account(row.getParent());
   }
 
+  @Override
   public Future<Factor> activate() {
-    return account().compose(Account::factors).compose(factors -> {
+    return type.factors(row.getParent()).compose(factors -> {
       Future<Void> replaced = Future.succeededFuture();
       for (Factor factor : factors) {
         if (factor.getClass() == getClass() && factor.isActive()) {
@@ -42,23 +45,41 @@ abstract sealed class FactorImpl extends BaseResource
     }).compose(ignored -> markActive());
   }
 
+  @Override
   public Future<Void> remove() {
-    Instant now = type().schema().clock().instant();
-    return change(Map.of(DELETE_TIME, now, PURGE_TIME, now)).mapEmpty();
+    String now = type.schema().clock().instant().toString();
+    return change(row.toBuilder().setDeleteTime(now).setPurgeTime(now)).mapEmpty();
+  }
+
+  @Override
+  public dev.horizon.pyrite.authentication.v1.Factor message() {
+    return dev.horizon.pyrite.authentication.v1.Factor.newBuilder().setName(name()).setAccount(row.getParent())
+        .setKind(dev.horizon.pyrite.authentication.v1.Factor.Kind.valueOf(row.getKind())).build();
   }
 
   protected Future<Factor> markActive() {
-    Map<String, Object> changes = new HashMap<>();
-    changes.put(FactorType.STATE, ACTIVE);
-    changes.put(PURGE_TIME, null);
-    return change(changes).map(Factor.class::cast);
+    return change(row.toBuilder().setState(ACTIVE).clearPurgeTime());
+  }
+
+  protected AccountTypeImpl type() {
+    return type;
+  }
+
+  protected Tables.Factor row() {
+    return row;
   }
 
   protected byte[] secret() {
-    return field(FactorType.SECRET);
+    return row.getSecret().toByteArray();
   }
 
   protected long counter() {
-    return field(FactorType.COUNTER);
+    return row.getCounter();
+  }
+
+  protected Future<Factor> change(Tables.Factor.Builder changed) {
+    return type.factorRows().update(changed.setRevision(row.getRevision() + 1)
+        .setUpdateTime(type.schema().clock().instant().toString()).build(), row.getUid(), row.getRevision(), name())
+        .map(type::factor);
   }
 }

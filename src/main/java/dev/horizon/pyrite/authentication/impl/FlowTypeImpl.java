@@ -4,8 +4,6 @@ import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.PyriteServiceOptions;
 import dev.horizon.pyrite.authentication.v1.StartFlowRequest;
-import dev.horizon.pyrite.impl.model.TypeSystem;
-import dev.horizon.pyrite.impl.resource.Resource;
 import dev.horizon.pyrite.impl.resource.Schema;
 import dev.horizon.pyrite.impl.resource.Subject;
 import dev.horizon.pyrite.impl.storage.FlowBackend;
@@ -38,8 +36,8 @@ public final class FlowTypeImpl implements FlowType {
       Tables.Flow.Builder row = Tables.Flow.newBuilder().setId(UUID.randomUUID().toString())
           .setDefinition(definition.getName()).setRevision(1).setProofs(Evidence.NOTHING.json().encode())
           .setExpireTime(schema.clock().instant().plus(options().flowLifetime()).toString());
-      found.account().map(Resource::name).ifPresent(row::setAccount);
-      found.identifier().map(Resource::name).ifPresent(row::setIdentifier);
+      found.account().map(Account::name).ifPresent(row::setAccount);
+      found.identifier().map(Identifier::name).ifPresent(row::setIdentifier);
       return new FlowImpl(this, definition, row).enter();
     });
   }
@@ -64,7 +62,7 @@ public final class FlowTypeImpl implements FlowType {
   }
 
   AccountTypeImpl accounts() {
-    return schema.type(TypeSystem.ACCOUNT, AccountTypeImpl.class);
+    return schema.accounts();
   }
 
   PyriteServiceOptions.Authentication options() {
@@ -72,7 +70,7 @@ public final class FlowTypeImpl implements FlowType {
   }
 
   WebAuthn webAuthn() {
-    return schema.type(TypeSystem.FACTOR, FactorTypeImpl.class).webAuthn();
+    return accounts().webAuthn();
   }
 
   private FlowDefinition definition(String name) {
@@ -84,13 +82,13 @@ public final class FlowTypeImpl implements FlowType {
     return switch (definition.getInput()) {
       case IDENTIFIER -> identifier(request).compose(identifier -> identifier.isEmpty()
           ? Future.succeededFuture(new Found(Optional.empty(), Optional.empty()))
-          : schema.get(identifier.get().parentName().orElseThrow()).map(account -> new Found(account
-              .filter(candidate -> !candidate.isDeleted()).map(Account.class::cast), identifier)));
+          : accounts().account(identifier.get().account()).map(account -> new Found(Optional.of(account), identifier))
+              .recover(missing -> Future.succeededFuture(new Found(Optional.empty(), identifier))));
       case SUBJECT -> accounts().account(Subject.parse(request.getSubject()))
           .map(account -> new Found(Optional.of(account), Optional.empty()));
       case SUBJECT_IDENTIFIER -> accounts().account(Subject.parse(request.getSubject()))
           .compose(account -> identifier(request).map(identifier -> {
-            if (identifier.isEmpty() || !identifier.get().parentName().equals(Optional.of(account.name()))) {
+            if (identifier.isEmpty() || !identifier.get().account().equals(account.name())) {
               throw new PyriteException(GrpcStatus.NOT_FOUND, "The account " + account.name() + " has no "
                   + request.getIdentifierKind() + " " + request.getIdentifier() + ".");
             }
@@ -102,7 +100,10 @@ public final class FlowTypeImpl implements FlowType {
   }
 
   private Future<Optional<Identifier>> identifier(StartFlowRequest request) {
-    return schema.type(TypeSystem.IDENTIFIER, IdentifierType.class).find(request.getIdentifierKind(),
-        request.getIdentifier());
+    if (request.getIdentifier().isBlank()) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The flow " + request.getDefinition() + " starts from"
+          + " an identifier, and the request names none.");
+    }
+    return accounts().find(request.getIdentifierKind(), request.getIdentifier());
   }
 }

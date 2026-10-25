@@ -1,12 +1,13 @@
 package dev.horizon.pyrite.impl.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.TextFormat;
 import dev.horizon.pyrite.schema.v1.Declaration;
-import dev.horizon.pyrite.schema.v1.Field;
 import dev.horizon.pyrite.schema.v1.FlowDefinition;
+import dev.horizon.pyrite.schema.v1.IdentifierKind;
 import dev.horizon.pyrite.schema.v1.Stage;
 import dev.horizon.pyrite.schema.v1.Type;
 import dev.horizon.spectrum.openfga.v1.Condition;
@@ -100,7 +101,7 @@ class DeclarationRulesTest {
           rule("A type has no name", declaration -> project(declaration).setName("")),
           rule("is Pyrite's; a declaration does not declare it", declaration -> project(declaration)
               .setName("pyrite.dev/Project")),
-          rule("leaves plural, table and fields empty", declaration -> type(declaration, "pyrite.dev/Key")
+          rule("leaves plural empty", declaration -> type(declaration, "pyrite.dev/Key")
               .setPlural("keys")),
           rule("has the singular name", declaration -> project(declaration).getDefinitionBuilder()
               .setType("Project")),
@@ -109,17 +110,6 @@ class DeclarationRulesTest {
               .setType("group")),
           rule("has the plural name", declaration -> project(declaration).setPlural("pro-jects")),
           rule("has the plural name groups", declaration -> project(declaration).setPlural("groups")),
-          rule("has no table", declaration -> project(declaration).setTable("")),
-          rule("has a negative retention", declaration -> project(declaration).getRetentionBuilder()
-              .setSeconds(-1)),
-          rule("has the field Budget", declaration -> project(declaration).addFields(Field.newBuilder()
-              .setName("Budget").setKind(Field.Kind.INTEGER))),
-          rule("with no kind", declaration -> project(declaration).addFields(Field.newBuilder().setName("budget"))),
-          rule("twice", declaration -> project(declaration).addFields(Field.newBuilder().setName("billing_account")
-              .setKind(Field.Kind.STRING))),
-          rule("lacks the standard field purge_time", declaration -> project(declaration).removeFields(9)),
-          rule("lacks the standard field labels", declaration -> project(declaration).getFieldsBuilder(4)
-              .setKind(Field.Kind.STRING)),
           rule("has the parent type acme.dev/Folder", declaration -> project(declaration).setParents(0,
               "acme.dev/Folder")));
     }
@@ -181,12 +171,7 @@ class DeclarationRulesTest {
           rule("with direct types", declaration -> project(declaration).getDefinitionBuilder()
               .putRelations("reader", through("can_view", "member"))),
           rule("is named", declaration -> declaration.putConditions("not_expired", declaration.getConditionsMap()
-              .get("not_expired").toBuilder().setName("expired").build())),
-          rule("which reads from parent", declaration -> {
-            project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
-            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes(
-                "project", "viewer"));
-          }));
+              .get("not_expired").toBuilder().setName("expired").build())));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -203,8 +188,6 @@ class DeclarationRulesTest {
 
     static Stream<Arguments> rules() {
       return Stream.of(
-          rule("needs the relation can_read", declaration -> project(declaration).getPermissionsBuilder()
-              .setRead("can_read")),
           rule("needs the relation can_grant", declaration -> project(declaration).getPermissionsBuilder()
               .setGrant("can_grant")),
           rule("so its create permission is empty", declaration -> type(declaration, "acme.dev/Organization")
@@ -306,6 +289,52 @@ class DeclarationRulesTest {
       declaration.removeTypes(declaration.getTypesCount() - 1);
 
       assertThatCode(() -> new TypeSystemImpl(declaration.build())).doesNotThrowAnyException();
+    }
+  }
+
+  @Nested
+  @DisplayName("Identifier kinds")
+  class IdentifierKinds {
+
+    private static IdentifierKind kind(String name, String match, String normalize) {
+      return IdentifierKind.newBuilder().setName(name).setMatch(match).setNormalize(normalize).build();
+    }
+
+    static Stream<Arguments> rules() {
+      return Stream.of(
+          rule("is not named like", declaration -> declaration.addIdentifierKinds(kind("Badge", "true", ""))),
+          rule("is declared twice", declaration -> declaration.addIdentifierKinds(declaration.getIdentifierKinds(0))),
+          rule("has no match", declaration -> declaration.addIdentifierKinds(kind("badge", "", ""))),
+          rule("The match of the identifier kind badge is not a CEL expression", declaration -> declaration
+              .addIdentifierKinds(kind("badge", "value.size(", ""))),
+          rule("The match of the identifier kind badge is not a CEL expression", declaration -> declaration
+              .addIdentifierKinds(kind("badge", "value", ""))),
+          rule("The normalize of the identifier kind badge is not a CEL expression", declaration -> declaration
+              .addIdentifierKinds(kind("badge", "true", "value.size()"))),
+          rule("starts from an identifier, but the declaration has no identifier kinds", declaration -> declaration
+              .clearIdentifierKinds()),
+          rule("but no identifier kind of the declaration receives codes", declaration -> declaration
+              .clearIdentifierKinds().addIdentifierKinds(kind("username", "true", ""))));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("rules")
+    @DisplayName("an identifier kind that breaks a rule is refused")
+    void refused(String message, Consumer<Declaration.Builder> breaking) throws Exception {
+      broken(breaking, message);
+    }
+
+    @Test
+    @DisplayName("a value takes the first kind whose match it meets, normalized as that kind says")
+    void matched() throws Exception {
+      TypeSystemImpl types = new TypeSystemImpl(acme());
+
+      assertThat(types.identifierKindOf(" Anne@Acme.dev ").map(DeclaredKind::name)).contains("email");
+      assertThat(types.identifierKindOf(" Anne@Acme.dev ").flatMap(kind -> kind.normalized(" Anne@Acme.dev ")))
+          .contains("anne@acme.dev");
+      assertThat(types.identifierKindOf("+420 777 123 456").map(DeclaredKind::name)).contains("phone");
+      assertThat(types.identifierKindOf("Anne_Smith").map(DeclaredKind::name)).contains("username");
+      assertThat(types.identifierKindOf("!!")).isEmpty();
     }
   }
 

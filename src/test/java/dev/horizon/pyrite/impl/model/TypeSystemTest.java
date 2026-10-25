@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.TextFormat;
 import dev.horizon.pyrite.schema.v1.Declaration;
+import dev.horizon.spectrum.openfga.v1.RelationReference;
 import dev.horizon.spectrum.openfga.v1.TypeDefinition;
 import dev.horizon.spectrum.openfga.v1.Userset;
 import dev.horizon.spectrum.openfga.v1.WriteAuthorizationModelRequest;
@@ -13,36 +14,24 @@ import org.junit.jupiter.api.Test;
 
 class TypeSystemTest {
 
-  private static final String STANDARD = """
-      fields { name: "name" kind: STRING }
-      fields { name: "uid" kind: STRING }
-      fields { name: "parent" kind: STRING }
-      fields { name: "display_name" kind: STRING }
-      fields { name: "labels" kind: MAP }
-      fields { name: "revision" kind: INTEGER }
-      fields { name: "create_time" kind: TIMESTAMP }
-      fields { name: "update_time" kind: TIMESTAMP }
-      fields { name: "delete_time" kind: TIMESTAMP }
-      fields { name: "purge_time" kind: TIMESTAMP }
-      """;
   private static final String ORGANIZATION = """
       types {
-        name: "acme.dev/Organization" plural: "organizations" table: "acme_organization" %s
+        name: "acme.dev/Organization" plural: "organizations"
         definition {
           type: "organization"
           relations { key: "viewer" value { this {} } }
           metadata { relations { key: "viewer" value { directly_related_user_types { type: "user" } } } }
         }
-        permissions { read: "viewer" update: "viewer" delete: "viewer" grant: "viewer" }
+        permissions { grant: "viewer" }
       }
-      """.formatted(STANDARD);
+      """;
 
   @Test
-  @DisplayName("A relation that reads from the parent reaches OpenFGA as its direct types")
-  void split() throws Exception {
+  @DisplayName("A type with parents gets the relation parent, and keeps its relations that read from it")
+  void parent() throws Exception {
     TypeSystem types = new TypeSystemImpl(declaration(ORGANIZATION + """
         types {
-          name: "acme.dev/Project" plural: "projects" parents: "acme.dev/Organization" table: "acme_project" %s
+          name: "acme.dev/Project" plural: "projects" parents: "acme.dev/Organization"
           definition {
             type: "project"
             relations { key: "owner" value { this {} } }
@@ -56,32 +45,29 @@ class TypeSystemTest {
                 }
               }
             }
-            relations { key: "summary" value { computed_userset { relation: "owner" } } }
             metadata {
               relations { key: "owner" value { directly_related_user_types { type: "user" } } }
               relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
             }
           }
-          permissions { create: "viewer" read: "viewer" update: "viewer" delete: "viewer" grant: "viewer" }
+          permissions { create: "viewer" grant: "viewer" }
         }
-        """.formatted(STANDARD)));
+        """));
     WriteAuthorizationModelRequest model = types.model("store");
     TypeDefinition project = model.getTypeDefinitionsList().stream()
         .filter(definition -> definition.getType().equals("project")).findFirst().orElseThrow();
+    TypeDefinition organization = model.getTypeDefinitionsList().stream()
+        .filter(definition -> definition.getType().equals("organization")).findFirst().orElseThrow();
 
-    assertThat(project.getRelationsMap().get("viewer").getUsersetCase()).isEqualTo(Userset.UsersetCase.THIS);
-    assertThat(project.getRelationsMap().get("summary").getComputedUserset().getRelation()).isEqualTo("owner");
-    assertThat(project.getRelationsMap()).doesNotContainKey("parent");
+    assertThat(project.getRelationsMap().get("viewer").getUnion().getChildList()).extracting(Userset::getUsersetCase)
+        .containsExactly(Userset.UsersetCase.THIS, Userset.UsersetCase.COMPUTED_USERSET,
+            Userset.UsersetCase.TUPLE_TO_USERSET);
+    assertThat(project.getRelationsMap().get("parent").getUsersetCase()).isEqualTo(Userset.UsersetCase.THIS);
+    assertThat(project.getMetadata().getRelationsMap().get("parent").getDirectlyRelatedUserTypesList())
+        .extracting(RelationReference::getType).containsExactly("organization");
+    assertThat(organization.getRelationsMap()).doesNotContainKey("parent");
     assertThat(model.getTypeDefinitionsList()).extracting(TypeDefinition::getType)
         .containsExactly("user", "organization", "project");
-  }
-
-  @Test
-  @DisplayName("A type has every standard field")
-  void standardFields() {
-    assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace(
-        "fields { name: \"revision\" kind: INTEGER }", ""))))
-        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("revision");
   }
 
   @Test
@@ -98,49 +84,19 @@ class TypeSystemTest {
         .hasMessageContaining("no parents");
     assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace("{ type: \"user\" }",
         "{ type: \"user\" condition: \"unknown\" }")))).hasMessageContaining("unknown");
-    assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace("update: \"viewer\"",
-        "update: \"editor\"")))).hasMessageContaining("editor");
+    assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace("grant: \"viewer\"",
+        "grant: \"editor\"")))).hasMessageContaining("editor");
   }
 
   @Test
-  @DisplayName("A set that is granted cannot read from the parent")
-  void grantedSet() {
-    assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION + """
-        types {
-          name: "acme.dev/Team" plural: "teams" parents: "acme.dev/Organization" table: "acme_team" %s
-          definition {
-            type: "team"
-            relations {
-              key: "viewer"
-              value {
-                union {
-                  child { this {} }
-                  child { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "viewer" } } }
-                }
-              }
-            }
-            metadata { relations { key: "viewer" value { directly_related_user_types { type: "user" } } } }
-          }
-          permissions { create: "viewer" read: "viewer" update: "viewer" delete: "viewer" grant: "viewer" }
-        }
-        types {
-          name: "acme.dev/Document" plural: "documents" table: "acme_document" %s
-          definition {
-            type: "document"
-            relations { key: "viewer" value { this {} } }
-            metadata {
-              relations {
-                key: "viewer"
-                value {
-                  directly_related_user_types { type: "user" }
-                  directly_related_user_types { type: "team" relation: "viewer" }
-                }
-              }
-            }
-          }
-          permissions { read: "viewer" update: "viewer" delete: "viewer" grant: "viewer" }
-        }
-        """.formatted(STANDARD, STANDARD)))).hasMessageContaining("team#viewer");
+  @DisplayName("A type does not declare the relation parent, which is Pyrite's")
+  void reserved() {
+    assertThatThrownBy(() -> new TypeSystemImpl(declaration(ORGANIZATION.replace("key: \"viewer\" value { this {} }",
+        "key: \"parent\" value { this {} }").replace(
+            "relations { key: \"viewer\" value {"
+                + " directly_related_user_types",
+            "relations { key: \"parent\" value { directly_related_user_types")
+        .replace("grant: \"viewer\"", "grant: \"parent\"")))).hasMessageContaining("parent");
   }
 
   private static Declaration declaration(String text) throws TextFormat.ParseException {

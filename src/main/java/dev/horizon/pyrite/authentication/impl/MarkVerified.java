@@ -8,7 +8,7 @@ final class MarkVerified implements Effect {
   @Override
   public Future<Void> apply(FlowImpl flow, AccountImpl account, Result.Builder result) {
     return flow.identifier().compose(identifier -> identifier.orElseThrow().verify()).map(verified -> {
-      result.addResources(verified.toMessage());
+      result.addIdentifiers(verified.message());
       return null;
     });
   }

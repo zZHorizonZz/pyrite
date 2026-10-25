@@ -22,5 +22,13 @@ public final class AuthenticationServiceImpl extends HandlerService implements A
     bind(StartFlowHandler.SERVICE_METHOD, new StartFlowHandler(deployment));
     bind(ContinueFlowHandler.SERVICE_METHOD, new ContinueFlowHandler(deployment));
     bind(AuthenticateHandler.SERVICE_METHOD, new AuthenticateHandler(deployment));
+    bind(CreateAccountHandler.SERVICE_METHOD, new CreateAccountHandler(deployment));
+    bind(GetAccountHandler.SERVICE_METHOD, new GetAccountHandler(deployment));
+    bind(DeleteAccountHandler.SERVICE_METHOD, new DeleteAccountHandler(deployment));
+    bind(AddIdentifierHandler.SERVICE_METHOD, new AddIdentifierHandler(deployment));
+    bind(ListIdentifiersHandler.SERVICE_METHOD, new ListIdentifiersHandler(deployment));
+    bind(GetSessionHandler.SERVICE_METHOD, new GetSessionHandler(deployment));
+    bind(EndSessionHandler.SERVICE_METHOD, new EndSessionHandler(deployment));
+    bind(PurgeHandler.SERVICE_METHOD, new PurgeHandler(deployment));
   }
 }

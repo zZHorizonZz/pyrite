@@ -18,7 +18,6 @@ import io.vertx.grpc.server.StatusException;
 public abstract class UnaryHandler<Req extends Message, Resp extends Message>
     implements Handler<GrpcServerRequest<Req, Resp>> {
 
-  public static final ServiceName DATA = ServiceName.create("pyrite.data.v1", "Data");
   public static final ServiceName ACCESS = ServiceName.create("pyrite.access.v1", "Access");
   public static final ServiceName CRYPTOGRAPHY = ServiceName.create("pyrite.crypto.v1", "Cryptography");
   public static final ServiceName SCHEMA = ServiceName.create("pyrite.schema.v1", "Schema");

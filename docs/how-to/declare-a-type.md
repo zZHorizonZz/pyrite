@@ -1,7 +1,7 @@
 # Declare a type
 
-Declare a type to store a new kind of resource, such as a project with a billing account. The type names its table
-and fields, its relations, and the relation that each method checks.
+Declare a type so that Pyrite knows a new kind of resource, such as a project. The type names its parents, its
+relations, and the relations that Pyrite checks. Your application keeps the resources themselves, in its own tables.
 
 ## Before you begin
 
@@ -10,36 +10,19 @@ and fields, its relations, and the relation that each method checks.
 
 ## Declare the type
 
-1. Create the table, with the standard columns and one column per field of your own. For more information, refer to
-   [Create the tables](create-the-tables.md).
-
-2. Add a `types` entry with the name, the plural, the parents and the table:
+1. Add a `types` entry with the name, the plural and the parents:
 
    ```textproto
    types {
      name: "acme.dev/Project"
      plural: "projects"
      parents: "acme.dev/Organization"
-     table: "acme_project"
    ```
 
-3. List every column as a field: the ten standard fields, and your own:
+   The plural is the first segment of the resources' names, such as `projects/ledger`. Use the same names in your
+   tables.
 
-   ```textproto
-     fields { name: "name" kind: STRING }
-     fields { name: "uid" kind: STRING }
-     fields { name: "parent" kind: STRING }
-     fields { name: "display_name" kind: STRING }
-     fields { name: "labels" kind: MAP }
-     fields { name: "revision" kind: INTEGER }
-     fields { name: "create_time" kind: TIMESTAMP }
-     fields { name: "update_time" kind: TIMESTAMP }
-     fields { name: "delete_time" kind: TIMESTAMP }
-     fields { name: "purge_time" kind: TIMESTAMP }
-     fields { name: "billing_account" kind: STRING }
-   ```
-
-4. Write the OpenFGA type definition. Its `type` is the singular name. A relation with `this` lists the types that
+2. Write the OpenFGA type definition. Its `type` is the singular name. A relation with `this` lists the types that
    take it directly in `metadata`. Here the editors of a project include the admins of its organization:
 
    ```textproto
@@ -74,20 +57,21 @@ and fields, its relations, and the relation that each method checks.
      }
    ```
 
-5. Name the relation that each method checks, the relations that can be granted, the relation of the creator, and
-   the retention of deleted resources:
+   Do not declare the relation `parent`. Pyrite adds it to every type that has parents.
+
+3. Name the relations that Pyrite checks, the relations that can be granted, and the relation of the creator:
 
    ```textproto
-     permissions { create: "admin" read: "viewer" update: "editor" delete: "owner" grant: "owner" }
+     permissions { create: "admin" grant: "owner" }
      grantable: ["owner", "editor", "viewer"]
      creator: "owner"
-     retention { seconds: 2592000 }
    }
    ```
 
-   `create` is a relation of the parent type. The others are relations of this type.
+   `create` is a relation of the parent type, which `CreateObject` checks on the parent. `grant` is a relation of
+   this type, which the grant methods check on the resource.
 
-6. Write the declaration:
+4. Write the declaration:
 
    ```java
    schema.writeDeclaration(WriteDeclarationRequest.newBuilder().setDeclaration(declaration).build()).await();
@@ -95,19 +79,22 @@ and fields, its relations, and the relation that each method checks.
 
 ## Check the type
 
-Create a resource of the type, and read its field back:
+Make a resource of the type known, and check a relation on it:
 
 ```java
-Resource ledger = data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne")
-    .setParent("organizations/acme").setResourceId("ledger").setResource(Resource.newBuilder()
-        .setType("acme.dev/Project").putFields("billing_account", Value.newBuilder().setStringValue("b-1").build()))
-    .build()).await();
-System.out.println(ledger.getFieldsMap().get("billing_account").getStringValue());
+access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("projects/ledger")
+    .setParent("organizations/acme").build()).await();
+boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:anne").setObject("projects/ledger")
+    .setPermission("editor").build()).await().getAllowed();
+System.out.println(allowed);
 ```
 
 ```txt
-b-1
+true
 ```
+
+Anne is an editor twice over: she is the project's `owner`, the type's `creator` relation, and an `admin` of its
+organization.
 
 When the declaration breaks a rule, `WriteDeclaration` fails with `INVALID_ARGUMENT`, and the message names the type
 and the rule. For every rule, refer to [Declaration](../reference/declaration.md).

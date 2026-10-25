@@ -1,12 +1,12 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
 import java.nio.charset.StandardCharsets;
 
 final class PasswordFactor extends FactorImpl implements Factor {
 
-  PasswordFactor(FactorTypeImpl type, Row row) {
+  PasswordFactor(AccountTypeImpl type, Tables.Factor row) {
     super(type, row);
   }
 

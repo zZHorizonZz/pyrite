@@ -3,16 +3,43 @@ syntax = "proto3";
 package pyrite.crypto.v1;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "CryptoProto";
 option java_package = "dev.horizon.pyrite.crypto.v1";
 
-// The operations of keys, the resources pyrite.dev/Key. A key's purpose decides what it does: an encryption key
+// Keys, the resources pyrite.dev/Key, and their operations. A key's purpose decides what it does: an encryption key
 // encrypts and decrypts, a MAC key and a signing key sign and verify. Every call runs as its subject, which needs the
-// relation of the operation on the key: encrypter, decrypter, signer or verifier.
+// relation of the operation on the key: encrypter, decrypter, signer or verifier to use it, viewer to read it, and
+// admin to change it.
 service Cryptography {
+  // Creates a key with its first version. The subject needs the create permission of pyrite.dev/Key on the parent,
+  // and gets the relation that the type grants its creator.
+  rpc CreateKey(CreateKeyRequest) returns (Key);
+
+  // Gives a key.
+  rpc GetKey(GetKeyRequest) returns (Key);
+
+  // Changes how often a key rotates.
+  rpc UpdateKey(UpdateKeyRequest) returns (Key);
+
+  // Makes a new version of a key and makes it the primary one, which encrypts and signs from then on.
+  rpc RotateKey(RotateKeyRequest) returns (Key);
+
+  // Lists the versions of a key, with the public key of each version of a signing key.
+  rpc ListKeyVersions(ListKeyVersionsRequest) returns (ListKeyVersionsResponse);
+
+  // Enables or disables a version. A disabled version neither decrypts nor verifies. The primary version cannot be
+  // disabled; rotate the key first.
+  rpc UpdateKeyVersion(UpdateKeyVersionRequest) returns (KeyVersion);
+
+  // Destroys a version. Nothing that it encrypted can be decrypted again. The primary version cannot be destroyed;
+  // rotate the key first.
+  rpc DeleteKeyVersion(DeleteKeyVersionRequest) returns (google.protobuf.Empty);
+
   // Encrypts with the key's primary version, under associated data that decrypting has to name again.
   rpc Encrypt(EncryptRequest) returns (EncryptResponse);
 
@@ -172,4 +199,160 @@ message Rejected {
     EXPIRED = 9;
     NOT_YET_VALID = 10;
   }
+}
+
+message Key {
+  // The name, such as keys/payments.
+  string name = 1;
+
+  // The resource it is under; empty for a key at the top.
+  string parent = 2;
+
+  Purpose purpose = 3;
+
+  Algorithm algorithm = 4;
+
+  // How often the key rotates on its own; zero for never.
+  google.protobuf.Duration rotation_period = 5;
+
+  // When the key rotates next; unset when it does not rotate on its own.
+  google.protobuf.Timestamp next_rotation_time = 6;
+
+  // The name of the version that encrypts and signs, such as keyVersions/payments-2.
+  string primary_version = 7;
+
+  // The revision that an update names.
+  int64 revision = 8;
+
+  google.protobuf.Timestamp create_time = 9;
+
+  google.protobuf.Timestamp update_time = 10;
+
+  enum Purpose {
+    PURPOSE_UNSPECIFIED = 0;
+    ENCRYPTION = 1;
+    MAC = 2;
+    SIGNING = 3;
+  }
+}
+
+// The algorithm of a key, which decides its purpose: AES256_GCM encrypts, HMAC_SHA256 is a MAC, and RS256, ES256 and
+// EDDSA sign.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  AES256_GCM = 1;
+  HMAC_SHA256 = 2;
+  RS256 = 3;
+  ES256 = 4;
+  EDDSA = 5;
+}
+
+message KeyVersion {
+  // The name, such as keyVersions/payments-2.
+  string name = 1;
+
+  int64 number = 2;
+
+  State state = 3;
+
+  Algorithm algorithm = 4;
+
+  // The public key as a JWK, for a version of a signing key.
+  google.protobuf.Struct public_key = 5;
+
+  // The revision that an update names.
+  int64 revision = 6;
+
+  google.protobuf.Timestamp create_time = 7;
+
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
+}
+
+message CreateKeyRequest {
+  string subject = 1;
+
+  // The key's id, the last segment of its name.
+  string key_id = 2;
+
+  // The resource it is under; empty for a key at the top.
+  string parent = 3;
+
+  Algorithm algorithm = 4;
+
+  // How often the key rotates on its own; unset or zero for never.
+  google.protobuf.Duration rotation_period = 5;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 6;
+}
+
+message GetKeyRequest {
+  string subject = 1;
+
+  string name = 2;
+
+  google.protobuf.Struct context = 3;
+}
+
+message UpdateKeyRequest {
+  string subject = 1;
+
+  string name = 2;
+
+  // The new rotation period; zero for never.
+  google.protobuf.Duration rotation_period = 3;
+
+  // The key's revision that the update changes.
+  int64 revision = 4;
+
+  google.protobuf.Struct context = 5;
+}
+
+message RotateKeyRequest {
+  string subject = 1;
+
+  string name = 2;
+
+  google.protobuf.Struct context = 3;
+}
+
+message ListKeyVersionsRequest {
+  string subject = 1;
+
+  // The key's name.
+  string key = 2;
+
+  google.protobuf.Struct context = 3;
+}
+
+message ListKeyVersionsResponse {
+  // The versions, oldest first.
+  repeated KeyVersion versions = 1;
+}
+
+message UpdateKeyVersionRequest {
+  string subject = 1;
+
+  // The version's name.
+  string name = 2;
+
+  KeyVersion.State state = 3;
+
+  // The version's revision that the update changes.
+  int64 revision = 4;
+
+  google.protobuf.Struct context = 5;
+}
+
+message DeleteKeyVersionRequest {
+  string subject = 1;
+
+  // The version's name.
+  string name = 2;
+
+  google.protobuf.Struct context = 3;
 }

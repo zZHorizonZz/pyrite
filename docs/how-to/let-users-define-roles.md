@@ -10,8 +10,7 @@ pattern.
 ## Before you begin
 
 - Declare the type of the resources that roles apply to, such as `acme.dev/Organization` and `acme.dev/Project`.
-- Create the tables `acme_role` and `acme_binding`, with the standard columns. For more information, refer to
-  [Create the tables](create-the-tables.md).
+- Keep roles in a table of your application, with what people see of them, such as the name "Stock admin".
 
 ## Declare roles and bindings
 
@@ -30,7 +29,7 @@ pattern.
        relations { key: "can_manage_stock" value { directly_related_user_types { type: "user" wildcard {} } } }
      }
    }
-   permissions { create: "admin" read: "admin" update: "admin" delete: "admin" grant: "admin" }
+   permissions { create: "admin" grant: "admin" }
    grantable: ["can_manage_stock"]
    ```
 
@@ -60,7 +59,7 @@ pattern.
        relations { key: "member" value { directly_related_user_types { type: "user" } } }
      }
    }
-   permissions { create: "admin" read: "admin" update: "admin" delete: "admin" grant: "admin" }
+   permissions { create: "admin" grant: "admin" }
    grantable: ["role", "member"]
    ```
 
@@ -84,20 +83,15 @@ pattern.
 
 4. Write the declaration.
 
-A relation of a binding or a role must not read from the parent. Pyrite walks the parents of the resource that you
-check, not of the bindings that it reaches.
-
 ## Define a role and bind it
 
-An administrator of the organization does these steps at runtime, with the data and access services.
+An administrator of the organization does these steps at runtime, through your application and the access service.
 
-1. Create the role:
+1. Create the role in your table, with the name "Stock admin", and make it known:
 
    ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-       .setResourceId("stock-admin").setResource(Resource.newBuilder().setType("acme.dev/Role")
-           .putFields("display_name", Value.newBuilder().setStringValue("Stock admin").build()))
-       .build()).await();
+   access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("roles/stock-admin")
+       .setParent("organizations/acme").build()).await();
    ```
 
 2. Give the role its permissions, by granting each one to every user on the role:
@@ -107,11 +101,11 @@ An administrator of the organization does these steps at runtime, with the data 
        .setObject("roles/stock-admin").setRelation("can_manage_stock").setGrantee("user:*")).build()).await();
    ```
 
-3. Create a binding, and give it the role and a member:
+3. Make a binding known, and give it the role and a member:
 
    ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-       .setResourceId("stock").setResource(Resource.newBuilder().setType("acme.dev/Binding")).build()).await();
+   access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("bindings/stock")
+       .setParent("organizations/acme").build()).await();
    access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
        .setObject("bindings/stock").setRelation("role").setGrantee("role:stock-admin")).build()).await();
    access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
@@ -137,8 +131,8 @@ boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:anne")
     .setObject("projects/ledger").setPermission("can_manage_stock").build()).await().getAllowed();
 ```
 
-`allowed` is `true`. A query of projects with the permission `can_manage_stock` returns the organization's projects
-for Bob. A binding attached to `projects/ledger` instead applies to that project only.
+`allowed` is `true`. `ListObjects` of `acme.dev/Project` with the permission `can_manage_stock` returns the
+organization's projects for Bob. A binding attached to `projects/ledger` instead applies to that project only.
 
 ## Related resources
 

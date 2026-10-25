@@ -4,7 +4,6 @@ import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.crypto.v1.VerifyRequest;
 import dev.horizon.pyrite.crypto.v1.VerifyResponse;
 import dev.horizon.pyrite.impl.UnaryHandler;
-import dev.horizon.pyrite.impl.model.TypeSystem;
 import dev.horizon.pyrite.impl.resource.Deployment;
 import dev.horizon.pyrite.impl.resource.Subject;
 import io.vertx.core.Future;
@@ -29,8 +28,8 @@ public final class VerifyHandler extends UnaryHandler<VerifyRequest, VerifyRespo
       throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names neither a signature nor a token to"
           + " verify.");
     }
-    return deployment.schema().compose(schema -> schema.type(TypeSystem.KEY, KeyType.class).signing(request.getKey()))
-        .compose(key -> key.require(subject, "verifier", request.getContext()).map(key))
+    return deployment.schema().compose(schema -> schema.keys().signing(request.getKey()))
+        .compose(key -> key.resource().require(subject, "verifier", request.getContext()).map(key))
         .compose(key -> request.hasDetached()
             ? key.verify(request.getDetached().getData().toByteArray(),
                 request.getDetached().getSignature().toByteArray(), request.getDetached().getKeyVersion())

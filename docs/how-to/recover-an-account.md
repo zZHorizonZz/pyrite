@@ -29,10 +29,10 @@ recovery also ends every session of the account, in case someone else holds one.
 
    ```java
    Flow flow = authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("recover")
-       .setIdentifierKind(IdentifierKind.EMAIL).setIdentifier("anne@acme.dev").build()).await();
+       .setIdentifierKind("email").setIdentifier("anne@acme.dev").build()).await();
    ```
 
-3. Send each of the flow's deliveries to its address, as in
+3. Send each of the flow's deliveries to its `to`, by its `kind`, as in
    [Verify an email address](verify-an-email-address.md).
 
 4. Answer with the code that the person types. The flow moves to the enrolment stage:

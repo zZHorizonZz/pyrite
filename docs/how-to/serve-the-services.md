@@ -1,6 +1,6 @@
 # Serve the services
 
-Each of Pyrite's five services is a Vert.x gRPC service. Add the ones that you use to the server that your callers
+Each of Pyrite's four services is a Vert.x gRPC service. Add the ones that you use to the server that your callers
 reach. An event bus server serves callers in the same Vert.x instance or cluster. A gRPC server serves callers over
 the network.
 
@@ -28,15 +28,20 @@ the network.
    ```java
    EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await();
    server.addService(SchemaService.create(vertx, pool, driver, openFga, options));
-   server.addService(DataService.create(vertx, pool, driver, openFga, options));
    server.addService(AccessService.create(vertx, pool, driver, openFga, options));
+   server.addService(CryptographyService.create(vertx, pool, driver, openFga, options));
+   server.addService(AuthenticationService.create(vertx, pool, driver, openFga, options));
    ```
+
+   Add only the services that you use. Keys need a root key in the options, and accounts need the options of
+   authentication. For more information, refer to [Give Pyrite a root key](#give-pyrite-a-root-key) and
+   [Sign in with a password](sign-in-with-a-password.md#set-up-accounts).
 
 4. Call them from any verticle of the Vert.x instance, or of the cluster:
 
    ```java
    EventBusGrpcClient client = EventBusGrpcClient.client(vertx).await();
-   DataGrpcClient data = DataGrpcClient.create(client);
+   AccessGrpcClient access = AccessGrpcClient.create(client);
    ```
 
 ## Serve the services over gRPC
@@ -48,15 +53,15 @@ your gateway, on a network that others cannot reach.
 
    ```java
    GrpcServer grpc = GrpcServer.server(vertx);
-   grpc.addService(DataService.create(vertx, pool, driver, openFga, options));
    grpc.addService(AccessService.create(vertx, pool, driver, openFga, options));
+   grpc.addService(CryptographyService.create(vertx, pool, driver, openFga, options));
    vertx.createHttpServer().requestHandler(grpc).listen(9090).await();
    ```
 
 2. Call them with a gRPC client:
 
    ```java
-   DataGrpcClient data = DataGrpcClient.create(GrpcClient.client(vertx),
+   AccessGrpcClient access = AccessGrpcClient.create(GrpcClient.client(vertx),
        SocketAddress.inetSocketAddress(9090, "pyrite.internal"));
    ```
 

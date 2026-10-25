@@ -11,8 +11,8 @@ import com.google.protobuf.StringValue;
 import dev.horizon.pyrite.PyriteTest;
 import dev.horizon.pyrite.authentication.v1.CodeAnswer;
 import dev.horizon.pyrite.authentication.v1.ContinueFlowRequest;
+import dev.horizon.pyrite.authentication.v1.Factor;
 import dev.horizon.pyrite.authentication.v1.Flow;
-import dev.horizon.pyrite.authentication.v1.IdentifierKind;
 import dev.horizon.pyrite.authentication.v1.PasswordAnswer;
 import dev.horizon.pyrite.authentication.v1.StartFlowRequest;
 import io.vertx.grpc.common.GrpcStatus;
@@ -60,11 +60,14 @@ class FlowTest extends PyriteTest {
     }
 
     @Test
-    @DisplayName("a flow that takes an identifier needs one")
-    void identifier() {
+    @DisplayName("a flow that takes an identifier needs one, whose kind the declaration's matches find when the request"
+        + " names none")
+    void identifier() throws Exception {
       assertThat(status(() -> pyrite.start("", "sign-in", ""))).isEqualTo(GrpcStatus.INVALID_ARGUMENT);
-      assertThat(status(() -> pyrite.authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in")
-          .setIdentifier("anne@acme.dev").build()).await(TIMEOUT))).isEqualTo(GrpcStatus.INVALID_ARGUMENT);
+      Flow started = pyrite.authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in")
+          .setIdentifier("Anne@Acme.dev").build()).await(TIMEOUT);
+      assertThat(pyrite.answer(started, PasswordAnswer.newBuilder().setPassword(PASSWORD).build()).getResult().getAccount())
+          .isEqualTo("accounts/anne");
     }
 
     @Test
@@ -80,7 +83,7 @@ class FlowTest extends PyriteTest {
     @DisplayName("a flow of a phone number takes a valid number")
     void phone() {
       assertThat(status(() -> pyrite.authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in")
-          .setIdentifierKind(IdentifierKind.PHONE).setIdentifier("not a number").build()).await(TIMEOUT)))
+          .setIdentifierKind("phone").setIdentifier("not a number").build()).await(TIMEOUT)))
           .isEqualTo(GrpcStatus.INVALID_ARGUMENT);
     }
   }
@@ -183,27 +186,16 @@ class FlowTest extends PyriteTest {
   class Factors {
 
     @Test
-    @DisplayName("a factor is enrolled only by a flow")
-    void created() {
-      assertThat(status(() -> pyrite.create(ANNE, "accounts/anne", "pyrite.dev/Factor", "mine",
-          java.util.Map.of()))).isEqualTo(GrpcStatus.FAILED_PRECONDITION);
-    }
+    @DisplayName("a flow that enrols a factor names it and its account in its result")
+    void reported() throws Exception {
+      Flow done = pyrite.answer(pyrite.start(ANNE, "enrol-password", ""), PasswordAnswer.newBuilder()
+          .setPassword("another correct horse battery").build());
 
-    @Test
-    @DisplayName("a factor's secret is never returned")
-    void hidden() throws Exception {
-      assertThat(pyrite.query(dev.horizon.pyrite.data.v1.QueryResourcesRequest.newBuilder().setSubject(ANNE)
-          .setType("pyrite.dev/Factor").build())).hasSize(1);
-      assertThat(pyrite.data.queryResources(dev.horizon.pyrite.data.v1.QueryResourcesRequest.newBuilder()
-          .setSubject(ANNE).setType("pyrite.dev/Factor").build()).await(TIMEOUT).getResources(0).getFieldsMap())
-          .doesNotContainKey("secret");
-    }
-
-    @Test
-    @DisplayName("another principal cannot read an account's factors")
-    void privacy() throws Exception {
-      assertThat(pyrite.query(dev.horizon.pyrite.data.v1.QueryResourcesRequest.newBuilder().setSubject("user:bob")
-          .setType("pyrite.dev/Factor").build())).isEmpty();
+      assertThat(done.getResult().getAccount()).isEqualTo("accounts/anne");
+      assertThat(done.getResult().getFactorsList()).singleElement().satisfies(factor -> {
+        assertThat(factor.getKind()).isEqualTo(Factor.Kind.PASSWORD);
+        assertThat(factor.getAccount()).isEqualTo("accounts/anne");
+      });
     }
   }
 }

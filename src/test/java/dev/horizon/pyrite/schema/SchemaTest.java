@@ -10,13 +10,12 @@ import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
+import com.google.protobuf.Struct;
 import dev.horizon.pyrite.Acme;
 import dev.horizon.pyrite.Pyrite;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.PyriteServiceOptions;
 import dev.horizon.pyrite.PyriteTest;
-import dev.horizon.pyrite.data.v1.DeleteResourceRequest;
-import dev.horizon.pyrite.data.v1.Resource;
 import dev.horizon.pyrite.impl.resource.DeploymentImpl;
 import dev.horizon.pyrite.schema.v1.Declaration;
 import dev.horizon.pyrite.schema.v1.ReadDeclarationRequest;
@@ -25,7 +24,6 @@ import dev.horizon.pyrite.schema.v1.Type;
 import dev.horizon.pyrite.schema.v1.WriteDeclarationRequest;
 import io.vertx.grpc.common.GrpcStatus;
 import java.time.Duration;
-import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,11 +39,11 @@ class SchemaTest extends PyriteTest {
     return pyrite.schema.readDeclaration(ReadDeclarationRequest.newBuilder().setId(id).build()).await(TIMEOUT);
   }
 
-  private static Declaration shortRetention() throws Exception {
+  private static Declaration editorCreates() throws Exception {
     Declaration.Builder declaration = Acme.declaration().toBuilder();
     for (Type.Builder type : declaration.getTypesBuilderList()) {
       if (type.getName().equals("acme.dev/Project")) {
-        type.getRetentionBuilder().setSeconds(Duration.ofDays(1).toSeconds());
+        type.setCreator("editor");
       }
     }
     return declaration.build();
@@ -71,15 +69,13 @@ class SchemaTest extends PyriteTest {
       String first = read("").getId();
       pyrite.clock.move(Duration.ofSeconds(1));
 
-      String second = write(shortRetention());
+      String second = write(editorCreates());
 
       assertThat(read("").getId()).isEqualTo(second).isNotEqualTo(first);
-      pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-      pyrite.create(ANNE, "organizations/acme", "acme.dev/Project", "ledger", Map.of());
-      Resource deleted = pyrite.data.deleteResource(DeleteResourceRequest.newBuilder().setSubject(ANNE)
-          .setName("projects/ledger").setRevision(1).build()).await(TIMEOUT);
-      assertThat(deleted.getFieldsMap().get("purge_time").getTimestampValue().getSeconds()).isEqualTo(pyrite.clock
-          .instant().plus(Duration.ofDays(1)).getEpochSecond());
+      pyrite.create(ANNE, "organizations/acme", "");
+      pyrite.create(ANNE, "projects/ledger", "organizations/acme");
+      assertThat(pyrite.check(ANNE, "projects/ledger", "editor", Struct.getDefaultInstance())).isTrue();
+      assertThat(pyrite.check(ANNE, "projects/ledger", "owner", Struct.getDefaultInstance())).isFalse();
     }
 
     @Test
@@ -87,7 +83,7 @@ class SchemaTest extends PyriteTest {
     void byId() throws Exception {
       String first = read("").getId();
       pyrite.clock.move(Duration.ofSeconds(1));
-      write(shortRetention());
+      write(editorCreates());
 
       assertThat(read(first).getDeclaration()).isEqualTo(Acme.declaration());
       assertThat(read(first).getCreateTime().getSeconds()).isEqualTo(Pyrite.START.getEpochSecond());
@@ -128,7 +124,7 @@ class SchemaTest extends PyriteTest {
       pyrite.database.pool().query("DELETE FROM pyrite_declaration").execute().await(TIMEOUT);
 
       assertThat(status(() -> read(""))).isEqualTo(GrpcStatus.NOT_FOUND);
-      assertThat(status(() -> pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of())))
+      assertThat(status(() -> pyrite.create(ANNE, "organizations/acme", "")))
           .isEqualTo(GrpcStatus.FAILED_PRECONDITION);
       assertThat(status(() -> pyrite.authenticate("x.y"))).isEqualTo(GrpcStatus.FAILED_PRECONDITION);
     }

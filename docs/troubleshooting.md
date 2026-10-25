@@ -16,19 +16,34 @@ information, refer to [Get started](get-started.md#5-write-the-declaration).
 
 **Verify:** `ReadDeclaration` with an empty `id` returns the declaration.
 
-## The subject user:bob has no viewer on projects/ledger.
+## The subject user:bob has no owner on projects/ledger.
 
 ```txt
-PERMISSION_DENIED: The subject user:bob has no viewer on projects/ledger.
+PERMISSION_DENIED: The subject user:bob has no owner on projects/ledger.
 ```
 
-**Cause:** the subject does not hold the relation that the method checks. The message names the relation, from the
-type's `permissions`.
+**Cause:** the subject does not hold the relation that the call checks. The message names the relation: the type's
+`create` permission on the parent, its `grant` permission on the resource, or the relation that a key or an account
+call checks.
 
-**Fix:** grant the relation, or a relation that leads to it, such as `member` on the organization. Check that the
+**Fix:** grant the relation, or a relation that leads to it, such as `admin` on the organization. Check that the
 request names the subject that you expect.
 
 **Verify:** `Check` with that principal, the resource and the relation returns `allowed: true`.
+
+## The resource projects/ledger is not known.
+
+```txt
+NOT_FOUND: The resource projects/ledger is not known.
+```
+
+**Cause:** your application never made the resource known with `CreateObject`, or it forgot it with `DeleteObject`.
+`Check`, the grant methods and `CreateObject` under it need a known resource.
+
+**Fix:** call `CreateObject` when your application creates the resource. For resources that existed before, make
+each one known once, parents first. For more information, refer to [Resources](concepts/resources.md).
+
+**Verify:** `Check` on the name returns `allowed` instead of failing.
 
 ## The subject 'anne' is not a principal of the form type:id, such...
 
@@ -42,30 +57,18 @@ INVALID_ARGUMENT: The subject 'anne' is not a principal of the form type:id, suc
 
 **Verify:** the call no longer fails with `INVALID_ARGUMENT`.
 
-## The resource projects/ledger is at revision 2, not 1.
+## The key keys/payments is at revision 2, not 1.
 
 ```txt
-ABORTED: The resource projects/ledger is at revision 2, not 1.
+ABORTED: The key keys/payments is at revision 2, not 1.
 ```
 
-**Cause:** the resource changed after the caller read it.
+**Cause:** the key or the key version changed after the caller read it, such as by a rotation.
 
-**Fix:** read the resource again, apply the change to what you read, and send its new `revision`.
+**Fix:** read it again with `GetKey` or `ListKeyVersions`, apply the change to what you read, and send its new
+`revision`.
 
-**Verify:** the change returns the resource at the next revision.
-
-## The type acme.dev/Project lacks the standard field purge_time of...
-
-```txt
-INVALID_ARGUMENT: The type acme.dev/Project lacks the standard field purge_time of the kind TIMESTAMP.
-```
-
-**Cause:** the type's `fields` leave out a standard field, or give it another kind.
-
-**Fix:** list all ten standard fields with their kinds. For the list, refer to
-[Declaration](reference/declaration.md#field).
-
-**Verify:** `WriteDeclaration` returns an id.
+**Verify:** the change returns the key or the version at the next revision.
 
 ## The relation editor of the type acme.dev/Project has directly...
 
@@ -107,30 +110,71 @@ options.
 
 **Verify:** `WriteDeclaration` returns an id.
 
-## The resource keys/sessions does not exist.
+## The flow sign-in starts from an identifier, but the declaration...
 
 ```txt
-NOT_FOUND: The resource keys/sessions does not exist.
+INVALID_ARGUMENT: The flow sign-in starts from an identifier, but the declaration has no identifier kinds.
+```
+
+**Cause:** the flow's input is `IDENTIFIER` or `SUBJECT_IDENTIFIER`, and the declaration has no `identifier_kinds`.
+Pyrite has no kinds of its own.
+
+**Fix:** declare the kinds that people sign in with, such as `email`. For the fields of a kind, refer to
+[Declaration](reference/declaration.md#identifierkind).
+
+**Verify:** `WriteDeclaration` returns an id.
+
+## The flow verify sends a code to an identifier, but no identifier...
+
+```txt
+INVALID_ARGUMENT: The flow verify sends a code to an identifier, but no identifier kind of the declaration receives codes.
+```
+
+**Cause:** the flow has a stage with `identifier: true`, and no declared kind has `receives_codes: true`.
+
+**Fix:** set `receives_codes: true` on each kind that your application can send a code to, such as `email` or
+`phone`.
+
+**Verify:** `WriteDeclaration` returns an id.
+
+## The value anne@acme is of no identifier kind of the declaration.
+
+```txt
+INVALID_ARGUMENT: The value anne@acme is of no identifier kind of the declaration.
+```
+
+**Cause:** `AddIdentifier` names no `kind`, and the value meets the `match` of no declared kind.
+
+**Fix:** check the value that the person typed. If it is valid, widen the `match` of its kind, or declare a kind for
+it. Pass the value as the person typed it: the kind's `normalize` trims and lowercases it.
+
+**Verify:** `AddIdentifier` returns the identifier, with its `kind` and its normalized `value`.
+
+## The key keys/sessions does not exist.
+
+```txt
+NOT_FOUND: The key keys/sessions does not exist.
 ```
 
 **Cause:** a flow needs the MAC key or the encryption key that the authentication options name, and nobody created
 it.
 
-**Fix:** create both keys after the first declaration, with the names that the options give.
+**Fix:** create both keys with `CreateKey` after the first declaration, with the names that the options give.
 
 **Verify:** a flow that issues a session returns a `SessionToken`.
 
-## The resource organizations/acme has resources beneath it that are...
+## The resource organizations/acme has resources under it; forget...
 
 ```txt
-FAILED_PRECONDITION: The resource organizations/acme has resources beneath it that are not deleted.
+FAILED_PRECONDITION: The resource organizations/acme has resources under it; forget them first.
 ```
 
-**Cause:** a resource cannot be deleted while resources beneath it are active.
+**Cause:** `DeleteObject` does not forget a resource while known resources are under it.
 
-**Fix:** delete the resources beneath it first, from the lowest level up.
+**Fix:** forget the resources under it first, from the lowest level up. For more information, refer to
+[Purge deleted resources](how-to/purge-deleted-resources.md).
 
-**Verify:** `DeleteResource` returns the resource with a `delete_time`.
+**Verify:** `DeleteObject` succeeds, and `Check` on the name fails with `NOT_FOUND`.
 
 ## The flow flows/9f1c... took 5 answers; start another.
 
@@ -151,19 +195,12 @@ flows.
 UNAUTHENTICATED: The session has ended.
 ```
 
-**Cause:** the session passed its `expire_time` or its idle expiry, or a flow ended it, or it was deleted.
+**Cause:** the session passed its `expire_time` or its idle expiry, or a flow or `EndSession` ended it, or its
+account was deleted.
 
 **Fix:** sign in again. To keep active sessions longer, raise `idleLifetime` in the options.
 
 **Verify:** `Authenticate` with the new token returns the principal.
-
-## A query returns fewer resources than the page size
-
-There is no error. A query checks the permission on each row of a page, and leaves out the rows that the subject may
-not see. A page can therefore hold fewer resources than the page size, even none, while more pages follow.
-
-**Fix:** read pages until `next_page_token` is empty. For more information, refer to
-[Subjects and permissions](concepts/subjects-and-permissions.md#queries).
 
 ## Internal error
 

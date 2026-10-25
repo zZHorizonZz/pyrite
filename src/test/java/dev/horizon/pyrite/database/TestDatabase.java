@@ -34,7 +34,7 @@ public interface TestDatabase {
 
   default RunningDatabase open() {
     Location location = start();
-    for (String set : new String[] { "acme", "pyrite", "spectrum" }) {
+    for (String set : new String[] { "pyrite", "spectrum" }) {
       Flyway.configure().dataSource(location.url(), location.user(), location.password())
           .locations("classpath:" + set + "/migration/**/" + migrations()).table(set + "_schema_history")
           .baselineOnMigrate(true).load().migrate();

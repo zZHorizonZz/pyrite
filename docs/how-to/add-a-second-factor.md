@@ -41,7 +41,7 @@ flows { name: "sign-in-with-two-factors" input: IDENTIFIER stages { factors: 2 }
        .setAnswer(Any.pack(TotpAnswer.newBuilder().setCode("492039").build())).build()).await();
    ```
 
-   The factor in `enrolled.getResult()` has the state `ACTIVE`.
+   `enrolled.getResult().getFactors(0)` is the factor that the flow activated, of the kind `TOTP`.
 
 Pyrite's TOTP follows RFC 6238: SHA-1, six digits, a period of 30 seconds.
 
@@ -78,7 +78,7 @@ Show the codes to the person once. Pyrite keeps only their MACs. Each code works
        .setAnswer(Any.pack(RecoveryCodeAnswer.newBuilder().setCode(recovery.getFirst()).build())).build()).await();
    ```
 
-3. Take the session token from `done.getResult()`.
+3. Take the session token from `done.getResult().getIssued(0)`, a `SessionToken`, as for one factor.
 
 ## Related resources
 

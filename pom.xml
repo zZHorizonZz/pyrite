@@ -36,18 +36,18 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <maven.compiler.release>25</maven.compiler.release>
-    <aquery.version>0.3.1-SNAPSHOT</aquery.version>
-    <basepoint.version>0.3.0</basepoint.version>
+    <aquery.version>0.3.0</aquery.version>
+    <basepoint.version>0.3.1</basepoint.version>
     <bouncycastle.version>1.84</bouncycastle.version>
     <caffeine.version>3.3.1</caffeine.version>
     <cel.version>0.14.0</cel.version>
     <guava.version>33.6.0-jre</guava.version>
-    <cinder.version>0.3.1</cinder.version>
+    <cinder.version>0.4.1</cinder.version>
     <leadseal.version>0.2.0</leadseal.version>
     <openfga-language.version>0.2.1</openfga-language.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <protobuf.version>4.36.2</protobuf.version>
-    <spectrum.version>0.2.0</spectrum.version>
+    <spectrum.version>0.2.1</spectrum.version>
     <tink.version>1.24.0</tink.version>
     <vertx.version>5.2.1</vertx.version>
     <webauthn4j.version>0.31.8.RELEASE</webauthn4j.version>
@@ -62,7 +62,6 @@
     <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
     <google-common-protos.version>2.76.0</google-common-protos.version>
     <pyrite.migrations>${project.basedir}/src/main/resources/pyrite/migration</pyrite.migrations>
-    <acme.migrations>${project.basedir}/src/test/resources/acme/migration</acme.migrations>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -295,6 +294,10 @@
       <artifactId>guava</artifactId>
     </dependency>
     <dependency>
+      <groupId>dev.cel</groupId>
+      <artifactId>cel</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-grpc-server</artifactId>
     </dependency>
@@ -457,6 +460,10 @@
           <version>3.16.0</version>
           <configuration>
             <release>${maven.compiler.release}</release>
+            <compilerArgs>
+              <arg>--add-reads</arg>
+              <arg>dev.horizon.pyrite=ALL-UNNAMED</arg>
+            </compilerArgs>
           </configuration>
         </plugin>
         <plugin>
@@ -555,26 +562,87 @@
               </plugins>
             </configuration>
           </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.2</version>
+        <executions>
           <execution>
-            <id>acme-tables</id>
+            <phase>package</phase>
             <goals>
-              <goal>generate-test</goal>
+              <goal>shade</goal>
             </goals>
             <configuration>
-              <javaEnabled>false</javaEnabled>
-              <sourceDirectories>
-                <sourceDirectory>${project.basedir}/src/test/schema</sourceDirectory>
-              </sourceDirectories>
-              <plugins>
-                <plugin kind="jvm-maven">
-                  <groupId>dev.horizon</groupId>
-                  <artifactId>leadseal-protoc</artifactId>
-                  <version>${leadseal.version}</version>
-                  <options>migrations=${acme.migrations},prefix=acme_,dialect=postgresql,dialect=mariadb,dialect=sqlserver,dialect=sqlite</options>
-                  <outputDirectory>${acme.migrations}</outputDirectory>
-                  <registerAsCompilationRoot>false</registerAsCompilationRoot>
-                </plugin>
-              </plugins>
+              <createDependencyReducedPom>true</createDependencyReducedPom>
+              <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+              <artifactSet>
+                <includes>
+                  <include>dev.cel:*</include>
+                  <include>org.antlr:antlr4-runtime</include>
+                  <include>org.threeten:threeten-extra</include>
+                  <include>com.google.re2j:re2j</include>
+                </includes>
+              </artifactSet>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/versions/*/module-info.class</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <relocations>
+                <relocation>
+                  <pattern>dev.cel</pattern>
+                  <shadedPattern>dev.horizon.pyrite.shaded.cel</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>cel.parser.internal</pattern>
+                  <shadedPattern>dev.horizon.pyrite.shaded.cel.parser.antlr</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.antlr.v4</pattern>
+                  <shadedPattern>dev.horizon.pyrite.shaded.antlr</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.threeten.extra</pattern>
+                  <shadedPattern>dev.horizon.pyrite.shaded.threeten</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.re2j</pattern>
+                  <shadedPattern>dev.horizon.pyrite.shaded.re2j</shadedPattern>
+                </relocation>
+              </relocations>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.moditect</groupId>
+        <artifactId>moditect-maven-plugin</artifactId>
+        <version>1.3.0.Final</version>
+        <executions>
+          <execution>
+            <id>add-module-info</id>
+            <phase>package</phase>
+            <goals>
+              <goal>add-module-info</goal>
+            </goals>
+            <configuration>
+              <overwriteExistingFiles>true</overwriteExistingFiles>
+              <module>
+                <moduleInfoFile>${project.basedir}/src/main/java/module-info.java</moduleInfoFile>
+              </module>
             </configuration>
           </execution>
         </executions>

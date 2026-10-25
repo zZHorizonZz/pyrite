@@ -14,8 +14,8 @@ import io.vertx.grpc.common.GrpcStatus;
 public record FlowBackend(Database database) implements Backend<Tables.Flow, String> {
 
   @Override
-  public Class<Tables.Flow> type() {
-    return Tables.Flow.class;
+  public Tables.Flow prototype() {
+    return Tables.Flow.getDefaultInstance();
   }
 
   public Future<Tables.Flow> save(Tables.Flow flow, long revision) {

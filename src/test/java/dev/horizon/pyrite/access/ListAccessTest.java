@@ -19,7 +19,6 @@ import io.vertx.grpc.common.GrpcStatus;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,9 +28,9 @@ class ListAccessTest extends PyriteTest {
 
   @BeforeEach
   void open() throws Exception {
-    pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-    pyrite.create(ANNE, "organizations/acme", "acme.dev/Project", "ledger", Map.of());
-    pyrite.create(ANNE, "organizations/acme", "acme.dev/Group", "finance", Map.of());
+    pyrite.create(ANNE, "organizations/acme", "");
+    pyrite.create(ANNE, "projects/ledger", "organizations/acme");
+    pyrite.create(ANNE, "groups/finance", "organizations/acme");
   }
 
   private ListSubjectsRequest.Builder subjects(String subject) {

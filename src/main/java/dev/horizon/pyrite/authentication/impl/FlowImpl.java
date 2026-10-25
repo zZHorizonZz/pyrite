@@ -89,8 +89,8 @@ final class FlowImpl implements Flow {
     if (!row.hasAccount()) {
       return Future.succeededFuture(Optional.empty());
     }
-    return type.schema().get(row.getAccount()).map(found -> found.filter(account -> !account.isDeleted())
-        .map(AccountImpl.class::cast));
+    return type.accounts().account(row.getAccount()).map(account -> Optional.of((AccountImpl) account))
+        .recover(missing -> Future.succeededFuture(Optional.empty()));
   }
 
   <F extends Factor> Future<List<F>> factors(Class<F> kind) {
@@ -103,7 +103,7 @@ final class FlowImpl implements Flow {
     if (!row.hasIdentifier()) {
       return Future.succeededFuture(Optional.empty());
     }
-    return type.schema().get(row.getIdentifier()).map(found -> found.map(Identifier.class::cast));
+    return type.accounts().identifierNamed(row.getIdentifier());
   }
 
   Future<Optional<Identifier>> recipient() {
@@ -147,7 +147,7 @@ final class FlowImpl implements Flow {
   }
 
   <F extends Factor> Future<F> enrolment(Class<F> kind) {
-    return type.schema().require(row.getFactor()).map(kind::cast);
+    return type.accounts().factor(row.getFactor()).map(kind::cast);
   }
 
   Future<dev.horizon.pyrite.authentication.v1.Flow> enter() {
@@ -193,6 +193,7 @@ final class FlowImpl implements Flow {
   private Future<Result> complete() {
     Result.Builder result = Result.newBuilder();
     return account().compose(account -> {
+      account.ifPresent(found -> result.setAccount(found.name()));
       Future<Void> applied = Future.succeededFuture();
       for (FlowDefinition.Completion completion : definition.getCompletesList()) {
         applied = applied.compose(ignored -> Effect.of(completion).apply(this, account.orElseThrow(), result));

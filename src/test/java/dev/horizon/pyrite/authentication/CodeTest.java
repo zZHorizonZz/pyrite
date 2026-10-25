@@ -2,10 +2,11 @@ package dev.horizon.pyrite.authentication;
 
 import static dev.horizon.pyrite.Pyrite.ANNE;
 import static dev.horizon.pyrite.Pyrite.status;
-import static dev.horizon.pyrite.Pyrite.text;
+import static dev.horizon.pyrite.database.RunningDatabase.TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.horizon.pyrite.PyriteTest;
+import dev.horizon.pyrite.authentication.v1.AddIdentifierRequest;
 import dev.horizon.pyrite.authentication.v1.CodeAnswer;
 import dev.horizon.pyrite.authentication.v1.CodeSent;
 import dev.horizon.pyrite.authentication.v1.Delivery;
@@ -13,7 +14,6 @@ import dev.horizon.pyrite.authentication.v1.Flow;
 import dev.horizon.pyrite.authentication.v1.PasswordAnswer;
 import io.vertx.grpc.common.GrpcStatus;
 import java.time.Duration;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -48,12 +48,13 @@ class CodeTest extends PyriteTest {
       Delivery delivery = flow.getDeliveries(0);
 
       assertThat(delivery.getTo()).isEqualTo("anne@acme.dev");
-      assertThat(delivery.getChannel()).isEqualTo(Delivery.Channel.EMAIL);
+      assertThat(delivery.getKind()).isEqualTo("email");
+      assertThat(delivery.getIdentifier()).startsWith("identifiers/");
       assertThat(delivery.getCode()).matches("[0-9]{6}");
-      assertThat(flow.getChallenges(0).getParameters().unpack(CodeSent.class).getTo()).isNotEqualTo(
-          "anne@acme.dev");
+      assertThat(flow.getChallenges(0).getParameters().unpack(CodeSent.class).getIdentifier())
+          .isEqualTo(delivery.getIdentifier());
       Flow done = pyrite.answer(flow, code(delivery.getCode()));
-      assertThat(done.getResult().getResources(0).getFieldsMap().get("verified").getBoolValue()).isTrue();
+      assertThat(done.getResult().getIdentifiers(0).getVerified()).isTrue();
     }
 
     @Test
@@ -110,8 +111,8 @@ class CodeTest extends PyriteTest {
     @Test
     @DisplayName("an address that is not verified gets no recovery code")
     void unverified() throws Exception {
-      pyrite.create(ANNE, "accounts/anne", "pyrite.dev/Identifier", "anne-private", Map.of("kind", text("EMAIL"),
-          "value", text("anne@home.example")));
+      pyrite.authentication.addIdentifier(AddIdentifierRequest.newBuilder().setSubject(ANNE).setAccount("accounts/anne")
+          .setKind("email").setValue("anne@home.example").build()).await(TIMEOUT);
 
       Flow recovery = pyrite.start("", "recover", "anne@home.example");
 

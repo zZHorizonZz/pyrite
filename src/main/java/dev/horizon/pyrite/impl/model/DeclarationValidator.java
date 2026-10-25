@@ -1,7 +1,5 @@
 package dev.horizon.pyrite.impl.model;
 
-import dev.horizon.pyrite.authentication.impl.AccountType;
-import dev.horizon.pyrite.crypto.impl.KeyType;
 import dev.horizon.pyrite.schema.v1.FlowDefinition;
 import dev.horizon.pyrite.schema.v1.Stage;
 import dev.horizon.spectrum.openfga.v1.RelationReference;
@@ -37,33 +35,14 @@ final class DeclarationValidator {
     }
   }
 
-  void inheritance() {
-    for (DeclaredType type : types.types()) {
-      type.relations().forEach((name, relation) -> {
-        for (RelationReference reference : relation.direct()) {
-          Optional<DeclaredType> target = types.singular(reference.getType());
-          if (target.isPresent() && !reference.getRelation().isEmpty()
-              && types.readsFromParent(target.get(), reference.getRelation())) {
-            throw new IllegalArgumentException("The type " + type.name() + " grants " + name + " to "
-                + reference.getType() + "#" + reference.getRelation() + ", which reads from parent; a set that is"
-                + " granted cannot read from parent.");
-          }
-        }
-        foreign(type, name, relation.rewrite());
-      });
-    }
-  }
-
   void permissions() {
     for (DeclaredType type : types.types()) {
       DeclaredType declared = type;
       String where = "The type " + declared.name();
-      for (String permission : List.of(declared.permissions().getRead(), declared.permissions().getUpdate(),
-          declared.permissions().getDelete(), declared.permissions().getGrant())) {
-        if (!type.relations().containsKey(permission)) {
-          throw new IllegalArgumentException(where + " needs the relation " + permission + " for a method, but does"
-              + " not declare it.");
-        }
+      String grant = declared.permissions().getGrant();
+      if (!type.relations().containsKey(grant)) {
+        throw new IllegalArgumentException(where + " needs the relation " + grant + " for its grant permission, but"
+            + " does not declare it.");
       }
       String create = declared.permissions().getCreate();
       if (declared.parents().isEmpty() && !create.isEmpty()) {
@@ -92,10 +71,10 @@ final class DeclarationValidator {
             + " be a grantable relation that takes a user without a condition.");
       }
       if (declared.name().equals(TypeSystem.KEY)) {
-        own(type, KeyType.RELATIONS);
+        own(type, TypeSystem.KEY_RELATIONS);
       }
       if (declared.name().equals(TypeSystem.ACCOUNT)) {
-        own(type, AccountType.RELATIONS);
+        own(type, TypeSystem.ACCOUNT_RELATIONS);
         owner(type);
       }
     }
@@ -119,6 +98,15 @@ final class DeclarationValidator {
       }
       if (flow.getStagesList().isEmpty() || flow.getCompletesList().isEmpty()) {
         throw new IllegalArgumentException(where + " has no stages or no completions.");
+      }
+      if (flow.getInput() != FlowDefinition.Input.SUBJECT && types.identifierKinds().isEmpty()) {
+        throw new IllegalArgumentException(where + " starts from an identifier, but the declaration has no identifier"
+            + " kinds.");
+      }
+      if (flow.getStagesList().stream().anyMatch(Stage::getIdentifier)
+          && types.identifierKinds().stream().noneMatch(DeclaredKind::receivesCodes)) {
+        throw new IllegalArgumentException(where + " sends a code to an identifier, but no identifier kind of the"
+            + " declaration receives codes.");
       }
       boolean identified = flow.getInput() != FlowDefinition.Input.IDENTIFIER;
       boolean factors = false;
@@ -230,33 +218,6 @@ final class DeclarationValidator {
     }
   }
 
-  private void foreign(DeclaredType type, String relation, Userset userset) {
-    switch (userset.getUsersetCase()) {
-      case TUPLE_TO_USERSET -> {
-        String tupleset = userset.getTupleToUserset().getTupleset().getRelation();
-        String computed = userset.getTupleToUserset().getComputedUserset().getRelation();
-        if (tupleset.equals(TypeSystem.PARENT)) {
-          return;
-        }
-        for (RelationReference reference : type.relations().get(tupleset).direct()) {
-          Optional<DeclaredType> target = types.singular(reference.getType());
-          if (target.isPresent() && types.readsFromParent(target.get(), computed)) {
-            throw new IllegalArgumentException("The relation " + relation + " of the type " + type.name() + " reads "
-                + computed + " from " + tupleset + ", which reads from parent.");
-          }
-        }
-      }
-      case UNION -> userset.getUnion().getChildList().forEach(child -> foreign(type, relation, child));
-      case INTERSECTION -> userset.getIntersection().getChildList().forEach(child -> foreign(type, relation, child));
-      case DIFFERENCE -> {
-        foreign(type, relation, userset.getDifference().getBase());
-        foreign(type, relation, userset.getDifference().getSubtract());
-      }
-      default -> {
-      }
-    }
-  }
-
   private static void own(DeclaredType type, List<String> relations) {
     for (String relation : relations) {
       if (!type.relations().containsKey(relation)) {
@@ -267,7 +228,7 @@ final class DeclarationValidator {
   }
 
   private static void owner(DeclaredType account) {
-    if (account.relations().get(AccountType.OWNER).direct().stream().noneMatch(reference -> reference.getType()
+    if (account.relations().get(TypeSystem.OWNER).direct().stream().noneMatch(reference -> reference.getType()
         .equals(TypeSystem.USER) && reference.getRelation().isEmpty() && !reference.hasWildcard()
         && reference.getCondition().isEmpty())) {
       throw new IllegalArgumentException("The relation owner of " + TypeSystem.ACCOUNT + " takes a user directly;"

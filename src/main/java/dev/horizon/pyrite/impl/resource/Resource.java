@@ -2,255 +2,134 @@ package dev.horizon.pyrite.impl.resource;
 
 import com.google.protobuf.Struct;
 import dev.horizon.aquery.aip158.Page;
+import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.access.v1.Grant;
-import dev.horizon.pyrite.schema.v1.Field;
+import dev.horizon.pyrite.impl.model.DeclaredType;
+import dev.horizon.pyrite.impl.model.Definition;
+import dev.horizon.pyrite.impl.model.TypeSystem;
+import dev.horizon.spectrum.openfga.v1.ReadRequestTupleKey;
+import dev.horizon.spectrum.openfga.v1.RelationshipCondition;
+import dev.horizon.spectrum.openfga.v1.TupleKey;
+import dev.horizon.spectrum.openfga.v1.TupleKeyWithoutCondition;
+import dev.horizon.spectrum.openfga.v1.User;
 import dev.horizon.spectrum.openfga.v1.UserTypeFilter;
 import io.vertx.core.Future;
-import java.time.Instant;
+import io.vertx.grpc.common.GrpcStatus;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
-/**
- * A resource of a declared type: a row of the type's table, which checks, changes, grants on and purges itself.
- *
- * <p>
- * A resource is read once per call and does not follow later changes. Each change names the revision that the caller
- * read, and fails with {@code ABORTED} when the row is at another one.
- */
-public interface Resource {
+public record Resource(Schema schema, DeclaredType type, String name) {
 
-  String NAME = "name";
-  String UID = "uid";
-  String PARENT = "parent";
-  String DISPLAY_NAME = "display_name";
-  String LABELS = "labels";
-  String REVISION = "revision";
-  String CREATE_TIME = "create_time";
-  String UPDATE_TIME = "update_time";
-  String DELETE_TIME = "delete_time";
-  String PURGE_TIME = "purge_time";
+  public String id() {
+    return type.id(name);
+  }
 
-  /**
-   * The standard fields, which every type's table has.
-   */
-  List<Field> STANDARD = List.of(
-      Field.newBuilder().setName(NAME).setKind(Field.Kind.STRING).build(),
-      Field.newBuilder().setName(UID).setKind(Field.Kind.STRING).build(),
-      Field.newBuilder().setName(PARENT).setKind(Field.Kind.STRING).build(),
-      Field.newBuilder().setName(DISPLAY_NAME).setKind(Field.Kind.STRING).build(),
-      Field.newBuilder().setName(LABELS).setKind(Field.Kind.MAP).build(),
-      Field.newBuilder().setName(REVISION).setKind(Field.Kind.INTEGER).build(),
-      Field.newBuilder().setName(CREATE_TIME).setKind(Field.Kind.TIMESTAMP).build(),
-      Field.newBuilder().setName(UPDATE_TIME).setKind(Field.Kind.TIMESTAMP).build(),
-      Field.newBuilder().setName(DELETE_TIME).setKind(Field.Kind.TIMESTAMP).build(),
-      Field.newBuilder().setName(PURGE_TIME).setKind(Field.Kind.TIMESTAMP).build());
+  public String object() {
+    return type.object(id());
+  }
 
-  /**
-   * Gives the resource's type.
-   *
-   * @return the type
-   */
-  ResourceType<?> type();
+  public Definition relation(String relation) {
+    Definition definition = type.relations().get(relation);
+    if (definition == null) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + type.name() + " has no relation "
+          + relation + ".");
+    }
+    return definition;
+  }
 
-  /**
-   * Gives the resource's name.
-   *
-   * @return the name, such as {@code projects/ledger}
-   */
-  String name();
+  public Future<Boolean> check(String principal, String relation, Struct context) {
+    return schema.adapter().check(principal, relation, object(), context);
+  }
 
-  /**
-   * Gives the resource's uid, a UUID that Pyrite generates at creation.
-   *
-   * @return the uid
-   */
-  String uid();
+  public Future<Resource> require(Subject subject, String relation, Struct context) {
+    return check(subject.toString(), relation, context)
+        .compose(allowed -> allowed ? Future.succeededFuture(this)
+            : Future.failedFuture(new PyriteException(GrpcStatus.PERMISSION_DENIED, "The subject " + subject
+                + " has no " + relation + " on " + name + ".")));
+  }
 
-  /**
-   * Gives the name of the resource's parent.
-   *
-   * @return the parent's name; empty for a resource of a type without parents
-   */
-  Optional<String> parentName();
+  public Future<Void> grant(Grant grant, Struct context) {
+    grantable(grant);
+    TupleKey.Builder tuple = TupleKey.newBuilder().setUser(grant.getGrantee()).setRelation(grant.getRelation())
+        .setObject(object());
+    if (grant.hasCondition()) {
+      tuple.setCondition(RelationshipCondition.newBuilder().setName(grant.getCondition().getName())
+          .setContext(grant.getCondition().getContext()));
+    }
+    return acyclic(grant, context).compose(ignored -> schema.adapter().write(tuple.build()));
+  }
 
-  /**
-   * Gives the resource's revision: {@code 1} at creation, one more at each change.
-   *
-   * @return the revision
-   */
-  long revision();
+  public Future<Void> revoke(Grant grant) {
+    grantable(grant);
+    return schema.adapter().delete(List.of(TupleKeyWithoutCondition.newBuilder().setUser(grant.getGrantee())
+        .setRelation(grant.getRelation()).setObject(object()).build()));
+  }
 
-  /**
-   * Gives the time of the resource's last change.
-   *
-   * @return the time
-   */
-  Instant updateTime();
+  public Future<Page<Grant>> grants(String relation, String grantee, int pageSize, String token) {
+    return schema.adapter().read(ReadRequestTupleKey.newBuilder().setObject(object()).setRelation(relation)
+        .setUser(grantee).build(), pageSize, token)
+        .map(read -> new Page<>(read.getTuplesList().stream()
+            .filter(tuple -> !tuple.getKey().getRelation().equals(TypeSystem.PARENT))
+            .flatMap(tuple -> schema.grant(tuple.getKey()).stream()).toList(), read.getContinuationToken(), 0));
+  }
 
-  /**
-   * Gives the time after which a deleted resource can be purged.
-   *
-   * @return the time; empty for an active resource
-   */
-  Optional<Instant> purgeTime();
+  public Future<List<String>> subjects(String permission, UserTypeFilter filter, Struct context) {
+    return schema.adapter().users(type.singular(), id(), permission, filter, context)
+        .map(users -> users.stream().map(Resource::text).filter(text -> !text.isEmpty()).sorted().toList());
+  }
 
-  /**
-   * Gives the last segment of the resource's name.
-   *
-   * @return the id, such as {@code ledger}
-   */
-  String id();
+  Future<Void> forget() {
+    List<ReadRequestTupleKey> keys = new ArrayList<>();
+    keys.add(ReadRequestTupleKey.newBuilder().setObject(object()).build());
+    for (DeclaredType holder : schema.types().types()) {
+      String objects = holder.singular() + ":";
+      keys.add(ReadRequestTupleKey.newBuilder().setObject(objects).setUser(object()).build());
+      for (String relation : type.relations().keySet()) {
+        keys.add(ReadRequestTupleKey.newBuilder().setObject(objects).setUser(object() + "#" + relation).build());
+      }
+    }
+    Future<Void> done = Future.succeededFuture();
+    for (ReadRequestTupleKey key : keys) {
+      done = done.compose(ignored -> schema.adapter().forget(key));
+    }
+    return done;
+  }
 
-  /**
-   * Gives the resource as an OpenFGA object.
-   *
-   * @return the object, such as {@code project:ledger}
-   */
-  String object();
+  private void grantable(Grant grant) {
+    if (grant.getGrantee().isEmpty()) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The grant names no grantee.");
+    }
+    if (!type.grantable().contains(grant.getRelation())) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + type.name() + " does not grant "
+          + grant.getRelation() + ".");
+    }
+  }
 
-  /**
-   * Tells whether the resource is deleted and waits for its purge.
-   *
-   * @return whether it is deleted
-   */
-  boolean isDeleted();
+  private Future<Void> acyclic(Grant grant, Struct context) {
+    int hash = grant.getGrantee().indexOf('#');
+    if (hash < 0) {
+      return Future.succeededFuture();
+    }
+    String set = grant.getGrantee().substring(0, hash);
+    if (set.equals(object())) {
+      return Future.failedFuture(new PyriteException(GrpcStatus.FAILED_PRECONDITION, "Granting "
+          + grant.getRelation() + " on " + name + " to its own " + grant.getGrantee() + " makes a cycle."));
+    }
+    return schema.adapter().check(object() + "#" + grant.getRelation(), grant.getGrantee().substring(hash + 1), set,
+        context)
+        .compose(within -> within
+            ? Future.failedFuture(new PyriteException(GrpcStatus.FAILED_PRECONDITION, "Granting "
+                + grant.getRelation() + " on " + name + " to " + grant.getGrantee() + " makes a cycle."))
+            : Future.succeededFuture());
+  }
 
-  /**
-   * Checks that the resource is active.
-   *
-   * @return the resource, or a failure with {@code FAILED_PRECONDITION} when it is deleted
-   */
-  Resource requireActive();
-
-  /**
-   * Checks that the resource is at a revision.
-   *
-   * @param expected the revision that the caller read
-   * @return the resource, or a failure with {@code ABORTED} when it is at another revision
-   */
-  Resource requireRevision(long expected);
-
-  /**
-   * Reads the resource's parent.
-   *
-   * @return the parent; empty for a resource of a type without parents
-   */
-  Future<Optional<Resource>> parent();
-
-  /**
-   * Reads the resource's ancestors, from its parent up.
-   *
-   * @return the ancestors, or a failure with {@code FAILED_PRECONDITION} when there are more than {@code maxDepth}
-   */
-  Future<List<Resource>> ancestors();
-
-  /**
-   * Checks whether a principal has a relation on the resource. OpenFGA answers the parts of the relation on the
-   * resource itself, and Pyrite walks the parents for the parts that read from the parent.
-   *
-   * @param principal the principal, such as {@code user:anne}
-   * @param relation the relation
-   * @param context the values of the conditions' parameters
-   * @return whether the principal has the relation
-   */
-  Future<Boolean> check(String principal, String relation, Struct context);
-
-  /**
-   * Checks that a subject has a relation on the resource.
-   *
-   * @param subject the subject
-   * @param relation the relation
-   * @param context the values that the conditions of grants read
-   * @return the resource, or a failure with {@code PERMISSION_DENIED}
-   */
-  Future<Resource> require(Subject subject, String relation, Struct context);
-
-  /**
-   * Changes the fields of the resource that a request may change.
-   *
-   * @param changes the new values, by field; {@code null} unsets a field
-   * @param revision the revision that the caller read
-   * @return the changed resource, at the next revision
-   */
-  Future<Resource> update(Map<String, Object> changes, long revision);
-
-  /**
-   * Deletes the resource, which stays in its table until its type's retention ends. A resource with active resources
-   * beneath it is not deleted.
-   *
-   * @param revision the revision that the caller read
-   * @return the deleted resource, with its {@code delete_time} and {@code purge_time}
-   */
-  Future<Resource> delete(long revision);
-
-  /**
-   * Makes a deleted resource active again, before its retention ends.
-   *
-   * @param revision the revision that the caller read
-   * @return the active resource
-   */
-  Future<Resource> undelete(long revision);
-
-  /**
-   * Moves the resource under another parent, which is not beneath it. Its grants stay, and what it inherits changes at
-   * once.
-   *
-   * @param parent the new parent
-   * @param revision the revision that the caller read
-   * @return the moved resource
-   */
-  Future<Resource> move(Resource parent, long revision);
-
-  /**
-   * Grants a relation on the resource. Granting it again changes nothing.
-   *
-   * @param grant the relation, which the type lists as grantable, the grantee and the condition
-   * @param context the values that the conditions of grants read, while the cycle check walks them
-   * @return when granted, or a failure with {@code FAILED_PRECONDITION} for a grant that makes a cycle
-   */
-  Future<Void> grant(Grant grant, Struct context);
-
-  /**
-   * Revokes a grant on the resource. Revoking one that does not exist changes nothing.
-   *
-   * @param grant the relation and the grantee
-   * @return when revoked
-   */
-  Future<Void> revoke(Grant grant);
-
-  /**
-   * Lists a page of the grants on the resource.
-   *
-   * @param relation the relation; empty for every one
-   * @param grantee the grantee; empty for every one
-   * @param pageSize the most grants
-   * @param token the page token; empty for the first page
-   * @return the page
-   */
-  Future<Page<Grant>> grants(String relation, String grantee, int pageSize, String token);
-
-  /**
-   * Lists the principals of a type that have a permission on the resource, through its grants and its ancestors'.
-   *
-   * @param permission the permission
-   * @param filter the type of the principals, and their relation for a set
-   * @param context the values of the conditions' parameters
-   * @return the principals
-   */
-  Future<List<String>> subjects(String permission, UserTypeFilter filter, Struct context);
-
-  /**
-   * Removes the resource's row, Pyrite's resources beneath it, and every grant on it and to it.
-   *
-   * @return when removed
-   */
-  Future<Void> purge();
-
-  /**
-   * Gives the resource as a {@code pyrite.data.v1.Resource}, without the fields that Pyrite never returns.
-   *
-   * @return the message
-   */
-  dev.horizon.pyrite.data.v1.Resource toMessage();
+  private static String text(User user) {
+    return switch (user.getUserCase()) {
+      case OBJECT -> user.getObject().getType() + ":" + user.getObject().getId();
+      case USERSET -> user.getUserset().getType() + ":" + user.getUserset().getId() + "#"
+          + user.getUserset().getRelation();
+      case WILDCARD -> user.getWildcard().getType() + ":*";
+      case USER_NOT_SET -> "";
+    };
+  }
 }

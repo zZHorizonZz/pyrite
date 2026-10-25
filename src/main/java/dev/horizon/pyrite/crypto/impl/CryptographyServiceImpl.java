@@ -22,5 +22,12 @@ public final class CryptographyServiceImpl extends HandlerService implements Cry
     bind(DecryptHandler.SERVICE_METHOD, new DecryptHandler(deployment));
     bind(SignHandler.SERVICE_METHOD, new SignHandler(deployment));
     bind(VerifyHandler.SERVICE_METHOD, new VerifyHandler(deployment));
+    bind(CreateKeyHandler.SERVICE_METHOD, new CreateKeyHandler(deployment));
+    bind(GetKeyHandler.SERVICE_METHOD, new GetKeyHandler(deployment));
+    bind(UpdateKeyHandler.SERVICE_METHOD, new UpdateKeyHandler(deployment));
+    bind(RotateKeyHandler.SERVICE_METHOD, new RotateKeyHandler(deployment));
+    bind(ListKeyVersionsHandler.SERVICE_METHOD, new ListKeyVersionsHandler(deployment));
+    bind(UpdateKeyVersionHandler.SERVICE_METHOD, new UpdateKeyVersionHandler(deployment));
+    bind(DeleteKeyVersionHandler.SERVICE_METHOD, new DeleteKeyVersionHandler(deployment));
   }
 }

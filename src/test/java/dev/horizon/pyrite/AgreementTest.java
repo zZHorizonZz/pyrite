@@ -5,7 +5,6 @@ import static dev.horizon.pyrite.Pyrite.BOB;
 import static dev.horizon.pyrite.Pyrite.CAROL;
 import static dev.horizon.pyrite.Pyrite.DAVE;
 import static dev.horizon.pyrite.Pyrite.at;
-import static dev.horizon.pyrite.Pyrite.text;
 import static dev.horizon.pyrite.database.RunningDatabase.TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,9 +14,8 @@ import dev.horizon.pyrite.access.v1.Condition;
 import dev.horizon.pyrite.access.v1.CreateGrantRequest;
 import dev.horizon.pyrite.access.v1.Grant;
 import dev.horizon.pyrite.access.v1.ListSubjectsRequest;
-import dev.horizon.pyrite.data.v1.MoveResourceRequest;
-import dev.horizon.pyrite.data.v1.QueryResourcesRequest;
-import dev.horizon.pyrite.data.v1.Value;
+import dev.horizon.pyrite.crypto.v1.Algorithm;
+import dev.horizon.pyrite.crypto.v1.CreateKeyRequest;
 import dev.horizon.pyrite.schema.v1.Declaration;
 import dev.horizon.pyrite.schema.v1.Type;
 import io.vertx.grpc.client.InvalidStatusException;
@@ -51,19 +49,18 @@ class AgreementTest extends PyriteTest {
     } catch (Exception failed) {
       throw new IllegalStateException("The oracle's model was refused", failed);
     }
-    create(ANNE, "", "acme.dev/Organization", "organizations/acme", Map.of());
-    create(DAVE, "", "acme.dev/Organization", "organizations/globex", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Group", "groups/finance", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Group", "groups/audit", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Project", "projects/ledger", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Project", "projects/payroll", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Project", "projects/website", Map.of());
-    create(DAVE, "organizations/globex", "acme.dev/Project", "projects/mars", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Role", "roles/stock-admin", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Binding", "bindings/stock", Map.of());
-    create(ANNE, "organizations/acme", "acme.dev/Binding", "bindings/ledger-stock", Map.of());
-    create(ANNE, "organizations/acme", "pyrite.dev/Key", "keys/payments", Map.of("purpose", text("ENCRYPTION"),
-        "algorithm", text("AES256_GCM")));
+    create(ANNE, "", "acme.dev/Organization", "organizations/acme");
+    create(DAVE, "", "acme.dev/Organization", "organizations/globex");
+    create(ANNE, "organizations/acme", "acme.dev/Group", "groups/finance");
+    create(ANNE, "organizations/acme", "acme.dev/Group", "groups/audit");
+    create(ANNE, "organizations/acme", "acme.dev/Project", "projects/ledger");
+    create(ANNE, "organizations/acme", "acme.dev/Project", "projects/payroll");
+    create(ANNE, "organizations/acme", "acme.dev/Project", "projects/website");
+    create(DAVE, "organizations/globex", "acme.dev/Project", "projects/mars");
+    create(ANNE, "organizations/acme", "acme.dev/Role", "roles/stock-admin");
+    create(ANNE, "organizations/acme", "acme.dev/Binding", "bindings/stock");
+    create(ANNE, "organizations/acme", "acme.dev/Binding", "bindings/ledger-stock");
+    create(ANNE, "organizations/acme", "pyrite.dev/Key", "keys/payments");
 
     grant(ANNE, "organizations/acme", "member", BOB);
     grant(ANNE, "groups/audit", "member", CAROL);
@@ -96,7 +93,7 @@ class AgreementTest extends PyriteTest {
   }
 
   @Test
-  @DisplayName("A query returns exactly what OpenFGA allows")
+  @DisplayName("A list of objects is exactly what OpenFGA allows")
   void query() throws Exception {
     assertThat(queryDisagreements()).isEmpty();
   }
@@ -105,17 +102,6 @@ class AgreementTest extends PyriteTest {
   @DisplayName("The subjects of a permission are exactly OpenFGA's users")
   void subjects() throws Exception {
     assertThat(subjectDisagreements()).isEmpty();
-  }
-
-  @Test
-  @DisplayName("A move changes what a resource inherits, as OpenFGA does")
-  void move() throws Exception {
-    pyrite.data.moveResource(MoveResourceRequest.newBuilder().setSubject(ANNE).setName("projects/payroll")
-        .setParent("organizations/globex").setRevision(1).build()).await(TIMEOUT);
-    oracle.move("projects/payroll", "organizations/acme", "organizations/globex");
-
-    assertThat(checkDisagreements()).isEmpty();
-    assertThat(queryDisagreements()).isEmpty();
   }
 
   private List<String> checkDisagreements() throws Exception {
@@ -154,8 +140,7 @@ class AgreementTest extends PyriteTest {
           }
           Set<String> actual;
           try {
-            actual = new TreeSet<>(pyrite.query(QueryResourcesRequest.newBuilder().setSubject(principal)
-                .setType(type).setPermission(relation).setPageSize(2).setContext(time).build()));
+            actual = new TreeSet<>(pyrite.objects(principal, type, relation, time));
           } catch (InvalidStatusException failed) {
             disagreements.add(principal + " " + relation + " " + type + ": Pyrite fails with "
                 + failed.actualStatus() + ", OpenFGA " + expected);
@@ -194,10 +179,15 @@ class AgreementTest extends PyriteTest {
     return new ArrayList<>(new TreeSet<>(declared.getDefinition().getRelationsMap().keySet()));
   }
 
-  private void create(String subject, String parent, String type, String name, Map<String, Value> fields)
-      throws Exception {
+  private void create(String subject, String parent, String type, String name) throws Exception {
     try {
-      pyrite.create(subject, parent, type, name.substring(name.indexOf('/') + 1), fields);
+      if (type.equals("pyrite.dev/Key")) {
+        pyrite.cryptography.createKey(CreateKeyRequest.newBuilder().setSubject(subject)
+            .setKeyId(name.substring(name.indexOf('/') + 1)).setParent(parent).setAlgorithm(Algorithm.AES256_GCM)
+            .build()).await(TIMEOUT);
+      } else {
+        pyrite.create(subject, name, parent);
+      }
     } catch (Exception failed) {
       throw new IllegalStateException("Creating " + name + " failed", failed);
     }

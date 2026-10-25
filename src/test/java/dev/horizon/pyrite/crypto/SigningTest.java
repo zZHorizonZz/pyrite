@@ -27,8 +27,11 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dev.horizon.pyrite.PyriteTest;
+import dev.horizon.pyrite.crypto.v1.Algorithm;
 import dev.horizon.pyrite.crypto.v1.Detached;
 import dev.horizon.pyrite.crypto.v1.Expected;
+import dev.horizon.pyrite.crypto.v1.KeyVersion;
+import dev.horizon.pyrite.crypto.v1.ListKeyVersionsRequest;
 import dev.horizon.pyrite.crypto.v1.Rejected;
 import dev.horizon.pyrite.crypto.v1.SignRequest;
 import dev.horizon.pyrite.crypto.v1.VerifyRequest;
@@ -55,8 +58,8 @@ class SigningTest extends PyriteTest {
 
   @BeforeEach
   void open() throws Exception {
-    pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-    pyrite.key("organizations/acme", "oauth", "SIGNING", "ES256");
+    pyrite.create(ANNE, "organizations/acme", "");
+    pyrite.key("organizations/acme", "oauth", Algorithm.ES256);
   }
 
   private static Value text(String text) {
@@ -97,9 +100,15 @@ class SigningTest extends PyriteTest {
     return verdict.getRejected().getReason();
   }
 
-  private JWK publicKey(String version) throws Exception {
+  private KeyVersion version(String key, String name) throws Exception {
+    return pyrite.cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder().setSubject(ANNE).setKey(key)
+        .build()).await(TIMEOUT).getVersionsList().stream().filter(version -> version.getName().equals(name))
+        .findFirst().orElseThrow();
+  }
+
+  private JWK publicKey(String key, String version) throws Exception {
     Map<String, Object> fields = new HashMap<>();
-    pyrite.get(ANNE, version).getFieldsMap().get("public_key").getMapValue().getFieldsMap()
+    version(key, version).getPublicKey().getFieldsMap()
         .forEach((name, value) -> fields.put(name, value.getStringValue()));
     return JWK.parse(fields);
   }
@@ -112,7 +121,7 @@ class SigningTest extends PyriteTest {
     @ValueSource(strings = { "RS256", "ES256", "EDDSA" })
     @DisplayName("a signing key's JWT verifies with its published public key, and with Pyrite")
     void published(String algorithm) throws Exception {
-      pyrite.key("organizations/acme", "tokens", "SIGNING", algorithm);
+      pyrite.key("organizations/acme", "tokens", Algorithm.valueOf(algorithm));
 
       String token = sign("keys/tokens", claims(NOW + 600), "at+jwt");
 
@@ -121,7 +130,7 @@ class SigningTest extends PyriteTest {
       SignedJWT jwt = SignedJWT.parse(token);
       assertThat(jwt.getHeader().getKeyID()).isEqualTo("tokens-1");
       assertThat(jwt.getHeader().getType().getType()).isEqualTo("at+jwt");
-      JWK jwk = publicKey("keyVersions/tokens-1");
+      JWK jwk = publicKey("keys/tokens", "keyVersions/tokens-1");
       assertThat(jwk.isPrivate()).isFalse();
       JWSVerifier verifier = switch (algorithm) {
         case "RS256" -> new RSASSAVerifier((RSAKey) jwk);
@@ -134,18 +143,17 @@ class SigningTest extends PyriteTest {
     @Test
     @DisplayName("a MAC key signs a JWT and data, and publishes no key")
     void mac() throws Exception {
-      pyrite.key("organizations/acme", "codes", "MAC", "HMAC_SHA256");
+      pyrite.key("organizations/acme", "codes", Algorithm.HMAC_SHA256);
 
       assertThat(verify(ANNE, "keys/codes", sign("keys/codes", claims(NOW + 600), "at+jwt"), EXPECTED)
           .hasVerified()).isTrue();
-      assertThat(pyrite.get(ANNE, "keyVersions/codes-1").getFieldsMap().get("public_key").getMapValue()
-          .getFieldsCount()).isZero();
+      assertThat(version("keys/codes", "keyVersions/codes-1").hasPublicKey()).isFalse();
     }
 
     @Test
     @DisplayName("an encryption key does not sign")
     void encryption() throws Exception {
-      pyrite.key("organizations/acme", "payments", "ENCRYPTION", "AES256_GCM");
+      pyrite.key("organizations/acme", "payments", Algorithm.AES256_GCM);
 
       assertThat(status(() -> sign("keys/payments", claims(NOW + 600), "at+jwt")))
           .isEqualTo(GrpcStatus.FAILED_PRECONDITION);
@@ -259,7 +267,7 @@ class SigningTest extends PyriteTest {
     @Test
     @DisplayName("a token signed with HS256 over the published public key is rejected")
     void confusion() throws Exception {
-      byte[] secret = MessageDigest.getInstance("SHA-256").digest(publicKey("keyVersions/oauth-1").toJSONString()
+      byte[] secret = MessageDigest.getInstance("SHA-256").digest(publicKey("keys/oauth", "keyVersions/oauth-1").toJSONString()
           .getBytes(StandardCharsets.UTF_8));
       SignedJWT forged = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).type(new JOSEObjectType("at+jwt"))
           .keyID("oauth-1").build(),
@@ -274,7 +282,7 @@ class SigningTest extends PyriteTest {
     @Test
     @DisplayName("a token of another key with its key id changed to this key's fails its signature")
     void keyId() throws Exception {
-      pyrite.key("organizations/acme", "other", "SIGNING", "ES256");
+      pyrite.key("organizations/acme", "other", Algorithm.ES256);
       String[] parts = sign("keys/other", claims(NOW + 600), "at+jwt").split("\\.");
       String header = encoded("{\"kid\":\"oauth-1\",\"typ\":\"at+jwt\",\"alg\":\"ES256\"}");
 
@@ -284,7 +292,7 @@ class SigningTest extends PyriteTest {
     @Test
     @DisplayName("a token of another key, or with no key id, names no version of this key")
     void otherKey() throws Exception {
-      pyrite.key("organizations/acme", "other", "SIGNING", "ES256");
+      pyrite.key("organizations/acme", "other", Algorithm.ES256);
       String[] parts = sign("keys/oauth", claims(NOW + 600), "at+jwt").split("\\.");
 
       assertThat(rejection(sign("keys/other", claims(NOW + 600), "at+jwt"))).isEqualTo(
@@ -322,7 +330,7 @@ class SigningTest extends PyriteTest {
 
     @BeforeEach
     void key() throws Exception {
-      pyrite.key("organizations/acme", "codes", "MAC", "HMAC_SHA256");
+      pyrite.key("organizations/acme", "codes", Algorithm.HMAC_SHA256);
     }
 
     private ByteString signed(String key, String data) throws Exception {
@@ -350,7 +358,7 @@ class SigningTest extends PyriteTest {
     @Test
     @DisplayName("a signature of another key, an empty one, or a changed one is rejected")
     void forged() throws Exception {
-      pyrite.key("organizations/acme", "other", "MAC", "HMAC_SHA256");
+      pyrite.key("organizations/acme", "other", Algorithm.HMAC_SHA256);
       ByteString signature = signed("keys/codes", "482913");
       byte[] changed = signature.toByteArray();
       changed[0] ^= 1;
@@ -366,7 +374,7 @@ class SigningTest extends PyriteTest {
     @Test
     @DisplayName("a named version that the key does not have is rejected")
     void version() throws Exception {
-      pyrite.key("organizations/acme", "other", "MAC", "HMAC_SHA256");
+      pyrite.key("organizations/acme", "other", Algorithm.HMAC_SHA256);
       ByteString signature = signed("keys/codes", "482913");
 
       assertThat(verified("482913", signature, "keyVersions/other-1").getRejected().getReason())

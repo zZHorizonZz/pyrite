@@ -12,14 +12,14 @@ import dev.horizon.pyrite.crypto.v1.Rejected;
 import dev.horizon.pyrite.crypto.v1.SignResponse;
 import dev.horizon.pyrite.crypto.v1.Verified;
 import dev.horizon.pyrite.crypto.v1.VerifyResponse;
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.keys.v1.Tables;
 import io.vertx.core.Future;
 import java.util.List;
 import java.util.Optional;
 
 final class SigningKeyImpl extends KeyImpl implements SigningKey {
 
-  SigningKeyImpl(KeyTypeImpl type, Row row) {
+  SigningKeyImpl(KeyTypeImpl type, Tables.Key row) {
     super(type, row);
   }
 
@@ -80,7 +80,7 @@ final class SigningKeyImpl extends KeyImpl implements SigningKey {
     if (header.isPresent()) {
       return Future.succeededFuture(VerifyResponse.newBuilder().setRejected(header.get()).build());
     }
-    String version = type().versions().declaration().resource(jwt.keyId());
+    String version = KeyTypeImpl.VERSIONS + jwt.keyId();
     return verify(jwt.signingInput(), jwt.signature(), version)
         .map(verdict -> verdict.hasRejected() ? verdict
             : jwt.claims(expected, type().schema().clock().instant(), version));

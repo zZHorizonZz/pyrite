@@ -16,29 +16,27 @@ import dev.horizon.pyrite.access.AccessService;
 import dev.horizon.pyrite.access.v1.AccessGrpcClient;
 import dev.horizon.pyrite.access.v1.CheckRequest;
 import dev.horizon.pyrite.access.v1.CreateGrantRequest;
+import dev.horizon.pyrite.access.v1.CreateObjectRequest;
 import dev.horizon.pyrite.access.v1.Grant;
+import dev.horizon.pyrite.access.v1.ListObjectsRequest;
 import dev.horizon.pyrite.authentication.AuthenticationService;
+import dev.horizon.pyrite.authentication.v1.Account;
+import dev.horizon.pyrite.authentication.v1.AddIdentifierRequest;
 import dev.horizon.pyrite.authentication.v1.AuthenticateRequest;
 import dev.horizon.pyrite.authentication.v1.AuthenticationGrpcClient;
 import dev.horizon.pyrite.authentication.v1.CodeAnswer;
 import dev.horizon.pyrite.authentication.v1.ContinueFlowRequest;
+import dev.horizon.pyrite.authentication.v1.CreateAccountRequest;
 import dev.horizon.pyrite.authentication.v1.Flow;
-import dev.horizon.pyrite.authentication.v1.IdentifierKind;
 import dev.horizon.pyrite.authentication.v1.PasswordAnswer;
 import dev.horizon.pyrite.authentication.v1.Principal;
 import dev.horizon.pyrite.authentication.v1.SessionToken;
 import dev.horizon.pyrite.authentication.v1.StartFlowRequest;
 import dev.horizon.pyrite.crypto.CryptographyService;
+import dev.horizon.pyrite.crypto.v1.Algorithm;
+import dev.horizon.pyrite.crypto.v1.CreateKeyRequest;
 import dev.horizon.pyrite.crypto.v1.CryptographyGrpcClient;
-import dev.horizon.pyrite.data.DataService;
-import dev.horizon.pyrite.data.v1.CreateResourceRequest;
-import dev.horizon.pyrite.data.v1.DataGrpcClient;
-import dev.horizon.pyrite.data.v1.GetResourceRequest;
-import dev.horizon.pyrite.data.v1.MapValue;
-import dev.horizon.pyrite.data.v1.QueryResourcesRequest;
-import dev.horizon.pyrite.data.v1.QueryResourcesResponse;
-import dev.horizon.pyrite.data.v1.Resource;
-import dev.horizon.pyrite.data.v1.Value;
+import dev.horizon.pyrite.crypto.v1.Key;
 import dev.horizon.pyrite.database.RunningDatabase;
 import dev.horizon.pyrite.schema.SchemaService;
 import dev.horizon.pyrite.schema.v1.SchemaGrpcClient;
@@ -52,9 +50,7 @@ import io.vertx.grpc.eventbus.EventBusGrpcClient;
 import io.vertx.grpc.eventbus.EventBusGrpcServer;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
@@ -72,7 +68,6 @@ public final class Pyrite implements AutoCloseable {
   public final PyriteServiceOptions options;
   public final OpenFGAServiceGrpcClient openFga;
   public final SchemaGrpcClient schema;
-  public final DataGrpcClient data;
   public final AccessGrpcClient access;
   public final CryptographyGrpcClient cryptography;
   public final AuthenticationGrpcClient authentication;
@@ -98,12 +93,10 @@ public final class Pyrite implements AutoCloseable {
             Duration.ofDays(30), Duration.ofDays(7), Duration.ofMinutes(15), Duration.ofMinutes(10), 3,
             new PyriteServiceOptions.Argon2(1024, 1, 1)));
     server.addService(SchemaService.create(vertx, database.pool(), driver, openFga, options));
-    server.addService(DataService.create(vertx, database.pool(), driver, openFga, options));
     server.addService(AccessService.create(vertx, database.pool(), driver, openFga, options));
     server.addService(CryptographyService.create(vertx, database.pool(), driver, openFga, options));
     server.addService(AuthenticationService.create(vertx, database.pool(), driver, openFga, options));
     schema = SchemaGrpcClient.create(client);
-    data = DataGrpcClient.create(client);
     access = AccessGrpcClient.create(client);
     cryptography = CryptographyGrpcClient.create(client);
     authentication = AuthenticationGrpcClient.create(client);
@@ -111,28 +104,15 @@ public final class Pyrite implements AutoCloseable {
         .await(TIMEOUT);
   }
 
-  public Resource create(String subject, String parent, String type, String id, Map<String, Value> fields)
-      throws Exception {
-    return data.createResource(CreateResourceRequest.newBuilder().setSubject(subject).setParent(parent)
-        .setResourceId(id).setResource(Resource.newBuilder().setType(type).putAllFields(fields)).build())
+  public String create(String subject, String name, String parent) throws Exception {
+    access.createObject(CreateObjectRequest.newBuilder().setSubject(subject).setName(name).setParent(parent).build())
         .await(TIMEOUT);
+    return name;
   }
 
-  public Resource get(String subject, String name) throws Exception {
-    return data.getResource(GetResourceRequest.newBuilder().setSubject(subject).setName(name).build())
-        .await(TIMEOUT);
-  }
-
-  public List<String> query(QueryResourcesRequest request) throws Exception {
-    List<String> names = new ArrayList<>();
-    String token = "";
-    do {
-      QueryResourcesResponse page = data.queryResources(request.toBuilder().setPageToken(token).build())
-          .await(TIMEOUT);
-      page.getResourcesList().forEach(resource -> names.add(resource.getName()));
-      token = page.getNextPageToken();
-    } while (!token.isEmpty());
-    return names;
+  public List<String> objects(String subject, String type, String permission, Struct context) throws Exception {
+    return access.listObjects(ListObjectsRequest.newBuilder().setSubject(subject).setType(type)
+        .setPermission(permission).setContext(context).build()).await(TIMEOUT).getNamesList();
   }
 
   public Grant grant(String subject, String object, String relation, String grantee) throws Exception {
@@ -145,22 +125,23 @@ public final class Pyrite implements AutoCloseable {
         .setPermission(permission).setContext(context).build()).await(TIMEOUT).getAllowed();
   }
 
-  public Resource key(String parent, String id, String purpose, String algorithm) throws Exception {
-    return create(ANNE, parent, "pyrite.dev/Key", id, Map.of("purpose", text(purpose), "algorithm",
-        text(algorithm)));
+  public Key key(String parent, String id, Algorithm algorithm) throws Exception {
+    return cryptography.createKey(CreateKeyRequest.newBuilder().setSubject(ANNE).setKeyId(id).setParent(parent)
+        .setAlgorithm(algorithm).build()).await(TIMEOUT);
   }
 
   public void accounts() throws Exception {
-    create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-    key("organizations/acme", "sessions", "MAC", "HMAC_SHA256");
-    key("organizations/acme", "factors", "ENCRYPTION", "AES256_GCM");
+    create(ANNE, "organizations/acme", "");
+    key("organizations/acme", "sessions", Algorithm.HMAC_SHA256);
+    key("organizations/acme", "factors", Algorithm.AES256_GCM);
   }
 
   public void account(String id, String email, String password) throws Exception {
     String subject = "user:" + id;
-    create(subject, "", "pyrite.dev/Account", id, Map.of("kind", text("HUMAN")));
-    create(subject, "accounts/" + id, "pyrite.dev/Identifier", id + "-email", Map.of("kind", text("EMAIL"),
-        "value", text(email)));
+    authentication.createAccount(CreateAccountRequest.newBuilder().setSubject(subject).setAccountId(id)
+        .setKind(Account.Kind.HUMAN).build()).await(TIMEOUT);
+    authentication.addIdentifier(AddIdentifierRequest.newBuilder().setSubject(subject).setAccount("accounts/" + id)
+        .setKind("email").setValue(email).build()).await(TIMEOUT);
     answer(start(subject, "enrol-password", ""), PasswordAnswer.newBuilder().setPassword(password).build());
   }
 
@@ -176,7 +157,7 @@ public final class Pyrite implements AutoCloseable {
   public Flow start(String subject, String definition, String email) throws Exception {
     StartFlowRequest.Builder request = StartFlowRequest.newBuilder().setSubject(subject).setDefinition(definition);
     if (!email.isEmpty()) {
-      request.setIdentifierKind(IdentifierKind.EMAIL).setIdentifier(email);
+      request.setIdentifierKind("email").setIdentifier(email);
     }
     return authentication.startFlow(request.build()).await(TIMEOUT);
   }
@@ -194,18 +175,6 @@ public final class Pyrite implements AutoCloseable {
 
   public static String token(Flow done) throws Exception {
     return done.getResult().getIssued(0).unpack(SessionToken.class).getToken();
-  }
-
-  public static Value text(String text) {
-    return Value.newBuilder().setStringValue(text).build();
-  }
-
-  public static Value integer(long integer) {
-    return Value.newBuilder().setIntegerValue(integer).build();
-  }
-
-  public static Value labels(String key, String value) {
-    return Value.newBuilder().setMapValue(MapValue.newBuilder().putFields(key, text(value))).build();
   }
 
   public static Struct at(String time) {

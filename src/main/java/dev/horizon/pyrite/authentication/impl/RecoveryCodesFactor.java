@@ -1,23 +1,23 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.impl.storage.Row;
+import com.google.protobuf.ByteString;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 final class RecoveryCodesFactor extends FactorImpl implements Factor {
 
   private final Optional<List<String>> codes;
 
-  RecoveryCodesFactor(FactorTypeImpl type, Row row) {
+  RecoveryCodesFactor(AccountTypeImpl type, Tables.Factor row) {
     this(type, row, Optional.empty());
   }
 
-  private RecoveryCodesFactor(FactorTypeImpl type, Row row, Optional<List<String>> codes) {
+  private RecoveryCodesFactor(AccountTypeImpl type, Tables.Factor row, Optional<List<String>> codes) {
     super(type, row);
     this.codes = codes;
   }
@@ -32,7 +32,7 @@ final class RecoveryCodesFactor extends FactorImpl implements Factor {
 
   public Future<Boolean> use(String code) {
     JsonArray macs = new JsonArray(new String(secret(), StandardCharsets.UTF_8));
-    return type().accounts().macKey().compose(key -> {
+    return type().macKey().compose(key -> {
       Future<Integer> matched = Future.succeededFuture(-1);
       for (int index = 0; index < macs.size(); index++) {
         int at = index;
@@ -46,7 +46,7 @@ final class RecoveryCodesFactor extends FactorImpl implements Factor {
         return Future.succeededFuture(false);
       }
       macs.remove(match.intValue());
-      return change(Map.of(FactorType.SECRET, macs.encode().getBytes(StandardCharsets.UTF_8))).map(true);
+      return change(row().toBuilder().setSecret(ByteString.copyFromUtf8(macs.encode()))).map(true);
     });
   }
 

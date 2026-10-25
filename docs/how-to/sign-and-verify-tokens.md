@@ -11,14 +11,11 @@ parties can verify the token with the key's public key, without Pyrite.
 
 ## Sign a JWT
 
-1. Create a signing key. `ES256` signs with ECDSA on P-256:
+1. Create a signing key. `ES256` signs with ECDSA on P-256, and gives the key the purpose `SIGNING`:
 
    ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-       .setResourceId("oauth").setResource(Resource.newBuilder().setType("pyrite.dev/Key")
-           .putFields("purpose", Value.newBuilder().setStringValue("SIGNING").build())
-           .putFields("algorithm", Value.newBuilder().setStringValue("ES256").build()))
-       .build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("oauth")
+       .setParent("organizations/acme").setAlgorithm(Algorithm.ES256).build()).await();
    ```
 
 2. Sign the claims, with the token's `typ`. Include `exp`, because verification rejects a token without it:
@@ -71,20 +68,27 @@ For every reason, refer to [Status codes](../reference/status-codes.md#rejection
 
 ## Publish the public key
 
-Each version of a signing key holds its public key as a JWK in the field `public_key`. Read it from the version that
-the token's `kid` names, and publish it in your JWKS:
+Each version of a signing key has its public key as a JWK, in the field `public_key`. List the versions, and publish
+the public key of each enabled one in your JWKS. The JWK's `kid` is the one that the version's tokens carry:
 
 ```java
-Resource version = data.getResource(GetResourceRequest.newBuilder().setSubject("user:anne")
-    .setName("keyVersions/oauth-1").build()).await();
-MapValue jwk = version.getFieldsMap().get("public_key").getMapValue();
+List<Struct> jwks = cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder().setSubject("user:anne")
+    .setKey("keys/oauth").build()).await().getVersionsList().stream()
+    .filter(version -> version.getState() == KeyVersion.State.ENABLED).map(KeyVersion::getPublicKey).toList();
 ```
+
+`ListKeyVersions` needs `viewer` on the key.
 
 ## Sign data with a MAC key
 
 A MAC key signs bytes as they are, such as a code that you send and check later.
 
-1. Create a key with the purpose `MAC` and the algorithm `HMAC_SHA256`.
+1. Create a key with the algorithm `HMAC_SHA256`, which gives it the purpose `MAC`:
+
+   ```java
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("codes")
+       .setParent("organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
+   ```
 
 2. Sign the data:
 

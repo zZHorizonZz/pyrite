@@ -24,7 +24,7 @@ final class TotpEnrolment extends Method<TotpAnswer> {
 
   @Override
   Future<Challenge> challenge(FlowImpl flow) {
-    return flow.enrolment(TotpFactor.class).compose(factor -> factor.uri(factor.parentName().orElseThrow()))
+    return flow.enrolment(TotpFactor.class).compose(factor -> factor.uri(factor.row().getParent()))
         .map(uri -> Challenge.newBuilder().setMethod(name())
             .setParameters(Any.pack(TotpProvisioning.newBuilder().setUri(uri).build())).build());
   }

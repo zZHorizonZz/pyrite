@@ -5,53 +5,64 @@ import io.vertx.core.Future;
 import java.util.List;
 
 /**
- * An account of the type {@code pyrite.dev/Account}. Its principal is {@code user:<id>}, so {@code accounts/anne} is
- * {@code user:anne}.
- *
- * <p>
- * Beneath an account are its identifiers, its factors and its sessions.
+ * An account, the resource {@code pyrite.dev/Account}: the identifiers that name it, the factors that prove it, and
+ * the sessions that its flows issued. The account owns itself, as {@code user:<id>}.
  */
-public interface Account extends Resource {
+public interface Account {
 
   /**
-   * Gives the account's principal.
+   * Gives the account's name.
    *
-   * @return the principal, such as {@code user:anne}
+   * @return the name, such as {@code accounts/anne}
+   */
+  String name();
+
+  /**
+   * Gives the subject that the account calls as.
+   *
+   * @return the subject, such as {@code user:anne}
    */
   String subject();
 
   /**
-   * Reads the account's identifiers.
+   * Gives the account as a resource, which grants and checks reach.
    *
-   * @return the identifiers
+   * @return the resource
+   */
+  Resource resource();
+
+  /**
+   * Gives the account's identifiers.
+   *
+   * @return the identifiers, by name
    */
   Future<List<Identifier>> identifiers();
 
   /**
-   * Reads the account's factors: active, pending and removed.
+   * Gives the account's factors, those that were removed among them.
    *
-   * @return the factors
+   * @return the factors, by name
    */
   Future<List<Factor>> factors();
 
   /**
-   * Issues a session. The returned session carries its token, which Pyrite does not store and gives only once.
+   * Issues a session.
    *
-   * @return the session
+   * @return the session, with its token
    */
   Future<Session> createSession();
 
   /**
-   * Reads the account's sessions: live and ended.
+   * Ends every session of the account.
    *
-   * @return the sessions
-   */
-  Future<List<Session>> sessions();
-
-  /**
-   * Ends every live session of the account.
-   *
-   * @return when the sessions are ended
+   * @return a future that completes once they are ended
    */
   Future<Void> deleteSessions();
+
+  /**
+   * Gives the account as a message.
+   *
+   * @return the message of {@code pyrite.authentication.v1}
+   */
+  dev.horizon.pyrite.authentication.v1.Account message();
 }

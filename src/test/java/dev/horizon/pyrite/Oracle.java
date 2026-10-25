@@ -16,14 +16,12 @@ import dev.horizon.spectrum.openfga.v1.RelationMetadata;
 import dev.horizon.spectrum.openfga.v1.RelationReference;
 import dev.horizon.spectrum.openfga.v1.RelationshipCondition;
 import dev.horizon.spectrum.openfga.v1.TupleKey;
-import dev.horizon.spectrum.openfga.v1.TupleKeyWithoutCondition;
 import dev.horizon.spectrum.openfga.v1.TypeDefinition;
 import dev.horizon.spectrum.openfga.v1.User;
 import dev.horizon.spectrum.openfga.v1.UserTypeFilter;
 import dev.horizon.spectrum.openfga.v1.Userset;
 import dev.horizon.spectrum.openfga.v1.WriteAuthorizationModelRequest;
 import dev.horizon.spectrum.openfga.v1.WriteRequest;
-import dev.horizon.spectrum.openfga.v1.WriteRequestDeletes;
 import dev.horizon.spectrum.openfga.v1.WriteRequestWrites;
 import java.util.HashMap;
 import java.util.List;
@@ -83,14 +81,6 @@ final class Oracle {
     openFga.write(WriteRequest.newBuilder().setStoreId(store).setWrites(WriteRequestWrites.newBuilder()
         .addTupleKeys(TupleKey.newBuilder().setObject(object(name)).setRelation("parent").setUser(object(parent))))
         .build()).await(TIMEOUT);
-  }
-
-  void move(String name, String from, String to) throws Exception {
-    openFga.write(WriteRequest.newBuilder().setStoreId(store).setDeletes(WriteRequestDeletes.newBuilder()
-        .addTupleKeys(TupleKeyWithoutCondition.newBuilder().setObject(object(name)).setRelation("parent")
-            .setUser(object(from))))
-        .build()).await(TIMEOUT);
-    parent(name, to);
   }
 
   boolean check(String principal, String name, String relation, Struct context) throws Exception {

@@ -1,88 +1,111 @@
 package dev.horizon.pyrite.crypto.impl;
 
+import com.google.protobuf.Timestamp;
 import dev.horizon.pyrite.PyriteException;
-import dev.horizon.pyrite.impl.resource.BaseResource;
 import dev.horizon.pyrite.impl.resource.Resource;
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.keys.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
-abstract class KeyImpl extends BaseResource {
+abstract class KeyImpl {
 
   static final String ENCRYPTION = "ENCRYPTION";
 
-  KeyImpl(KeyTypeImpl type, Row row) {
-    super(type, row);
+  private final KeyTypeImpl type;
+  private final Tables.Key row;
+
+  KeyImpl(KeyTypeImpl type, Tables.Key row) {
+    this.type = type;
+    this.row = row;
   }
 
-  @Override
-  public KeyTypeImpl type() {
-    return (KeyTypeImpl) super.type();
+  public String name() {
+    return row.getName();
   }
 
-  public String purpose() {
-    return field(KeyType.PURPOSE);
+  public Resource resource() {
+    return type.resource(name());
   }
 
   public String primaryVersion() {
-    return field(KeyType.PRIMARY_VERSION);
+    return row.getPrimaryVersion();
   }
 
   public Future<List<KeyVersion>> versions() {
-    return type().versions().under(name());
-  }
-
-  public Future<KeyVersion> version(String version) {
-    return type().versions().get(version)
-        .map(found -> found.filter(candidate -> candidate.parentName().equals(Optional.of(name())))
-            .orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The key " + name() + " has no"
-                + " version " + version + ".")));
+    return type.versions(name());
   }
 
   public Future<KeyVersion> primary() {
-    Optional<Instant> next = Optional.ofNullable(field(KeyType.NEXT_ROTATION_TIME));
-    boolean due = next.map(time -> !time.isAfter(type().schema().clock().instant())).orElse(false);
-    return due ? rotate().compose(rotated -> rotated.version(rotated.primaryVersion())) : version(primaryVersion());
+    boolean due = row.hasNextRotationTime()
+        && !Instant.parse(row.getNextRotationTime()).isAfter(type.schema().clock().instant());
+    return due ? rotate().compose(rotated -> type.version(rotated.primaryVersion())) : type.version(primaryVersion());
   }
 
   public Future<Key> rotate() {
-    return add().compose(this::point);
+    return type.add(this).compose(this::point);
   }
 
-  @Override
-  public Future<Resource> update(Map<String, Object> changes, long revision) {
-    Map<String, Object> all = new HashMap<>(checkUpdate(changes, revision));
-    if (all.containsKey(KeyType.ROTATION_PERIOD)) {
-      long period = all.get(KeyType.ROTATION_PERIOD) instanceof Long given ? given : 0;
-      if (period < 0) {
-        throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The rotation period is negative.");
-      }
-      all.put(KeyType.NEXT_ROTATION_TIME, period > 0 ? type().schema().clock().instant().plusSeconds(period) : null);
+  public Future<Key> update(Duration period, long revision) {
+    if (period.isNegative()) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The rotation period is negative.");
     }
-    return change(all);
+    if (row.getRevision() != revision) {
+      throw new PyriteException(GrpcStatus.ABORTED, "The key " + name() + " is at revision " + row.getRevision()
+          + ", not " + revision + ".");
+    }
+    Tables.Key.Builder changed = row.toBuilder().setRotationPeriod(period.toSeconds()).clearNextRotationTime();
+    if (period.isPositive()) {
+      changed.setNextRotationTime(type.schema().clock().instant().plus(period).toString());
+    }
+    return save(changed);
+  }
+
+  public dev.horizon.pyrite.crypto.v1.Key message() {
+    dev.horizon.pyrite.crypto.v1.Key.Builder message = dev.horizon.pyrite.crypto.v1.Key.newBuilder()
+        .setName(name()).setParent(row.getParent())
+        .setPurpose(dev.horizon.pyrite.crypto.v1.Key.Purpose.valueOf(row.getPurpose()))
+        .setAlgorithm(dev.horizon.pyrite.crypto.v1.Algorithm.valueOf(row.getAlgorithm()))
+        .setRotationPeriod(com.google.protobuf.Duration.newBuilder().setSeconds(row.getRotationPeriod()))
+        .setPrimaryVersion(primaryVersion()).setRevision(row.getRevision())
+        .setCreateTime(timestamp(row.getCreateTime())).setUpdateTime(timestamp(row.getUpdateTime()));
+    if (row.hasNextRotationTime()) {
+      message.setNextRotationTime(timestamp(row.getNextRotationTime()));
+    }
+    return message.build();
+  }
+
+  KeyTypeImpl type() {
+    return type;
+  }
+
+  String id() {
+    return name().substring(name().indexOf('/') + 1);
   }
 
   Algorithm algorithm() {
-    return Algorithm.valueOf(field(KeyType.ALGORITHM));
+    return Algorithm.valueOf(row.getAlgorithm());
   }
 
-  Future<KeyVersion> add() {
-    return type().versions().add(this);
+  static Timestamp timestamp(String time) {
+    Instant instant = Instant.parse(time);
+    return Timestamp.newBuilder().setSeconds(instant.getEpochSecond()).setNanos(instant.getNano()).build();
   }
 
   private Future<Key> point(KeyVersion version) {
-    long period = field(KeyType.ROTATION_PERIOD);
-    Map<String, Object> changes = new HashMap<>();
-    changes.put(KeyType.PRIMARY_VERSION, version.name());
-    changes.put(KeyType.NEXT_ROTATION_TIME, period > 0 ? type().schema().clock().instant().plusSeconds(period) : null);
-    return change(changes).map(Key.class::cast)
-        .recover(failure -> failure instanceof PyriteException conflict && conflict.status() == GrpcStatus.ABORTED
-            ? type().key(name())
-            : Future.failedFuture(failure));
+    Tables.Key.Builder changed = row.toBuilder().setPrimaryVersion(version.name()).clearNextRotationTime();
+    if (row.getRotationPeriod() > 0) {
+      changed.setNextRotationTime(type.schema().clock().instant().plusSeconds(row.getRotationPeriod()).toString());
+    }
+    return save(changed).recover(failure -> failure instanceof PyriteException conflict
+        && conflict.status() == GrpcStatus.ABORTED ? type.key(name()) : Future.failedFuture(failure));
+  }
+
+  private Future<Key> save(Tables.Key.Builder changed) {
+    return type.keys().update(changed.setRevision(row.getRevision() + 1)
+        .setUpdateTime(type.schema().clock().instant().toString()).build(), row.getUid(), row.getRevision(), name())
+        .map(type::key);
   }
 }

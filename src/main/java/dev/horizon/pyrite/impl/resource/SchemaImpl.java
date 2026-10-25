@@ -1,39 +1,39 @@
 package dev.horizon.pyrite.impl.resource;
 
+import com.google.protobuf.Struct;
 import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.PyriteServiceOptions;
 import dev.horizon.pyrite.access.v1.Condition;
 import dev.horizon.pyrite.access.v1.Grant;
 import dev.horizon.pyrite.authentication.impl.AccountTypeImpl;
-import dev.horizon.pyrite.authentication.impl.FactorTypeImpl;
 import dev.horizon.pyrite.authentication.impl.FlowType;
 import dev.horizon.pyrite.authentication.impl.FlowTypeImpl;
-import dev.horizon.pyrite.authentication.impl.IdentifierTypeImpl;
-import dev.horizon.pyrite.authentication.impl.SessionTypeImpl;
 import dev.horizon.pyrite.crypto.impl.KeyTypeImpl;
-import dev.horizon.pyrite.crypto.impl.KeyVersionTypeImpl;
 import dev.horizon.pyrite.impl.Adapter;
 import dev.horizon.pyrite.impl.model.DeclaredType;
 import dev.horizon.pyrite.impl.model.TypeSystem;
+import dev.horizon.pyrite.impl.storage.NodeBackend;
+import dev.horizon.pyrite.schema.declaration.v1.Tables;
 import dev.horizon.spectrum.openfga.v1.TupleKey;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.grpc.common.GrpcStatus;
 import java.time.Clock;
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public final class SchemaImpl implements Schema {
+
+  private static final Pattern ID = Pattern.compile("[a-z]([a-z0-9-]{0,61}[a-z0-9])?");
 
   private final TypeSystem types;
   private final Adapter adapter;
   private final Vertx vertx;
   private final PyriteServiceOptions options;
-  private final Map<String, BaseResourceType<?>> byName = new LinkedHashMap<>();
+  private final NodeBackend nodes;
+  private final Optional<KeyTypeImpl> keys;
+  private final Optional<AccountTypeImpl> accounts;
   private final Optional<FlowType> flows;
 
   SchemaImpl(TypeSystem types, Database database, Adapter adapter, Vertx vertx, PyriteServiceOptions options) {
@@ -41,21 +41,12 @@ public final class SchemaImpl implements Schema {
     this.adapter = adapter;
     this.vertx = vertx;
     this.options = options;
-    for (DeclaredType declared : types.types()) {
-      byName.put(declared.name(), (BaseResourceType<?>) switch (declared.name()) {
-        case TypeSystem.KEY -> new KeyTypeImpl(declared, this, database);
-        case TypeSystem.KEY_VERSION -> new KeyVersionTypeImpl(declared, this, database, options.root()
-            .orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has keys, whose"
-                + " material a root key encrypts, but the options of the service have none.")));
-        case TypeSystem.ACCOUNT -> new AccountTypeImpl(declared, this, database);
-        case TypeSystem.IDENTIFIER -> new IdentifierTypeImpl(declared, this, database);
-        case TypeSystem.FACTOR -> new FactorTypeImpl(declared, this, database);
-        case TypeSystem.SESSION -> new SessionTypeImpl(declared, this, database);
-        default -> new ApplicationType(declared, this, database);
-      });
-    }
-    this.flows = byName.containsKey(TypeSystem.ACCOUNT) ? Optional.of(new FlowTypeImpl(this, database))
-        : Optional.empty();
+    this.nodes = new NodeBackend(database);
+    this.keys = types.type(TypeSystem.KEY).map(declared -> new KeyTypeImpl(this, declared, database, options.root()
+        .orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has keys, whose"
+            + " material a root key encrypts, but the options of the service have none."))));
+    this.accounts = types.type(TypeSystem.ACCOUNT).map(declared -> new AccountTypeImpl(this, declared, database));
+    this.flows = accounts.map(ignored -> new FlowTypeImpl(this, database));
   }
 
   @Override
@@ -84,44 +75,82 @@ public final class SchemaImpl implements Schema {
   }
 
   @Override
+  public DeclaredType type(String name) {
+    return types.type(name).orElseThrow(() -> new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + name
+        + " is not declared."));
+  }
+
+  @Override
+  public KeyTypeImpl keys() {
+    return keys.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
+        + " keys; declare the type " + TypeSystem.KEY + "."));
+  }
+
+  @Override
+  public AccountTypeImpl accounts() {
+    return accounts.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
+        + " accounts; declare the type " + TypeSystem.ACCOUNT + "."));
+  }
+
+  @Override
   public FlowType flows() {
     return flows.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
         + " accounts, so it has no flows."));
   }
 
   @Override
-  public ResourceType<?> type(String name) {
-    ResourceType<?> type = byName.get(name);
-    if (type == null) {
-      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + name + " is not declared.");
+  public Future<Resource> create(Subject creator, String name, String parent, Struct context) {
+    DeclaredType type = types.typeOf(name).orElseThrow(() -> new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The"
+        + " name " + name + " is not of a declared type: its first segment is no type's plural."));
+    if (!ID.matcher(type.id(name)).matches()) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The id of " + name + " does not match " + ID.pattern()
+          + ".");
     }
-    return type;
+    Resource created = new Resource(this, type, name);
+    return place(type, parent)
+        .compose(above -> above.isEmpty() ? Future.succeededFuture(above)
+            : above.get().require(creator, type.permissions().getCreate(), context).map(above))
+        .compose(above -> nodes.existsById(name).compose(known -> {
+          if (known) {
+            throw new PyriteException(GrpcStatus.ALREADY_EXISTS, "The resource " + name + " is known already.");
+          }
+          Tables.Node.Builder node = Tables.Node.newBuilder().setName(name).setType(type.name())
+              .setCreateTime(clock().instant().toString());
+          above.ifPresent(found -> node.setParent(found.name()));
+          return nodes.insert(node.build()).map(above);
+        }))
+        .compose(above -> above.isEmpty() ? Future.succeededFuture()
+            : adapter.write(TupleKey.newBuilder().setUser(above.get().object()).setRelation(TypeSystem.PARENT)
+                .setObject(created.object()).build()))
+        .compose(ignored -> type.creator().isEmpty() ? Future.succeededFuture()
+            : adapter.write(TupleKey.newBuilder().setUser(creator.toString()).setRelation(type.creator())
+                .setObject(created.object()).build()))
+        .map(created);
   }
 
   @Override
-  public <T extends ResourceType<?>> T type(String name, Class<T> kind) {
-    return kind.cast(type(name));
-  }
-
-  public List<BaseResourceType<?>> all() {
-    return List.copyOf(byName.values());
-  }
-
-  public List<BaseResourceType<?>> children(BaseResourceType<?> parent) {
-    return byName.values().stream().filter(child -> child.declaration().parents().contains(parent.name()))
-        .toList();
+  public Future<Void> forget(String name) {
+    return require(name).compose(found -> nodes.occupied(name).compose(occupied -> {
+      if (occupied) {
+        throw new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The resource " + name + " has resources under"
+            + " it; forget them first.");
+      }
+      return found.forget();
+    })).compose(ignored -> nodes.deleteById(name)).mapEmpty();
   }
 
   @Override
   public Future<Optional<Resource>> get(String name) {
-    return types.typeOf(name).map(type -> byName.get(type.name()).get(name).map(found -> found.map(Resource.class::cast)))
+    return types.typeOf(name)
+        .map(type -> nodes.findById(name).map(node -> node.filter(found -> found.getType().equals(type.name()))
+            .map(found -> new Resource(this, type, name))))
         .orElseGet(() -> Future.succeededFuture(Optional.empty()));
   }
 
   @Override
   public Future<Resource> require(String name) {
     return get(name).map(found -> found.orElseThrow(() -> new PyriteException(GrpcStatus.NOT_FOUND, "The resource "
-        + name + " does not exist.")));
+        + name + " is not known.")));
   }
 
   @Override
@@ -138,13 +167,24 @@ public final class SchemaImpl implements Schema {
     });
   }
 
-  @Override
-  public Future<Long> purge() {
-    Instant now = options.clock().instant();
-    Future<Long> purged = Future.succeededFuture(0L);
-    for (BaseResourceType<?> type : byName.values()) {
-      purged = purged.compose(count -> type.purge(now).map(more -> count + more));
+  private Future<Optional<Resource>> place(DeclaredType type, String parent) {
+    if (type.parents().isEmpty()) {
+      if (!parent.isEmpty()) {
+        throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + type.name() + " has no parents, but the"
+            + " request names " + parent + ".");
+      }
+      return Future.succeededFuture(Optional.empty());
     }
-    return purged;
+    if (parent.isEmpty()) {
+      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "A resource of the type " + type.name() + " is under"
+          + " one of " + type.parents() + ", but the request names no parent.");
+    }
+    return require(parent).map(found -> {
+      if (!type.parents().contains(found.type().name())) {
+        throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "A resource of the type " + type.name() + " cannot be"
+            + " under " + parent + ".");
+      }
+      return Optional.of(found);
+    });
   }
 }

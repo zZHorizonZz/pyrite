@@ -8,9 +8,8 @@ database the same options. For how to pass them, refer to [Serve the services](.
 
 | Option            | Method               | Default             | Sets                                                       |
 | ----------------- | -------------------- | ------------------- | ---------------------------------------------------------- |
-| `defaultPageSize` | none                 | `50`                | The page size of a list or query that names none           |
+| `defaultPageSize` | none                 | `50`                | The page size of a list that names none                    |
 | `maxPageSize`     | none                 | `1000`              | The largest page; a larger request gets this size          |
-| `maxDepth`        | none                 | `64`                | The ancestors that a check or query walks, at most         |
 | `tuplesPerRead`   | none                 | `100`               | The tuples that Pyrite reads from OpenFGA per call         |
 | `pageTokenKey`    | none                 | A random AES key    | The key that encrypts page tokens                          |
 | `root`            | `withRoot`           | None                | The Tink `Aead` that encrypts the material of key versions |
@@ -48,7 +47,8 @@ the first four values, and the defaults for the rest.
 | `argon2`          | `RFC_9106`   | The cost of password hashes                                                          |
 
 Every lifetime is positive, and `maxAnswers` is at least `1`. The keys that `macKey` and `encryptionKey` name are
-resources of `pyrite.dev/Key`: create them after the first declaration, with the purposes `MAC` and `ENCRYPTION`.
+resources of `pyrite.dev/Key`: create them with `CreateKey` after the first declaration, with the algorithms
+`HMAC_SHA256` and `AES256_GCM`.
 
 ## RelyingParty
 

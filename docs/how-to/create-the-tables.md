@@ -1,7 +1,10 @@
 # Create the tables
 
-Pyrite reads and writes three sets of tables: its own, your types', and those of the OpenFGA server that holds the
-grants. Create all three before you write a declaration.
+Pyrite reads and writes two sets of tables: its own, and those of the OpenFGA server that holds the grants. Create
+both before you write a declaration.
+
+Pyrite does not store your application's resources, so your types need no tables in Pyrite. Your application keeps
+its resources in its own tables, with its own migrations.
 
 ## Before you begin
 
@@ -28,33 +31,6 @@ database: `postgresql`, `mariadb`, `sqlserver` and `sqlite`.
 2. Run them again after each upgrade of Pyrite, which can add migrations.
 
 The tables have the prefix `pyrite_`. For their columns, refer to [Tables](../reference/tables.md).
-
-## Create the tables of your types
-
-Each declared type has a table that your migrations create. The table has the ten standard columns, and a column for
-each of the type's own fields.
-
-1. Create the table, with `uid` as its primary key and a unique index on `name`. On PostgreSQL:
-
-   ```sql
-   CREATE TABLE "acme_project" ("uid" varchar(36) NOT NULL, "name" varchar(255) COLLATE "C" NOT NULL,
-     "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL,
-     "revision" bigint NOT NULL, "create_time" timestamptz NOT NULL, "update_time" timestamptz NOT NULL,
-     "delete_time" timestamptz, "purge_time" timestamptz, "billing_account" varchar(64),
-     CONSTRAINT "pk_acme_project" PRIMARY KEY ("uid"));
-   CREATE UNIQUE INDEX "ux_acme_project_name" ON "acme_project" ("name");
-   ```
-
-2. Index `parent` for a type with parents. Queries read the rows beneath a set of parents:
-
-   ```sql
-   CREATE INDEX "ix_acme_project_parent" ON "acme_project" ("parent");
-   ```
-
-3. Declare the type with the same table and fields. For more information, refer to
-   [Declare a type](declare-a-type.md).
-
-For the column of each kind of field, refer to [Tables](../reference/tables.md#columns-of-your-tables).
 
 ## Create the tables of OpenFGA
 

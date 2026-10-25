@@ -30,7 +30,7 @@ public final class CheckHandler extends UnaryHandler<CheckRequest, CheckResponse
     Subject subject = Subject.parse(request.getSubject());
     Subject principal = request.getPrincipal().isEmpty() ? subject : Subject.parse(request.getPrincipal());
     return schema.require(request.getObject()).compose(found -> {
-      found.type().relation(request.getPermission());
+      found.relation(request.getPermission());
       Future<Resource> asked = principal.equals(subject) ? Future.succeededFuture(found)
           : found.require(subject, found.type().permissions().getGrant(), request.getContext());
       return asked.compose(ignored -> found.check(principal.toString(), request.getPermission(),

@@ -6,22 +6,25 @@ the key's material, and your application keeps only the ciphertext.
 ## Before you begin
 
 - Declare `pyrite.dev/Key` with the relations `admin`, `viewer`, `encrypter`, `decrypter`, `signer` and `verifier`,
-  and the parents that keys live under. For more information, refer to [Pyrite's types](../reference/pyrite-types.md).
+  and the parents that keys sit under. For more information, refer to [Pyrite's types](../reference/pyrite-types.md).
+- Make the parent known, such as `organizations/acme`, with `CreateObject`. For more information, refer to
+  [Resources](../concepts/resources.md).
 - Give the services a root key with `withRoot`. For more information, refer to
   [Serve the services](serve-the-services.md#give-pyrite-a-root-key).
 - Add the cryptography service to your server with `CryptographyService.create`.
 
 ## Encrypt and decrypt
 
-1. Create an encryption key under its parent:
+1. Create an encryption key under its parent. The algorithm `AES256_GCM` gives it the purpose `ENCRYPTION`:
 
    ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-       .setResourceId("payments").setResource(Resource.newBuilder().setType("pyrite.dev/Key")
-           .putFields("purpose", Value.newBuilder().setStringValue("ENCRYPTION").build())
-           .putFields("algorithm", Value.newBuilder().setStringValue("AES256_GCM").build()))
-       .build()).await();
+   CryptographyGrpcClient cryptography = CryptographyGrpcClient.create(client);
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("payments")
+       .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
    ```
+
+   Anne needs the `create` permission of `pyrite.dev/Key` on the organization. She gets the type's `creator`
+   relation on the key.
 
 2. Encrypt, with associated data that ties the ciphertext to where you store it, such as the order's id:
 

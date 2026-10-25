@@ -6,8 +6,9 @@ import dev.horizon.pyrite.access.v1.Grant;
 import dev.horizon.pyrite.access.v1.ListChangesRequest;
 import dev.horizon.pyrite.access.v1.ListChangesResponse;
 import dev.horizon.pyrite.impl.UnaryHandler;
+import dev.horizon.pyrite.impl.model.DeclaredType;
+import dev.horizon.pyrite.impl.model.TypeSystem;
 import dev.horizon.pyrite.impl.resource.Deployment;
-import dev.horizon.pyrite.impl.resource.ResourceType;
 import dev.horizon.pyrite.impl.resource.Schema;
 import dev.horizon.pyrite.impl.resource.Subject;
 import dev.horizon.spectrum.openfga.v1.TupleChange;
@@ -35,8 +36,8 @@ public final class ListChangesHandler extends UnaryHandler<ListChangesRequest, L
 
   private Future<ListChangesResponse> execute(ListChangesRequest request, Schema schema) {
     Subject subject = Subject.parse(request.getSubject());
-    ResourceType<?> type = schema.type(request.getType());
-    return schema.adapter().changes(type.declaration().singular(),
+    DeclaredType type = schema.type(request.getType());
+    return schema.adapter().changes(type.singular(),
         schema.options().pageSize(request.getPageSize()), request.getPageToken(),
         request.hasStartTime() ? Optional.of(request.getStartTime()) : Optional.empty())
         .compose(changes -> {
@@ -54,7 +55,7 @@ public final class ListChangesHandler extends UnaryHandler<ListChangesRequest, L
   private static Future<Optional<Change>> visible(Schema schema, Subject subject, TupleChange change,
       Struct context) {
     Optional<Grant> grant = schema.grant(change.getTupleKey());
-    if (grant.isEmpty()) {
+    if (grant.isEmpty() || change.getTupleKey().getRelation().equals(TypeSystem.PARENT)) {
       return Future.succeededFuture(Optional.empty());
     }
     return schema.get(grant.get().getObject())

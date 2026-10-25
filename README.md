@@ -1,21 +1,23 @@
 # Pyrite
 
-Pyrite is the data layer of a Vert.x application, with identity and access built in. Your application declares its
-types of resources and their relations. Pyrite stores the resources in your tables and keeps their grants in OpenFGA.
-It checks every call against those grants.
+Pyrite is the identity and access layer of a Vert.x application. Your application declares its types of resources
+and their relations, keeps the resources in its own tables, and tells Pyrite when one is created and when it is gone.
+Pyrite keeps the grants in OpenFGA, and answers who can do what.
 
 ```java
 EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await();
-server.addService(DataService.create(vertx, pool, new PostgresDriver(), openFga));
+server.addService(AccessService.create(vertx, pool, new PostgresDriver(), openFga));
 
-DataGrpcClient data = DataGrpcClient.create(EventBusGrpcClient.client(vertx).await());
-Resource ledger = data.getResource(GetResourceRequest.newBuilder()
-    .setSubject("user:anne").setName("projects/ledger").build()).await();
+AccessGrpcClient access = AccessGrpcClient.create(EventBusGrpcClient.client(vertx).await());
+access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("projects/ledger")
+    .setParent("organizations/acme").build()).await();
+boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
+    .setPermission("viewer").build()).await().getAllowed();
 ```
 
 ## When to use Pyrite
 
-Use Pyrite when your application stores resources that people share, and each call must answer who can do what:
+Use Pyrite when your application has resources that people share, and each call must answer who can do what:
 
 - **Hierarchies:** organizations hold projects, and access granted on an organization reaches its projects.
 - **Sharing:** owners grant relations to people, to groups and to everyone, with conditions such as an expiry time.
@@ -28,36 +30,38 @@ gateway or a verticle that authenticates the session. Do not serve it to clients
 
 ## Features
 
-- **Declared types.** A declaration names each type, its parents, its table, its fields and its relations, as
-  protobuf messages. For more information, refer to [Declarations](docs/concepts/declarations.md).
-- **Checked calls.** Every call checks the subject's permission. A query returns only the resources that the subject
-  may see. For more information, refer to [Subjects and permissions](docs/concepts/subjects-and-permissions.md).
-- **Resources with a lifecycle.** Resources have revisions and move between parents. A deleted resource stays for a
-  retention period before Pyrite purges it. For more information, refer to [Resources](docs/concepts/resources.md).
+- **Declared types.** A declaration names each type, its parents and its relations, as protobuf messages. For more
+  information, refer to [Declarations](docs/concepts/declarations.md).
+- **Known resources.** Your application keeps its resources. It makes each one known to Pyrite when it creates it,
+  and forgets it when it is gone. For more information, refer to [Resources](docs/concepts/resources.md).
+- **Checked calls.** Every call checks the subject's permission. A list returns only the resources that the subject
+  has the permission on. For more information, refer to
+  [Subjects and permissions](docs/concepts/subjects-and-permissions.md).
 - **Keys.** Encryption, MAC and signing keys, whose versions rotate on a schedule. For more information, refer to
   [Keys and versions](docs/concepts/keys-and-versions.md).
-- **Accounts and flows.** Sign-in, verification, recovery and enrolment, as flows that your declaration defines. For
-  more information, refer to [Accounts and flows](docs/concepts/accounts-and-flows.md).
+- **Accounts and flows.** Sign-in, verification, recovery and enrolment, as flows that your declaration defines.
+  People sign in with the kinds of identifiers that you declare, such as an email address or an employee id. For more
+  information, refer to [Accounts and flows](docs/concepts/accounts-and-flows.md).
 - **Your database.** PostgreSQL, MariaDB, SQL Server or SQLite. The JAR contains the migrations of Pyrite's tables.
   For more information, refer to [Create the tables](docs/how-to/create-the-tables.md).
 
 ## Services
 
-Pyrite serves five gRPC services. Each one is a Vert.x gRPC service with its own `create` method, as Spectrum's
+Pyrite serves four gRPC services. Each one is a Vert.x gRPC service with its own `create` method, as Spectrum's
 `OpenFgaService` is.
 
-| Service                                   | Java interface          | Does                                                                 |
-| ----------------------------------------- | ----------------------- | -------------------------------------------------------------------- |
-| `pyrite.schema.v1.Schema`                 | `SchemaService`         | Writes and reads the declaration                                     |
-| `pyrite.data.v1.Data`                     | `DataService`           | Creates, gets, queries, updates, moves, deletes and purges resources |
-| `pyrite.access.v1.Access`                 | `AccessService`         | Grants and revokes relations, checks permissions, and lists grants   |
-| `pyrite.crypto.v1.Cryptography`           | `CryptographyService`   | Encrypts, decrypts, signs and verifies with keys                     |
-| `pyrite.authentication.v1.Authentication` | `AuthenticationService` | Runs sign-in, verification, recovery and enrolment flows             |
+| Service                                   | Java interface          | Does                                                                         |
+| ----------------------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
+| `pyrite.schema.v1.Schema`                 | `SchemaService`         | Writes and reads the declaration                                             |
+| `pyrite.access.v1.Access`                 | `AccessService`         | Makes resources known, grants and revokes relations, checks and lists        |
+| `pyrite.crypto.v1.Cryptography`           | `CryptographyService`   | Creates and rotates keys, and encrypts, decrypts, signs and verifies         |
+| `pyrite.authentication.v1.Authentication` | `AuthenticationService` | Keeps accounts, and runs sign-in, verification, recovery and enrolment flows |
 
 ## Get started
 
 To serve Pyrite and check your first permission, refer to [Get started](docs/get-started.md). Pyrite requires Java 25
-and Vert.x 5. It is the Java module `dev.horizon.pyrite`.
+and Vert.x 5. It is the Java module `dev.horizon.pyrite`. The JAR contains cel-java, RE2/J and ANTLR under
+`dev.horizon.pyrite.shaded`, so your application adds no CEL module.
 
 <!-- x-release-please-start-version -->
 ```xml
@@ -92,8 +96,8 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`.
 ## Run the tests
 
 The suites run against one database at a time: PostgreSQL, MariaDB or SQL Server in Docker through
-Testcontainers, or SQLite in process. Each suite serves Pyrite and Spectrum over the event bus. One suite checks Pyrite's checks, queries and
-lists against plain OpenFGA on the same grants.
+Testcontainers, or SQLite in process. Each suite serves Pyrite and Spectrum over the event bus. One suite checks
+Pyrite's checks and lists against plain OpenFGA on the same grants.
 
 1. Start Docker.
 2. Run the build, here on PostgreSQL:
@@ -117,7 +121,7 @@ The tests run on SQLite unless `pyrite.test.database` names another database: `p
 - [OpenFGA](https://openfga.dev/), whose authorization models the declaration uses
 - [Cinder](https://github.com/zZHorizonZz/cinder), which reads and writes the tables
 - [Leadseal](https://github.com/zZHorizonZz/leadseal), which generates the migrations of Pyrite's tables
-- [aquery](https://github.com/zZHorizonZz/aquery), which parses the filters of [AIP-160](https://google.aip.dev/160)
+- [aquery](https://github.com/zZHorizonZz/aquery), whose [AIP-158](https://google.aip.dev/158) pages the lists of grants use
 - [Tink](https://developers.google.com/tink), whose `Aead` encrypts the material of keys
 
 ## License

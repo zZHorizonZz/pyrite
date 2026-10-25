@@ -10,8 +10,21 @@ option java_multiple_files = true;
 option java_outer_classname = "AccessProto";
 option java_package = "dev.horizon.pyrite.access.v1";
 
-// The grants on resources, as OpenFGA tuples, and the questions about them. Every call runs as its subject.
+// The application's resources as Pyrite knows them, the grants on them, as OpenFGA tuples, and the questions about
+// them. The application keeps its resources itself and tells Pyrite when one is created and when it is gone. Every
+// call runs as its subject.
 service Access {
+  // Makes a resource known: its parent, and the relation that the type grants its creator. Every other method needs
+  // the resource known. The subject needs the type's create permission on the parent.
+  rpc CreateObject(CreateObjectRequest) returns (google.protobuf.Empty);
+
+  // Forgets a resource: its parent, every grant on it, and every grant to it. It fails while resources are under it.
+  // The subject needs the type's grant permission on it. The application calls it once the resource is gone.
+  rpc DeleteObject(DeleteObjectRequest) returns (google.protobuf.Empty);
+
+  // Returns the names of the resources of a type that the subject has a permission on.
+  rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse);
+
   // Grants a relation on a resource. Granting it again changes nothing. The subject needs the type's grant
   // permission on the resource.
   rpc CreateGrant(CreateGrantRequest) returns (Grant);
@@ -33,6 +46,46 @@ service Access {
   // Returns a page of the grants and revocations on the resources of a type, oldest first. A change appears only if
   // the subject has the grant permission on its resource.
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+}
+
+message CreateObjectRequest {
+  string subject = 1;
+
+  // The resource's name, such as projects/ledger.
+  string name = 2;
+
+  // The name of the resource it is under, such as organizations/acme; empty for a type without parents.
+  string parent = 3;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 4;
+}
+
+message DeleteObjectRequest {
+  // The resource's name.
+  string name = 1;
+
+  string subject = 2;
+
+  // The values that the conditions of grants read, such as current_time.
+  google.protobuf.Struct context = 3;
+}
+
+message ListObjectsRequest {
+  string subject = 1;
+
+  // The declared type, such as acme.dev/Project.
+  string type = 2;
+
+  string permission = 3;
+
+  // The values that conditions read at the time of the question.
+  google.protobuf.Struct context = 4;
+}
+
+message ListObjectsResponse {
+  // The names of the resources, such as projects/ledger.
+  repeated string names = 1;
 }
 
 // A relation on a resource, granted to a principal or to a set of them.

@@ -2,12 +2,10 @@ package dev.horizon.pyrite.impl.model;
 
 import dev.horizon.pyrite.schema.v1.FlowDefinition;
 import dev.horizon.spectrum.openfga.v1.Condition;
-import dev.horizon.spectrum.openfga.v1.Userset;
 import dev.horizon.spectrum.openfga.v1.WriteAuthorizationModelRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * A declaration, compiled: its types, their relations and hierarchy, its conditions and its flows, and the
@@ -15,19 +13,22 @@ import java.util.Set;
  *
  * <p>
  * Compiling checks every rule of the declaration, and fails with {@link IllegalArgumentException} at the first rule
- * that it breaks. It also splits each relation that reads from the parent: OpenFGA answers the parts that do not, as
- * hidden relations named {@code <relation>.<n>}, and Pyrite walks the rest.
+ * that it breaks. A type with parents gets the relation {@code parent} in the model, whose tuples Pyrite writes when a
+ * resource is made known, so OpenFGA reads a relation from the parent itself.
  */
 public interface TypeSystem {
 
   String USER = "user";
   String PARENT = "parent";
   String KEY = "pyrite.dev/Key";
-  String KEY_VERSION = "pyrite.dev/KeyVersion";
   String ACCOUNT = "pyrite.dev/Account";
-  String IDENTIFIER = "pyrite.dev/Identifier";
-  String FACTOR = "pyrite.dev/Factor";
-  String SESSION = "pyrite.dev/Session";
+  String OWNER = "owner";
+
+  /** The relations that Pyrite checks on a key. */
+  List<String> KEY_RELATIONS = List.of("viewer", "admin", "encrypter", "decrypter", "signer", "verifier");
+
+  /** The relations that Pyrite checks on an account. */
+  List<String> ACCOUNT_RELATIONS = List.of(OWNER, "viewer", "admin");
 
   /**
    * Gives a declared flow.
@@ -40,9 +41,32 @@ public interface TypeSystem {
   /**
    * Gives every declared flow.
    *
-   * @return the flows
+   * @return the flows, in the order of the declaration
    */
   List<FlowDefinition> flows();
+
+  /**
+   * Gives the declared identifier kinds.
+   *
+   * @return the kinds, in the order of the declaration
+   */
+  List<DeclaredKind> identifierKinds();
+
+  /**
+   * Gives a declared identifier kind by its name.
+   *
+   * @param name the kind's name, such as {@code email}
+   * @return the kind, or empty when it is not declared
+   */
+  Optional<DeclaredKind> identifierKind(String name);
+
+  /**
+   * Gives the kind of a value as a person typed it: the first declared kind whose match the value meets.
+   *
+   * @param value the value, such as {@code anne@example.com}
+   * @return the kind, or empty when no kind matches
+   */
+  Optional<DeclaredKind> identifierKindOf(String value);
 
   /**
    * Gives a declared type by its name.
@@ -53,25 +77,25 @@ public interface TypeSystem {
   Optional<DeclaredType> type(String name);
 
   /**
-   * Gives a declared type by its singular name, which is its OpenFGA type.
+   * Gives a declared type by its singular name, the OpenFGA type.
    *
    * @param singular the singular name, such as {@code project}
-   * @return the type, or empty when it is not declared
+   * @return the type, or empty when no type has the name
    */
   Optional<DeclaredType> singular(String singular);
 
   /**
-   * Gives the declared type of a resource's name, by the name's first segment.
+   * Gives the type of a resource by the first segment of its name.
    *
    * @param resource the resource's name, such as {@code projects/ledger}
-   * @return the type, or empty when no type has the plural
+   * @return the type, or empty when no type has the plural name
    */
   Optional<DeclaredType> typeOf(String resource);
 
   /**
-   * Gives every declared type, with the types that Pyrite adds beneath keys and accounts.
+   * Gives every declared type.
    *
-   * @return the types
+   * @return the types, in the order of the declaration
    */
   List<DeclaredType> types();
 
@@ -83,63 +107,18 @@ public interface TypeSystem {
   Map<String, Condition> conditions();
 
   /**
-   * Gives a type's parent types.
+   * Gives the parent types of a type.
    *
    * @param type the type
-   * @return the parent types
+   * @return its parent types, in the order of its declaration
    */
   List<DeclaredType> parents(DeclaredType type);
 
   /**
-   * Gives the types whose resources can be under a type's.
+   * Gives the authorization model of the declaration.
    *
-   * @param type the type
-   * @return the child types
-   */
-  List<DeclaredType> children(DeclaredType type);
-
-  /**
-   * Gives every type above a type in the hierarchy.
-   *
-   * @param type the type
-   * @return the ancestor types
-   */
-  Set<DeclaredType> ancestors(DeclaredType type);
-
-  /**
-   * Tells whether a relation reads from the parent, directly or through another relation of the type.
-   *
-   * @param type the type
-   * @param relation the relation
-   * @return whether Pyrite walks the hierarchy for it
-   */
-  boolean readsFromParent(DeclaredType type, String relation);
-
-  /**
-   * Gives the rewrite that Pyrite follows for a relation.
-   *
-   * @param type the type
-   * @param relation the relation
-   * @return for a relation that reads from the parent, its steps to the parent and the hidden relations that OpenFGA
-   * answers; for any other, its declared rewrite
-   */
-  Userset rewrite(DeclaredType type, String relation);
-
-  /**
-   * Gives the relations that a relation reaches, on any type, whose tuples OpenFGA holds. A query lists the objects of
-   * each of them.
-   *
-   * @param type the type
-   * @param relation the relation
-   * @return the leaves
-   */
-  Set<Leaf> leaves(DeclaredType type, String relation);
-
-  /**
-   * Gives the authorization model of the declaration, with the hidden relations and without the {@code parent} steps.
-   *
-   * @param store the OpenFGA store's id
-   * @return the request that writes the model
+   * @param store the OpenFGA store to write it to
+   * @return the request that writes it
    */
   WriteAuthorizationModelRequest model(String store);
 }

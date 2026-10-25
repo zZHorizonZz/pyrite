@@ -7,7 +7,7 @@ sign-in issues. This page sets up accounts, enrols a password, signs in and auth
 
 - Declare `pyrite.dev/Key`, and give the services a root key. For more information, refer to
   [Encrypt data](encrypt-data.md#before-you-begin).
-- Have an organization, or another parent of keys, such as `organizations/acme`.
+- Have a known organization, or another parent of keys, such as `organizations/acme`.
 
 ## Set up accounts
 
@@ -34,20 +34,34 @@ sign-in issues. This page sets up accounts, enrols a password, signs in and auth
          relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
        }
      }
-     permissions { read: "viewer" update: "admin" delete: "admin" grant: "admin" }
+     permissions { grant: "admin" }
      grantable: ["admin", "viewer"]
-     retention { seconds: 2592000 }
    }
    ```
 
-2. Declare the two flows, one that enrols a password and one that signs in with it:
+2. Declare the kind of identifier that people sign in with. `match` decides what an email address looks like, and
+   `normalize` gives the value that Pyrite stores and compares:
+
+   ```textproto
+   identifier_kinds {
+     name: "email"
+     match: "value.trim().matches(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')"
+     normalize: "value.trim().lowerAscii()"
+     receives_codes: true
+   }
+   ```
+
+   A flow that starts from an identifier needs at least one kind. For every field of a kind, refer to
+   [Declaration](../reference/declaration.md#identifierkind).
+
+3. Declare the two flows, one that enrols a password and one that signs in with it:
 
    ```textproto
    flows { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
    flows { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
    ```
 
-3. Give the services the options of authentication: the MAC key of session tokens, the encryption key of factor
+4. Give the services the options of authentication: the MAC key of session tokens, the encryption key of factor
    secrets, the WebAuthn relying party, and the issuer name that authenticator apps show:
 
    ```java
@@ -56,47 +70,43 @@ sign-in issues. This page sets up accounts, enrols a password, signs in and auth
            new PyriteServiceOptions.RelyingParty("acme.dev", "Acme", List.of("https://acme.dev")), "Acme"));
    ```
 
-4. Add the authentication service, with the same options as the others:
+5. Add the authentication service, with the same options as the others:
 
    ```java
    server.addService(AuthenticationService.create(vertx, pool, driver, openFga, options));
    ```
 
-5. Write the declaration, then create the two keys that the options name:
+6. Write the declaration, then create the two keys that the options name:
 
    ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-       .setResourceId("sessions").setResource(Resource.newBuilder().setType("pyrite.dev/Key")
-           .putFields("purpose", Value.newBuilder().setStringValue("MAC").build())
-           .putFields("algorithm", Value.newBuilder().setStringValue("HMAC_SHA256").build()))
-       .build()).await();
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("organizations/acme")
-       .setResourceId("factors").setResource(Resource.newBuilder().setType("pyrite.dev/Key")
-           .putFields("purpose", Value.newBuilder().setStringValue("ENCRYPTION").build())
-           .putFields("algorithm", Value.newBuilder().setStringValue("AES256_GCM").build()))
-       .build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("sessions")
+       .setParent("organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("factors")
+       .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
    ```
 
 ## Create an account
 
-1. Create the account. Its id is the id of its principal, so `accounts/anne` is `user:anne`:
+1. Create the account. Its id is the id of its principal, so `accounts/anne` is `user:anne`. Pyrite grants the
+   account `owner` on itself:
 
    ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setResourceId("anne")
-       .setResource(Resource.newBuilder().setType("pyrite.dev/Account")
-           .putFields("kind", Value.newBuilder().setStringValue("HUMAN").build()))
+   AuthenticationGrpcClient authentication = AuthenticationGrpcClient.create(client);
+   authentication.createAccount(CreateAccountRequest.newBuilder().setSubject("user:anne").setAccountId("anne")
+       .setKind(Account.Kind.HUMAN).build()).await();
+   ```
+
+2. Add the email address as an identifier of the account. The subject needs `admin` on the account:
+
+   ```java
+   authentication.addIdentifier(AddIdentifierRequest.newBuilder().setSubject("user:anne")
+       .setAccount("accounts/anne").setKind("email").setValue("anne@acme.dev").setPrimary(true)
        .build()).await();
    ```
 
-2. Add the email address as an identifier of the account:
-
-   ```java
-   data.createResource(CreateResourceRequest.newBuilder().setSubject("user:anne").setParent("accounts/anne")
-       .setResourceId("work").setResource(Resource.newBuilder().setType("pyrite.dev/Identifier")
-           .putFields("kind", Value.newBuilder().setStringValue("EMAIL").build())
-           .putFields("value", Value.newBuilder().setStringValue("anne@acme.dev").build()))
-       .build()).await();
-   ```
+   Pyrite stores the address as the kind's `normalize` gives it. The identifier is unverified. An address that any
+   account has already fails with `ALREADY_EXISTS`, and a value that is not an email address fails with
+   `INVALID_ARGUMENT`.
 
 ## Enrol a password
 
@@ -124,8 +134,12 @@ A password has 8 to 128 characters.
 
    ```java
    Flow signIn = authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in")
-       .setIdentifierKind(IdentifierKind.EMAIL).setIdentifier("anne@acme.dev").build()).await();
+       .setIdentifier("anne@acme.dev").build()).await();
    ```
+
+   The request names no kind, so Pyrite takes the first declared kind whose `match` the address meets. Pass the
+   address as the person typed it. To accept one kind only, name it with `setIdentifierKind("email")`. A value of
+   another kind then fails with `INVALID_ARGUMENT`.
 
 2. Answer with the password:
 

@@ -7,6 +7,8 @@ generates the code, and your application sends it.
 
 - Set up accounts, and give the account an email identifier. For more information, refer to
   [Sign in with a password](sign-in-with-a-password.md).
+- Declare the identifier kind `email` with `receives_codes: true`. Pyrite sends no code to an identifier of a kind
+  without it. For more information, refer to [Declaration](../reference/declaration.md#identifierkind).
 - Have a way to send email from your application.
 
 ## Verify the address
@@ -21,15 +23,19 @@ generates the code, and your application sends it.
 
    ```java
    Flow flow = authentication.startFlow(StartFlowRequest.newBuilder().setSubject("user:anne")
-       .setDefinition("verify").setIdentifierKind(IdentifierKind.EMAIL).setIdentifier("anne@acme.dev").build())
+       .setDefinition("verify").setIdentifierKind("email").setIdentifier("anne@acme.dev").build())
        .await();
    ```
 
-3. Take the flow's delivery, and send `delivery.getCode()` to `delivery.getTo()` with your mailer:
+3. Take the flow's delivery. Its `kind` is `email`, so send `delivery.getCode()` to `delivery.getTo()` with your
+   mailer:
 
    ```java
    Delivery delivery = flow.getDeliveries(0);
    ```
+
+   `delivery.getIdentifier()` names the identifier, such as `identifiers/0b0d...`. Pyrite does not mask the address.
+   To show the person where the code went, format `delivery.getTo()` as you like.
 
    The code has six digits. It expires at `delivery.getExpireTime()`, `codeLifetime` after Pyrite generated it, 10
    minutes by default.
@@ -44,7 +50,8 @@ generates the code, and your application sends it.
 
 ## Check the result
 
-The identifier in `done.getResult()` has the field `verified` set to `true`.
+`done.getResult().getIdentifiers(0)` is the identifier, with `verified` set to `true`. `ListIdentifiers` returns it
+the same way from then on.
 
 Do not show the delivery's code to the caller that started the flow. Only the owner of the address may see it.
 

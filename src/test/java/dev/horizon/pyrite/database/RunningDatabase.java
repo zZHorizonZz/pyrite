@@ -11,8 +11,8 @@ public record RunningDatabase(Vertx vertx, Pool pool, Driver driver) implements 
 
   public static final Duration TIMEOUT = Duration.ofSeconds(30);
 
-  private static final List<String> TABLES = List.of("acme_binding", "acme_role", "acme_project", "acme_group",
-      "acme_organization", "pyrite_session", "pyrite_factor", "pyrite_identifier", "pyrite_account", "pyrite_flow",
+  private static final List<String> TABLES = List.of("pyrite_node", "pyrite_session", "pyrite_factor", "pyrite_identifier",
+      "pyrite_account", "pyrite_flow",
       "pyrite_key_version", "pyrite_key", "pyrite_declaration", "spectrum_tuple", "spectrum_changelog",
       "spectrum_assertion", "spectrum_authorization_model", "spectrum_store");
 

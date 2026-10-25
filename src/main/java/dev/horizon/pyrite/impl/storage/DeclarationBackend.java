@@ -9,8 +9,8 @@ import java.util.Optional;
 public record DeclarationBackend(Database database) implements Backend<Tables.Declaration, String> {
 
   @Override
-  public Class<Tables.Declaration> type() {
-    return Tables.Declaration.class;
+  public Tables.Declaration prototype() {
+    return Tables.Declaration.getDefaultInstance();
   }
 
   public Future<Optional<Tables.Declaration>> latest() {

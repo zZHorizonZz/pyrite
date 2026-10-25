@@ -31,3 +31,35 @@ message Declaration {
 
   string create_time = 5 [(leadseal.v1.column).timestamp = {}];
 }
+
+// A resource that Pyrite knows: its type and the resource it is under. The application keeps the resource itself;
+// Pyrite keeps where it sits, so that grants reach it from its parents and nothing is made twice.
+message Node {
+  option (leadseal.v1.table) = {
+    name: "pyrite_node"
+    index: [
+      { fields: ["parent"] }
+    ]
+  };
+
+  // The resource's name, such as projects/ledger.
+  string name = 1 [(leadseal.v1.column) = {
+    primary_key: true
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+  }];
+
+  // The declared type, such as acme.dev/Project.
+  string type = 2 [(leadseal.v1.column).text = { length: 255 }];
+
+  // The name of the resource it is under; unset for a resource at the top.
+  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+
+  string create_time = 4 [(leadseal.v1.column).timestamp = {}];
+}

@@ -11,7 +11,7 @@ final class IssueSession implements Effect {
   @Override
   public Future<Void> apply(FlowImpl flow, AccountImpl account, Result.Builder result) {
     return account.createSession().map(session -> {
-      result.addResources(session.toMessage()).addIssued(Any.pack(SessionToken.newBuilder()
+      result.addSessions(session.message()).addIssued(Any.pack(SessionToken.newBuilder()
           .setToken(session.token().orElseThrow()).setSession(session.name())
           .setExpireTime(Timestamp.newBuilder().setSeconds(session.expireTime().getEpochSecond())
               .setNanos(session.expireTime().getNano()))

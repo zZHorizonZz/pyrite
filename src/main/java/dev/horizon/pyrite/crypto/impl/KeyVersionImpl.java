@@ -1,87 +1,109 @@
 package dev.horizon.pyrite.crypto.impl;
 
 import dev.horizon.pyrite.PyriteException;
-import dev.horizon.pyrite.impl.resource.BaseResource;
-import dev.horizon.pyrite.impl.resource.Resource;
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.keys.v1.Tables;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.grpc.common.GrpcStatus;
-import java.util.Map;
 
-final class KeyVersionImpl extends BaseResource implements KeyVersion {
+final class KeyVersionImpl implements KeyVersion {
 
   static final String ENABLED = "ENABLED";
   static final String DISABLED = "DISABLED";
 
-  KeyVersionImpl(KeyVersionTypeImpl type, Row row) {
-    super(type, row);
+  private final KeyTypeImpl type;
+  private final Tables.KeyVersion row;
+
+  KeyVersionImpl(KeyTypeImpl type, Tables.KeyVersion row) {
+    this.type = type;
+    this.row = row;
   }
 
   @Override
-  public KeyVersionTypeImpl type() {
-    return (KeyVersionTypeImpl) super.type();
+  public String name() {
+    return row.getName();
+  }
+
+  @Override
+  public String id() {
+    return name().substring(KeyTypeImpl.VERSIONS.length());
   }
 
   @Override
   public long number() {
-    return field(KeyVersionType.NUMBER);
+    return row.getNumber();
   }
 
   @Override
   public boolean isUsable() {
-    return ENABLED.equals(field(KeyVersionType.STATE)) && !isDeleted();
+    return ENABLED.equals(row.getState());
   }
 
   @Override
   public Future<Key> key() {
-    return parent().map(parent -> (Key) parent.orElseThrow());
+    return type.key(row.getParent());
   }
 
   @Override
-  public Future<Resource> update(Map<String, Object> changes, long revision) {
-    Object state = changes.get(KeyVersionType.STATE);
-    if (state == null || state.equals(ENABLED)) {
-      return super.update(changes, revision);
+  public Future<KeyVersion> update(boolean enabled, long revision) {
+    if (row.getRevision() != revision) {
+      throw new PyriteException(GrpcStatus.ABORTED, "The key version " + name() + " is at revision "
+          + row.getRevision() + ", not " + revision + ".");
     }
-    if (!state.equals(DISABLED)) {
-      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "A version is ENABLED or DISABLED, not " + state + ".");
-    }
-    return requireSecondary().compose(ignored -> super.update(changes, revision));
+    Future<Void> allowed = enabled ? Future.succeededFuture() : requireSecondary();
+    return allowed.compose(ignored -> type.versions().update(row.toBuilder().setState(enabled ? ENABLED : DISABLED)
+        .setRevision(row.getRevision() + 1).setUpdateTime(type.schema().clock().instant().toString()).build(),
+        row.getUid(), row.getRevision(), name()))
+        .map(changed -> new KeyVersionImpl(type, changed));
   }
 
   @Override
-  public Future<Resource> delete(long revision) {
-    return requireSecondary().compose(ignored -> super.delete(revision));
+  public Future<Void> delete() {
+    return requireSecondary().compose(ignored -> type.versions().deleteById(row.getUid())).mapEmpty();
+  }
+
+  @Override
+  public dev.horizon.pyrite.crypto.v1.KeyVersion message() {
+    dev.horizon.pyrite.crypto.v1.KeyVersion.Builder message = dev.horizon.pyrite.crypto.v1.KeyVersion.newBuilder()
+        .setName(name()).setNumber(number())
+        .setState(dev.horizon.pyrite.crypto.v1.KeyVersion.State.valueOf(row.getState()))
+        .setAlgorithm(dev.horizon.pyrite.crypto.v1.Algorithm.valueOf(row.getAlgorithm()))
+        .setRevision(row.getRevision()).setCreateTime(KeyImpl.timestamp(row.getCreateTime()));
+    if (row.hasPublicKey()) {
+      message.setPublicKey(new Claims(new JsonObject(row.getPublicKey())).struct());
+    }
+    return message.build();
   }
 
   Algorithm algorithm() {
-    return Algorithm.valueOf(field(KeyVersionType.ALGORITHM));
+    return Algorithm.valueOf(row.getAlgorithm());
   }
 
   byte[] sealedSecret() {
-    return field(KeyVersionType.SEALED);
+    return row.getSealed().toByteArray();
   }
 
   byte[] publicKeyInfo() {
-    return field(KeyVersionType.PUBLIC_KEY_INFO);
+    return row.hasPublicKeyInfo() ? row.getPublicKeyInfo().toByteArray() : null;
   }
 
   byte[] sign(byte[] data) {
-    return ((Material.Signing) type().material(this)).sign(data);
+    return ((Material.Signing) type.material(this)).sign(data);
   }
 
   boolean verifies(byte[] data, byte[] signature) {
-    return ((Material.Signing) type().material(this)).verifies(data, signature);
+    return ((Material.Signing) type.material(this)).verifies(data, signature);
   }
 
   Material.Aes cipher() {
-    return (Material.Aes) type().material(this);
+    return (Material.Aes) type.material(this);
   }
 
   private Future<Void> requireSecondary() {
-    return key().compose(key -> key.primaryVersion().equals(name())
-        ? Future.failedFuture(new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The version " + name() + " is"
-            + " the primary version of its key; rotate the key first."))
-        : Future.succeededFuture());
+    return type.keys().findByName(row.getParent()).compose(key -> key.isPresent()
+        && key.get().getPrimaryVersion().equals(name())
+            ? Future.failedFuture(new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The version " + name()
+                + " is the primary version of its key; rotate the key first."))
+            : Future.succeededFuture());
   }
 }

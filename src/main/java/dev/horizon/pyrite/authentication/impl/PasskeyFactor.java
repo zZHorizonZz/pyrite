@@ -1,25 +1,24 @@
 package dev.horizon.pyrite.authentication.impl;
 
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
-import java.util.Map;
 import java.util.Optional;
 
 final class PasskeyFactor extends FactorImpl implements Factor {
 
-  PasskeyFactor(FactorTypeImpl type, Row row) {
+  PasskeyFactor(AccountTypeImpl type, Tables.Factor row) {
     super(type, row);
   }
 
   public String credentialId() {
-    return field(FactorType.CREDENTIAL_ID);
+    return row().getCredentialId();
   }
 
   public Future<Optional<WebAuthn.Assertion>> accepts(String assertion, byte[] challenge) {
     Optional<WebAuthn.Assertion> asserted = type().webAuthn().verify(assertion, challenge, secret(), credentialId(),
-        counter(), field(FactorType.USER_VERIFIED));
+        counter(), row().getUserVerified());
     return asserted.isEmpty() ? Future.succeededFuture(asserted)
-        : change(Map.of(FactorType.COUNTER, asserted.get().counter())).map(asserted);
+        : change(row().toBuilder().setCounter(asserted.get().counter())).map(asserted);
   }
 
   @Override

@@ -1,3 +1,8 @@
+/**
+ * Pyrite: accounts, keys and who may do what, on Vert.x and a SQL database. The JAR contains cel-java, RE2/J and ANTLR
+ * under {@code dev.horizon.pyrite.shaded}, which evaluate the identifier kinds of a declaration, so that they need no
+ * modules of their own.
+ */
 module dev.horizon.pyrite {
   requires transitive io.vertx.core;
   requires transitive io.vertx.grpc.server;
@@ -19,12 +24,10 @@ module dev.horizon.pyrite {
 
   exports dev.horizon.pyrite;
   exports dev.horizon.pyrite.schema;
-  exports dev.horizon.pyrite.data;
   exports dev.horizon.pyrite.access;
   exports dev.horizon.pyrite.crypto;
   exports dev.horizon.pyrite.authentication;
   exports dev.horizon.pyrite.schema.v1;
-  exports dev.horizon.pyrite.data.v1;
   exports dev.horizon.pyrite.access.v1;
   exports dev.horizon.pyrite.crypto.v1;
   exports dev.horizon.pyrite.authentication.v1;

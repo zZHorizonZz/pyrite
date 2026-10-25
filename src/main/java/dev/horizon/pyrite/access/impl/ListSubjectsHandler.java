@@ -39,7 +39,7 @@ public final class ListSubjectsHandler extends UnaryHandler<ListSubjectsRequest,
         : UserTypeFilter.newBuilder().setType(parts[0]).build();
     return schema.require(request.getObject())
         .compose(found -> {
-          found.type().relation(request.getPermission());
+          found.relation(request.getPermission());
           return found.require(subject, found.type().permissions().getGrant(), request.getContext());
         })
         .compose(found -> found.subjects(request.getPermission(), filter, request.getContext()))

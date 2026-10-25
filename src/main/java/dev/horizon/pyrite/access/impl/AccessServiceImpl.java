@@ -18,6 +18,9 @@ public final class AccessServiceImpl extends HandlerService implements AccessSer
       PyriteServiceOptions options) {
     super(UnaryHandler.ACCESS, AccessProto.getDescriptor().findServiceByName(UnaryHandler.ACCESS.name()));
     Deployment deployment = new DeploymentImpl(vertx, pool, driver, openFga, options);
+    bind(CreateObjectHandler.SERVICE_METHOD, new CreateObjectHandler(deployment));
+    bind(DeleteObjectHandler.SERVICE_METHOD, new DeleteObjectHandler(deployment));
+    bind(ListObjectsHandler.SERVICE_METHOD, new ListObjectsHandler(deployment));
     bind(CreateGrantHandler.SERVICE_METHOD, new CreateGrantHandler(deployment));
     bind(DeleteGrantHandler.SERVICE_METHOD, new DeleteGrantHandler(deployment));
     bind(CheckHandler.SERVICE_METHOD, new CheckHandler(deployment));

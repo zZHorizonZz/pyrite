@@ -3,9 +3,7 @@ package dev.horizon.pyrite.crypto;
 import static dev.horizon.pyrite.Pyrite.ANNE;
 import static dev.horizon.pyrite.Pyrite.BOB;
 import static dev.horizon.pyrite.Pyrite.CAROL;
-import static dev.horizon.pyrite.Pyrite.integer;
 import static dev.horizon.pyrite.Pyrite.status;
-import static dev.horizon.pyrite.Pyrite.text;
 import static dev.horizon.pyrite.database.RunningDatabase.TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,16 +11,15 @@ import com.google.protobuf.ByteString;
 import dev.horizon.pyrite.PyriteTest;
 import dev.horizon.pyrite.access.v1.DeleteGrantRequest;
 import dev.horizon.pyrite.access.v1.Grant;
+import dev.horizon.pyrite.crypto.v1.Algorithm;
+import dev.horizon.pyrite.crypto.v1.CreateKeyRequest;
 import dev.horizon.pyrite.crypto.v1.DecryptRequest;
 import dev.horizon.pyrite.crypto.v1.EncryptRequest;
 import dev.horizon.pyrite.crypto.v1.EncryptResponse;
-import dev.horizon.pyrite.data.v1.CreateResourceRequest;
-import dev.horizon.pyrite.data.v1.DeleteResourceRequest;
-import dev.horizon.pyrite.data.v1.Resource;
+import dev.horizon.pyrite.crypto.v1.RotateKeyRequest;
 import io.vertx.grpc.common.GrpcStatus;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,8 +32,8 @@ class EncryptionTest extends PyriteTest {
 
   @BeforeEach
   void open() throws Exception {
-    pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-    pyrite.key("organizations/acme", "payments", "ENCRYPTION", "AES256_GCM");
+    pyrite.create(ANNE, "organizations/acme", "");
+    pyrite.key("organizations/acme", "payments", Algorithm.AES256_GCM);
   }
 
   private EncryptResponse encrypt(String subject, String key, byte[] plaintext, String associatedData)
@@ -142,8 +139,8 @@ class EncryptionTest extends PyriteTest {
     @DisplayName("a ciphertext that names another version of its key is refused")
     void otherVersion() throws Exception {
       ByteString sealed = sealed("card", "orders/1042");
-      pyrite.data.createResource(CreateResourceRequest.newBuilder().setSubject(ANNE).setParent("keys/payments")
-          .setResource(Resource.newBuilder().setType("pyrite.dev/KeyVersion")).build()).await(TIMEOUT);
+      pyrite.cryptography.rotateKey(RotateKeyRequest.newBuilder().setSubject(ANNE).setName("keys/payments").build())
+          .await(TIMEOUT);
       byte[] renamed = sealed.toByteArray();
       String header = new String(renamed, 1, renamed[0], StandardCharsets.US_ASCII);
       byte[] other = header.replace("payments-1", "payments-2").getBytes(StandardCharsets.US_ASCII);
@@ -166,7 +163,7 @@ class EncryptionTest extends PyriteTest {
     @Test
     @DisplayName("a ciphertext decrypts only with the key that made it")
     void otherKey() throws Exception {
-      pyrite.key("organizations/acme", "billing", "ENCRYPTION", "AES256_GCM");
+      pyrite.key("organizations/acme", "billing", Algorithm.AES256_GCM);
       ByteString sealed = sealed("card", "a");
 
       assertThat(status(() -> decrypt(ANNE, "keys/billing", sealed, "a"))).isEqualTo(GrpcStatus.INVALID_ARGUMENT);
@@ -238,8 +235,8 @@ class EncryptionTest extends PyriteTest {
     @Test
     @DisplayName("only an encryption key encrypts")
     void purpose() throws Exception {
-      pyrite.key("organizations/acme", "codes", "MAC", "HMAC_SHA256");
-      pyrite.key("organizations/acme", "oauth", "SIGNING", "ES256");
+      pyrite.key("organizations/acme", "codes", Algorithm.HMAC_SHA256);
+      pyrite.key("organizations/acme", "oauth", Algorithm.ES256);
 
       assertThat(status(() -> encrypt(ANNE, "keys/codes", new byte[] { 1 }, ""))).isEqualTo(
           GrpcStatus.FAILED_PRECONDITION);
@@ -248,14 +245,10 @@ class EncryptionTest extends PyriteTest {
     }
 
     @Test
-    @DisplayName("a missing or deleted key does not encrypt")
-    void missing() throws Exception {
+    @DisplayName("a missing key does not encrypt")
+    void missing() {
       assertThat(status(() -> encrypt(ANNE, "keys/missing", new byte[] { 1 }, ""))).isEqualTo(
           GrpcStatus.NOT_FOUND);
-      pyrite.data.deleteResource(DeleteResourceRequest.newBuilder().setSubject(ANNE).setName("keys/payments")
-          .setRevision(1).build()).await(TIMEOUT);
-      assertThat(status(() -> encrypt(ANNE, "keys/payments", new byte[] { 1 }, ""))).isEqualTo(
-          GrpcStatus.FAILED_PRECONDITION);
     }
 
     @Test
@@ -265,29 +258,28 @@ class EncryptionTest extends PyriteTest {
           .isEqualTo(GrpcStatus.INVALID_ARGUMENT);
     }
 
-    @ParameterizedTest
-    @CsvSource({ "SIGNING, AES256_GCM", "ENCRYPTION, HMAC_SHA256", "ENCRYPTION, ES256", "MAC, AES256_GCM",
-        "ENCRYPTION, DES", "STORAGE, AES256_GCM", "ENCRYPTION, ''", "'', AES256_GCM", "encryption, aes256_gcm" })
-    @DisplayName("a key names an algorithm of its purpose")
-    void algorithm(String purpose, String algorithm) {
-      assertThat(status(() -> pyrite.key("organizations/acme", "invalid", purpose, algorithm)))
+    @Test
+    @DisplayName("a key names its algorithm, which decides its purpose")
+    void algorithm() {
+      assertThat(status(() -> pyrite.key("organizations/acme", "invalid", Algorithm.ALGORITHM_UNSPECIFIED)))
           .isEqualTo(GrpcStatus.INVALID_ARGUMENT);
     }
 
     @Test
     @DisplayName("a rotation period is not negative")
     void period() {
-      assertThat(status(() -> pyrite.create(ANNE, "organizations/acme", "pyrite.dev/Key", "invalid", Map.of(
-          "purpose", text("ENCRYPTION"), "algorithm", text("AES256_GCM"), "rotation_period", integer(-1)))))
+      assertThat(status(() -> pyrite.cryptography.createKey(CreateKeyRequest.newBuilder().setSubject(ANNE)
+          .setKeyId("invalid").setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM)
+          .setRotationPeriod(com.google.protobuf.Duration.newBuilder().setSeconds(-1)).build()).await(TIMEOUT)))
           .isEqualTo(GrpcStatus.INVALID_ARGUMENT);
     }
 
     @Test
     @DisplayName("creating a key needs the create permission on its parent")
     void create() {
-      assertThat(status(() -> pyrite.create(BOB, "organizations/acme", "pyrite.dev/Key", "mine", Map.of(
-          "purpose", text("ENCRYPTION"), "algorithm", text("AES256_GCM"))))).isEqualTo(
-              GrpcStatus.PERMISSION_DENIED);
+      assertThat(status(() -> pyrite.cryptography.createKey(CreateKeyRequest.newBuilder().setSubject(BOB)
+          .setKeyId("mine").setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build())
+          .await(TIMEOUT))).isEqualTo(GrpcStatus.PERMISSION_DENIED);
     }
   }
 }

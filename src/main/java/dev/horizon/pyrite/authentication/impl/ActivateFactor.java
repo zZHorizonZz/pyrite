@@ -11,12 +11,12 @@ final class ActivateFactor implements Effect {
   public Future<Void> apply(FlowImpl flow, AccountImpl account, Result.Builder result) {
     if (flow.hasEnrolment()) {
       return flow.enrolment(Factor.class).compose(Factor::activate).map(active -> {
-        result.addResources(active.toMessage());
+        result.addFactors(active.message());
         return null;
       });
     }
     return account.createRecoveryCodes().compose(created -> created.activate().map(active -> {
-      result.addResources(active.toMessage()).addIssued(Any.pack(RecoveryCodes.newBuilder()
+      result.addFactors(active.message()).addIssued(Any.pack(RecoveryCodes.newBuilder()
           .addAllCodes(created.codes().orElseThrow()).build()));
       return null;
     }));

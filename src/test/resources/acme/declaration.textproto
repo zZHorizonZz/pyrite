@@ -4,17 +4,6 @@
 types {
   name: "acme.dev/Organization"
   plural: "organizations"
-  table: "acme_organization"
-  fields { name: "name" kind: STRING }
-  fields { name: "uid" kind: STRING }
-  fields { name: "parent" kind: STRING }
-  fields { name: "display_name" kind: STRING }
-  fields { name: "labels" kind: MAP }
-  fields { name: "revision" kind: INTEGER }
-  fields { name: "create_time" kind: TIMESTAMP }
-  fields { name: "update_time" kind: TIMESTAMP }
-  fields { name: "delete_time" kind: TIMESTAMP }
-  fields { name: "purge_time" kind: TIMESTAMP }
   definition {
     type: "organization"
     relations { key: "admin" value { this {} } }
@@ -55,27 +44,15 @@ types {
       }
     }
   }
-  permissions { create: "" read: "member" update: "admin" delete: "admin" grant: "admin" }
+  permissions { grant: "admin" }
   grantable: ["admin", "member", "blocked", "binding"]
   creator: "admin"
-  retention { seconds: 2592000 }
 }
 
 types {
   name: "acme.dev/Group"
   plural: "groups"
   parents: "acme.dev/Organization"
-  table: "acme_group"
-  fields { name: "name" kind: STRING }
-  fields { name: "uid" kind: STRING }
-  fields { name: "parent" kind: STRING }
-  fields { name: "display_name" kind: STRING }
-  fields { name: "labels" kind: MAP }
-  fields { name: "revision" kind: INTEGER }
-  fields { name: "create_time" kind: TIMESTAMP }
-  fields { name: "update_time" kind: TIMESTAMP }
-  fields { name: "delete_time" kind: TIMESTAMP }
-  fields { name: "purge_time" kind: TIMESTAMP }
   definition {
     type: "group"
     relations { key: "member" value { this {} } }
@@ -108,28 +85,15 @@ types {
       relations { key: "manager" value { directly_related_user_types { type: "user" } } }
     }
   }
-  permissions { create: "admin" read: "viewer" update: "manager" delete: "manager" grant: "manager" }
+  permissions { create: "admin" grant: "manager" }
   grantable: ["member", "manager"]
   creator: "manager"
-  retention { seconds: 604800 }
 }
 
 types {
   name: "acme.dev/Project"
   plural: "projects"
   parents: "acme.dev/Organization"
-  table: "acme_project"
-  fields { name: "name" kind: STRING }
-  fields { name: "uid" kind: STRING }
-  fields { name: "parent" kind: STRING }
-  fields { name: "display_name" kind: STRING }
-  fields { name: "labels" kind: MAP }
-  fields { name: "revision" kind: INTEGER }
-  fields { name: "create_time" kind: TIMESTAMP }
-  fields { name: "update_time" kind: TIMESTAMP }
-  fields { name: "delete_time" kind: TIMESTAMP }
-  fields { name: "purge_time" kind: TIMESTAMP }
-  fields { name: "billing_account" kind: STRING }
   definition {
     type: "project"
     relations { key: "owner" value { this {} } }
@@ -228,27 +192,15 @@ types {
       }
     }
   }
-  permissions { create: "admin" read: "can_view" update: "can_edit" delete: "owner" grant: "owner" }
+  permissions { create: "admin" grant: "owner" }
   grantable: ["owner", "editor", "viewer", "blocked", "binding"]
   creator: "owner"
-  retention { seconds: 2592000 }
 }
 
 types {
   name: "acme.dev/Role"
   plural: "roles"
   parents: "acme.dev/Organization"
-  table: "acme_role"
-  fields { name: "name" kind: STRING }
-  fields { name: "uid" kind: STRING }
-  fields { name: "parent" kind: STRING }
-  fields { name: "display_name" kind: STRING }
-  fields { name: "labels" kind: MAP }
-  fields { name: "revision" kind: INTEGER }
-  fields { name: "create_time" kind: TIMESTAMP }
-  fields { name: "update_time" kind: TIMESTAMP }
-  fields { name: "delete_time" kind: TIMESTAMP }
-  fields { name: "purge_time" kind: TIMESTAMP }
   definition {
     type: "role"
     relations {
@@ -260,26 +212,14 @@ types {
       relations { key: "can_manage_stock" value { directly_related_user_types { type: "user" wildcard {} } } }
     }
   }
-  permissions { create: "admin" read: "admin" update: "admin" delete: "admin" grant: "admin" }
+  permissions { create: "admin" grant: "admin" }
   grantable: ["can_manage_stock"]
-  retention { seconds: 2592000 }
 }
 
 types {
   name: "acme.dev/Binding"
   plural: "bindings"
   parents: "acme.dev/Organization"
-  table: "acme_binding"
-  fields { name: "name" kind: STRING }
-  fields { name: "uid" kind: STRING }
-  fields { name: "parent" kind: STRING }
-  fields { name: "display_name" kind: STRING }
-  fields { name: "labels" kind: MAP }
-  fields { name: "revision" kind: INTEGER }
-  fields { name: "create_time" kind: TIMESTAMP }
-  fields { name: "update_time" kind: TIMESTAMP }
-  fields { name: "delete_time" kind: TIMESTAMP }
-  fields { name: "purge_time" kind: TIMESTAMP }
   definition {
     type: "binding"
     relations {
@@ -308,9 +248,8 @@ types {
       }
     }
   }
-  permissions { create: "admin" read: "admin" update: "admin" delete: "admin" grant: "admin" }
+  permissions { create: "admin" grant: "admin" }
   grantable: ["role", "member"]
-  retention { seconds: 2592000 }
 }
 
 types {
@@ -380,10 +319,9 @@ types {
       }
     }
   }
-  permissions { create: "admin" read: "viewer" update: "admin" delete: "admin" grant: "admin" }
+  permissions { create: "admin" grant: "admin" }
   grantable: ["admin", "viewer", "encrypter", "decrypter", "signer", "verifier"]
   creator: "admin"
-  retention { seconds: 2592000 }
 }
 
 types {
@@ -405,9 +343,8 @@ types {
       relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
     }
   }
-  permissions { create: "" read: "viewer" update: "admin" delete: "admin" grant: "admin" }
+  permissions { grant: "admin" }
   grantable: ["admin", "viewer"]
-  retention { seconds: 2592000 }
 }
 
 conditions {
@@ -418,6 +355,26 @@ conditions {
     parameters { key: "current_time" value { type_name: TYPE_NAME_TIMESTAMP } }
     parameters { key: "expires_at" value { type_name: TYPE_NAME_TIMESTAMP } }
   }
+}
+
+# The identifiers people sign in with: an email address and a phone number take codes, a username does not. A value
+# is of the first kind whose match it meets.
+identifier_kinds {
+  name: "email"
+  match: "value.trim().matches(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')"
+  normalize: "value.trim().lowerAscii()"
+  receives_codes: true
+}
+identifier_kinds {
+  name: "phone"
+  match: "value.trim().replace(' ', '').replace('-', '').matches(r'^\\+[1-9][0-9]{6,14}$')"
+  normalize: "value.trim().replace(' ', '').replace('-', '')"
+  receives_codes: true
+}
+identifier_kinds {
+  name: "username"
+  match: "value.trim().lowerAscii().matches(r'^[a-z0-9][a-z0-9._-]{2,63}$')"
+  normalize: "value.trim().lowerAscii()"
 }
 
 flows { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }

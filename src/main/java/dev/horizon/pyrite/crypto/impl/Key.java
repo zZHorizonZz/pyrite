@@ -2,57 +2,70 @@ package dev.horizon.pyrite.crypto.impl;
 
 import dev.horizon.pyrite.impl.resource.Resource;
 import io.vertx.core.Future;
+import java.time.Duration;
 import java.util.List;
 
 /**
- * A key of the type {@code pyrite.dev/Key}: an {@link EncryptionKey}, or a {@link SigningKey} for the purposes
- * {@code MAC} and {@code SIGNING}.
- *
- * <p>
- * A key holds no material of its own. Its versions do, and the primary version makes new ciphertexts and signatures.
+ * A key, the resource {@code pyrite.dev/Key}: an encryption key or a key that signs. The primary version encrypts and
+ * signs; every enabled version decrypts and verifies.
  */
-public sealed interface Key extends Resource permits EncryptionKey, SigningKey {
+public sealed interface Key permits EncryptionKey, SigningKey {
 
   /**
-   * Gives the key's purpose.
+   * Gives the key's name.
    *
-   * @return {@code ENCRYPTION}, {@code MAC} or {@code SIGNING}
+   * @return the name, such as {@code keys/payments}
    */
-  String purpose();
+  String name();
 
   /**
-   * Gives the name of the primary version.
+   * Gives the key as a resource, which grants and checks reach.
    *
-   * @return the version's name, such as {@code keyVersions/payments-1}
+   * @return the resource
+   */
+  Resource resource();
+
+  /**
+   * Gives the name of the version that encrypts and signs.
+   *
+   * @return the name, such as {@code keyVersions/payments-2}
    */
   String primaryVersion();
 
   /**
-   * Reads the key's versions.
+   * Gives the versions of the key.
    *
-   * @return the versions
+   * @return the versions, oldest first
    */
   Future<List<KeyVersion>> versions();
 
   /**
-   * Reads one of the key's versions.
-   *
-   * @param version the version's name
-   * @return the version, or a failure with {@code FAILED_PRECONDITION} when the key has no such version
-   */
-  Future<KeyVersion> version(String version);
-
-  /**
-   * Reads the primary version. A key whose {@code next_rotation_time} has passed rotates first.
+   * Gives the primary version, after rotating the key when its rotation is due.
    *
    * @return the primary version
    */
   Future<KeyVersion> primary();
 
   /**
-   * Rotates the key: adds the next version and makes it the primary.
+   * Makes a new version and makes it the primary one.
    *
    * @return the key, with its new primary version
    */
   Future<Key> rotate();
+
+  /**
+   * Changes how often the key rotates on its own.
+   *
+   * @param period the period; zero for never
+   * @param revision the revision that the change is made from
+   * @return the changed key, or a failure with {@code ABORTED} when the key changed since the revision
+   */
+  Future<Key> update(Duration period, long revision);
+
+  /**
+   * Gives the key as a message.
+   *
+   * @return the message of {@code pyrite.crypto.v1}
+   */
+  dev.horizon.pyrite.crypto.v1.Key message();
 }

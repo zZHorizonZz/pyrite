@@ -3,16 +3,44 @@ syntax = "proto3";
 package pyrite.authentication.v1;
 
 import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
-import "pyrite/data/v1/data.proto";
 
 option java_multiple_files = true;
 option java_outer_classname = "AuthenticationProto";
 option java_package = "dev.horizon.pyrite.authentication.v1";
 
-// Sign-in, verification, recovery and enrolment, as flows that the declaration defines, and the credentials that
-// they issue. Accounts, identifiers, factors and sessions are resources of Data.
+// Accounts and their identifiers, and sign-in, verification, recovery and enrolment, as flows that the declaration
+// defines, with the credentials that they issue. An account is the resource pyrite.dev/Account: reading it and its
+// identifiers needs viewer on it, and changing them needs admin.
 service Authentication {
+  // Creates an account, which owns itself. The subject gets the relation that pyrite.dev/Account grants its
+  // creator.
+  rpc CreateAccount(CreateAccountRequest) returns (Account);
+
+  // Gives an account.
+  rpc GetAccount(GetAccountRequest) returns (Account);
+
+  // Deletes an account, its identifiers, factors and sessions, and every grant on it and to it.
+  rpc DeleteAccount(DeleteAccountRequest) returns (google.protobuf.Empty);
+
+  // Adds an identifier to an account, unverified. A flow that marks it verified proves it. An identifier that
+  // another account has already fails with ALREADY_EXISTS.
+  rpc AddIdentifier(AddIdentifierRequest) returns (Identifier);
+
+  // Lists the identifiers of an account.
+  rpc ListIdentifiers(ListIdentifiersRequest) returns (ListIdentifiersResponse);
+
+  // Gives a session of an account.
+  rpc GetSession(GetSessionRequest) returns (Session);
+
+  // Ends a session, so that its token signs nobody in again.
+  rpc EndSession(EndSessionRequest) returns (google.protobuf.Empty);
+
+  // Deletes the sessions that have ended, the factors that were removed or replaced, and the factors whose enrolment
+  // was never finished. Call it now and then.
+  rpc Purge(PurgeRequest) returns (PurgeResponse);
+
   // Starts a flow of a definition. It gives the challenges that the flow takes first; a flow that needs none is
   // done at once.
   rpc StartFlow(StartFlowRequest) returns (Flow);
@@ -32,17 +60,14 @@ message StartFlowRequest {
   // The name of the flow definition, such as sign-in.
   string definition = 2;
 
-  // The kind and value of the identifier, for a flow whose input is IDENTIFIER or SUBJECT_IDENTIFIER.
-  IdentifierKind identifier_kind = 3;
+  reserved 3;
 
+  // The identifier, as the person typed it, for a flow whose input is IDENTIFIER or SUBJECT_IDENTIFIER.
   string identifier = 4;
-}
 
-enum IdentifierKind {
-  IDENTIFIER_KIND_UNSPECIFIED = 0;
-  EMAIL = 1;
-  PHONE = 2;
-  USERNAME = 3;
+  // The identifier's kind, such as email. Leave it empty to take the first kind of the declaration whose match the
+  // identifier meets.
+  string identifier_kind = 5;
 }
 
 message Flow {
@@ -74,26 +99,41 @@ message Challenge {
   google.protobuf.Any parameters = 2;
 }
 
+// A code for the application to send to an identifier. The application decides how, by the identifier's kind.
 message Delivery {
-  Channel channel = 1;
+  reserved 1;
+  reserved "channel";
 
-  // The email address or the phone number.
+  // The identifier's value, such as an email address.
   string to = 2;
 
   string code = 3;
 
   google.protobuf.Timestamp expire_time = 4;
 
-  enum Channel {
-    CHANNEL_UNSPECIFIED = 0;
-    EMAIL = 1;
-    SMS = 2;
-  }
+  // The identifier's kind, such as email.
+  string kind = 5;
+
+  // The identifier's name, such as identifiers/0b0d....
+  string identifier = 6;
 }
 
 message Result {
-  // The resources that the flow created or changed.
-  repeated pyrite.data.v1.Resource resources = 1;
+  reserved 1;
+  reserved "resources";
+
+  // The account of the flow, such as accounts/anne.
+  string account = 3;
+
+  // The identifiers that the flow verified.
+  repeated Identifier identifiers = 4;
+
+  // The factors that the flow activated.
+  repeated Factor factors = 5;
+
+  // The sessions that the flow issued.
+  repeated Session sessions = 6;
+
 
   // The credentials that are shown once, such as a SessionToken or RecoveryCodes.
   repeated google.protobuf.Any issued = 2;
@@ -164,11 +204,17 @@ message TotpProvisioning {
   string uri = 1;
 }
 
+// The parameters of a code challenge: the identifier that the code went to. The application shows the person where,
+// in whatever form it likes.
 message CodeSent {
-  Delivery.Channel channel = 1;
+  reserved 1, 2;
+  reserved "channel", "to";
 
-  // Where the code went, with most of it hidden.
-  string to = 2;
+  // The identifier's name, such as identifiers/0b0d....
+  string identifier = 3;
+
+  // The identifier's kind, such as email.
+  string kind = 4;
 }
 
 message SessionToken {
@@ -182,4 +228,140 @@ message SessionToken {
 
 message RecoveryCodes {
   repeated string codes = 1;
+}
+
+message Account {
+  // The name, such as accounts/anne.
+  string name = 1;
+
+  Kind kind = 2;
+
+  google.protobuf.Timestamp create_time = 3;
+
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    HUMAN = 1;
+    SERVICE = 2;
+  }
+}
+
+message Identifier {
+  // The name, such as identifiers/0b0d....
+  string name = 1;
+
+  // The account, such as accounts/anne.
+  string account = 2;
+
+  reserved 3;
+
+  // The kind, such as email, as the declaration names it.
+  string kind = 7;
+
+  // The value, as the kind normalizes it.
+  string value = 4;
+
+  bool verified = 5;
+
+  bool primary = 6;
+}
+
+message Factor {
+  // The name, such as factors/0b0d....
+  string name = 1;
+
+  // The account, such as accounts/anne.
+  string account = 2;
+
+  Kind kind = 3;
+
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    PASSWORD = 1;
+    TOTP = 2;
+    PASSKEY = 3;
+    RECOVERY_CODES = 4;
+  }
+}
+
+message Session {
+  // The name, such as sessions/0b0d....
+  string name = 1;
+
+  // The account, such as accounts/anne.
+  string account = 2;
+
+  google.protobuf.Timestamp expire_time = 3;
+}
+
+message CreateAccountRequest {
+  string subject = 1;
+
+  // The account's id, the last segment of its name.
+  string account_id = 2;
+
+  Account.Kind kind = 3;
+}
+
+message GetAccountRequest {
+  string subject = 1;
+
+  // The account's name.
+  string name = 2;
+}
+
+message DeleteAccountRequest {
+  string subject = 1;
+
+  // The account's name.
+  string name = 2;
+}
+
+message AddIdentifierRequest {
+  string subject = 1;
+
+  // The account's name.
+  string account = 2;
+
+  reserved 3;
+
+  // The value, as given; Pyrite normalizes it as its kind says.
+  string value = 4;
+
+  // Whether the identifier is the account's primary one of its kind.
+  bool primary = 5;
+
+  // The kind, such as email. Leave it empty to take the first kind of the declaration whose match the value meets.
+  string kind = 6;
+}
+
+message ListIdentifiersRequest {
+  string subject = 1;
+
+  // The account's name.
+  string account = 2;
+}
+
+message ListIdentifiersResponse {
+  repeated Identifier identifiers = 1;
+}
+
+message GetSessionRequest {
+  string subject = 1;
+
+  // The session's name.
+  string name = 2;
+}
+
+message EndSessionRequest {
+  string subject = 1;
+
+  // The session's name.
+  string name = 2;
+}
+
+message PurgeRequest {}
+
+message PurgeResponse {
+  // How many rows the purge deleted.
+  int64 purged = 1;
 }

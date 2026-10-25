@@ -1,6 +1,7 @@
 package dev.horizon.pyrite.authentication;
 
 import static dev.horizon.pyrite.Pyrite.ANNE;
+import static dev.horizon.pyrite.Pyrite.BOB;
 import static dev.horizon.pyrite.Pyrite.START;
 import static dev.horizon.pyrite.Pyrite.status;
 import static dev.horizon.pyrite.database.RunningDatabase.TIMEOUT;
@@ -8,11 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.horizon.pyrite.PyriteTest;
 import dev.horizon.pyrite.authentication.v1.AuthenticateRequest;
+import dev.horizon.pyrite.authentication.v1.DeleteAccountRequest;
+import dev.horizon.pyrite.authentication.v1.EndSessionRequest;
+import dev.horizon.pyrite.authentication.v1.GetSessionRequest;
 import dev.horizon.pyrite.authentication.v1.Principal;
-import dev.horizon.pyrite.data.v1.DeleteResourceRequest;
+import dev.horizon.pyrite.authentication.v1.PurgeRequest;
+import dev.horizon.pyrite.authentication.v1.Session;
 import io.vertx.grpc.common.GrpcStatus;
 import java.time.Duration;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -135,12 +139,11 @@ class SessionTest extends PyriteTest {
   class Ending {
 
     @Test
-    @DisplayName("a deleted session no longer authenticates")
-    void deleted() throws Exception {
+    @DisplayName("an ended session no longer authenticates")
+    void ended() throws Exception {
       String session = pyrite.authenticate(token).getSession();
-      long revision = pyrite.get(ANNE, session).getFieldsMap().get("revision").getIntegerValue();
-      pyrite.data.deleteResource(DeleteResourceRequest.newBuilder().setSubject(ANNE).setName(session)
-          .setRevision(revision).build()).await(TIMEOUT);
+      pyrite.authentication.endSession(EndSessionRequest.newBuilder().setSubject(ANNE).setName(session).build())
+          .await(TIMEOUT);
 
       assertThat(status(() -> pyrite.authenticate(token))).isEqualTo(GrpcStatus.UNAUTHENTICATED);
     }
@@ -148,25 +151,44 @@ class SessionTest extends PyriteTest {
     @Test
     @DisplayName("a session of a deleted account no longer authenticates")
     void account() throws Exception {
-      long revision = pyrite.get(ANNE, "accounts/anne").getFieldsMap().get("revision").getIntegerValue();
-      pyrite.data.deleteResource(DeleteResourceRequest.newBuilder().setSubject(ANNE).setName("accounts/anne")
-          .setRevision(revision).build()).await(TIMEOUT);
+      pyrite.authentication.deleteAccount(DeleteAccountRequest.newBuilder().setSubject(ANNE)
+          .setName("accounts/anne").build()).await(TIMEOUT);
 
       assertThat(status(() -> pyrite.authenticate(token))).isEqualTo(GrpcStatus.UNAUTHENTICATED);
     }
 
     @Test
-    @DisplayName("a session is issued only by a flow")
-    void created() {
-      assertThat(status(() -> pyrite.create(ANNE, "accounts/anne", "pyrite.dev/Session", "mine", Map.of())))
-          .isEqualTo(GrpcStatus.FAILED_PRECONDITION);
+    @DisplayName("a session is read by its account, and by nobody else")
+    void read() throws Exception {
+      String session = pyrite.authenticate(token).getSession();
+
+      Session read = pyrite.authentication.getSession(GetSessionRequest.newBuilder().setSubject(ANNE)
+          .setName(session).build()).await(TIMEOUT);
+
+      assertThat(read.getAccount()).isEqualTo("accounts/anne");
+      assertThat(read.getExpireTime()).isEqualTo(pyrite.authenticate(token).getExpireTime());
+      assertThat(status(() -> pyrite.authentication.getSession(GetSessionRequest.newBuilder().setSubject(BOB)
+          .setName(session).build()).await(TIMEOUT))).isEqualTo(GrpcStatus.PERMISSION_DENIED);
     }
 
     @Test
-    @DisplayName("a session's token MAC is never returned")
-    void hidden() throws Exception {
-      assertThat(pyrite.get(ANNE, pyrite.authenticate(token).getSession()).getFieldsMap())
-          .doesNotContainKey("token_mac");
+    @DisplayName("another account does not end a session")
+    void foreign() throws Exception {
+      String session = pyrite.authenticate(token).getSession();
+
+      assertThat(status(() -> pyrite.authentication.endSession(EndSessionRequest.newBuilder().setSubject(BOB)
+          .setName(session).build()).await(TIMEOUT))).isEqualTo(GrpcStatus.PERMISSION_DENIED);
+    }
+
+    @Test
+    @DisplayName("the purge deletes an ended session")
+    void purged() throws Exception {
+      String session = pyrite.authenticate(token).getSession();
+      pyrite.authentication.endSession(EndSessionRequest.newBuilder().setSubject(ANNE).setName(session).build())
+          .await(TIMEOUT);
+
+      assertThat(pyrite.authentication.purge(PurgeRequest.getDefaultInstance()).await(TIMEOUT).getPurged())
+          .isEqualTo(1);
     }
   }
 }

@@ -31,8 +31,8 @@ final class CodeMethod extends Method<CodeAnswer> {
       Instant expires = flow.type().schema().clock().instant().plus(flow.type().options().codeLifetime());
       return flow.type().accounts().macKey().compose(key -> key.sign(data(flow, code))).map(mac -> {
         flow.code(mac.getSignature().toByteArray(), expires);
-        return Optional.of(Delivery.newBuilder().setChannel(identifier.get().channel())
-            .setTo(identifier.get().value()).setCode(code)
+        return Optional.of(Delivery.newBuilder().setKind(identifier.get().kind())
+            .setIdentifier(identifier.get().name()).setTo(identifier.get().value()).setCode(code)
             .setExpireTime(Timestamp.newBuilder().setSeconds(expires.getEpochSecond()).setNanos(expires.getNano()))
             .build());
       });
@@ -43,7 +43,7 @@ final class CodeMethod extends Method<CodeAnswer> {
   Future<Challenge> challenge(FlowImpl flow) {
     Challenge.Builder challenge = Challenge.newBuilder().setMethod(name());
     return flow.recipient().map(identifier -> identifier.map(found -> challenge.setParameters(Any.pack(
-        CodeSent.newBuilder().setChannel(found.channel()).setTo(found.mask()).build())).build())
+        CodeSent.newBuilder().setIdentifier(found.name()).setKind(found.kind()).build())).build())
         .orElse(challenge.build()));
   }
 

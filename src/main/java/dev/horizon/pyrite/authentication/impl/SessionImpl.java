@@ -3,24 +3,25 @@ package dev.horizon.pyrite.authentication.impl;
 import com.google.protobuf.Timestamp;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.authentication.v1.Principal;
-import dev.horizon.pyrite.impl.resource.BaseResource;
-import dev.horizon.pyrite.impl.storage.Row;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 
-final class SessionImpl extends BaseResource implements Session {
+final class SessionImpl implements Session {
 
   private static final Duration TOUCH = Duration.ofMinutes(1);
 
+  private final AccountTypeImpl type;
+  private final Tables.Session row;
   private final Optional<SessionToken> token;
 
-  SessionImpl(SessionTypeImpl type, Row row, Optional<SessionToken> token) {
-    super(type, row);
+  SessionImpl(AccountTypeImpl type, Tables.Session row, Optional<SessionToken> token) {
+    this.type = type;
+    this.row = row;
     this.token = token;
   }
 
@@ -29,8 +30,8 @@ final class SessionImpl extends BaseResource implements Session {
   }
 
   @Override
-  public SessionTypeImpl type() {
-    return (SessionTypeImpl) super.type();
+  public String name() {
+    return row.getName();
   }
 
   @Override
@@ -40,13 +41,13 @@ final class SessionImpl extends BaseResource implements Session {
 
   @Override
   public Instant expireTime() {
-    return field(SessionType.EXPIRE_TIME);
+    return Instant.parse(row.getExpireTime());
   }
 
   @Override
   public boolean isLive() {
-    Instant now = type().schema().clock().instant();
-    return !isDeleted() && now.isBefore(expireTime()) && now.isBefore(field(SessionType.IDLE_EXPIRE_TIME));
+    Instant now = type.schema().clock().instant();
+    return !row.hasDeleteTime() && now.isBefore(expireTime()) && now.isBefore(Instant.parse(row.getIdleExpireTime()));
   }
 
   @Override
@@ -54,39 +55,46 @@ final class SessionImpl extends BaseResource implements Session {
     if (!isLive()) {
       return Future.failedFuture(new PyriteException(GrpcStatus.UNAUTHENTICATED, "The session has ended."));
     }
-    return type().accounts().macKey().compose(key -> key.verify(data(secret), field(SessionType.TOKEN_MAC), ""))
+    return type.macKey().compose(key -> key.verify(data(secret), row.getTokenMac().toByteArray(), ""))
         .compose(verdict -> verdict.hasVerified() ? touch()
             : Future.failedFuture(new PyriteException(GrpcStatus.UNAUTHENTICATED, "The session token is not"
                 + " valid.")))
-        .compose(touched -> touched.parent().map(account -> {
-          if (account.isEmpty() || account.get().isDeleted()) {
-            throw new PyriteException(GrpcStatus.UNAUTHENTICATED, "The account of the session is deleted.");
-          }
-          return Principal.newBuilder().setSubject(((Account) account.get()).subject())
-              .setAccount(account.get().name()).setSession(touched.name())
-              .setExpireTime(Timestamp.newBuilder().setSeconds(touched.expireTime().getEpochSecond())
-                  .setNanos(touched.expireTime().getNano()))
-              .build();
-        }));
+        .compose(touched -> type.account(row.getParent())
+            .recover(missing -> Future.failedFuture(new PyriteException(GrpcStatus.UNAUTHENTICATED, "The account of"
+                + " the session is deleted.")))
+            .map(account -> Principal.newBuilder().setSubject(account.subject()).setAccount(account.name())
+                .setSession(name()).setExpireTime(timestamp(touched.expireTime())).build()));
   }
 
   @Override
   public Future<Void> end() {
-    Instant now = type().schema().clock().instant();
-    return change(Map.of(DELETE_TIME, now, PURGE_TIME, now)).mapEmpty();
+    String now = type.schema().clock().instant().toString();
+    return save(row.toBuilder().setDeleteTime(now).setPurgeTime(now)).mapEmpty();
   }
 
-  SessionImpl withToken(SessionToken token) {
-    return new SessionImpl(type(), row(), Optional.of(token));
+  @Override
+  public dev.horizon.pyrite.authentication.v1.Session message() {
+    return dev.horizon.pyrite.authentication.v1.Session.newBuilder().setName(name()).setAccount(row.getParent())
+        .setExpireTime(timestamp(expireTime())).build();
   }
 
   private Future<Session> touch() {
-    Instant now = type().schema().clock().instant();
-    if (updateTime().plus(TOUCH).isAfter(now)) {
+    Instant now = type.schema().clock().instant();
+    if (Instant.parse(row.getUpdateTime()).plus(TOUCH).isAfter(now)) {
       return Future.succeededFuture(this);
     }
-    Instant idle = now.plus(type().accounts().options().idleLifetime());
-    return change(Map.of(SessionType.IDLE_EXPIRE_TIME, idle.isBefore(expireTime()) ? idle : expireTime()))
-        .map(Session.class::cast).recover(conflict -> Future.succeededFuture(this));
+    Instant idle = now.plus(type.options().idleLifetime());
+    return save(row.toBuilder().setIdleExpireTime((idle.isBefore(expireTime()) ? idle : expireTime()).toString()))
+        .recover(conflict -> Future.succeededFuture(this));
+  }
+
+  private Future<Session> save(Tables.Session.Builder changed) {
+    return type.sessionRows().update(changed.setRevision(row.getRevision() + 1)
+        .setUpdateTime(type.schema().clock().instant().toString()).build(), row.getUid(), row.getRevision(), name())
+        .map(saved -> new SessionImpl(type, saved, token));
+  }
+
+  private static Timestamp timestamp(Instant time) {
+    return Timestamp.newBuilder().setSeconds(time.getEpochSecond()).setNanos(time.getNano()).build();
   }
 }

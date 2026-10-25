@@ -1,53 +1,58 @@
 package dev.horizon.pyrite.authentication.impl;
 
 import dev.horizon.pyrite.authentication.v1.Principal;
-import dev.horizon.pyrite.impl.resource.Resource;
 import io.vertx.core.Future;
 import java.time.Instant;
 import java.util.Optional;
 
 /**
- * A session of an account, of the type {@code pyrite.dev/Session}, which its token authenticates.
- *
- * <p>
- * Pyrite stores only a MAC of the token's secret. A session ends at its expiry time, when it idles out, or when it is
- * ended or deleted.
+ * A session of an account. Its token is shown once, when a flow issues it; Pyrite keeps only a MAC of its secret. A
+ * session ends when it expires, when it is idle too long, or when it is ended.
  */
-public interface Session extends Resource {
+public interface Session {
 
   /**
-   * Gives the session's token, which only a session that was just issued carries.
+   * Gives the session's name.
    *
-   * @return the token, {@code <id>.<secret>}; empty for a session that was read
+   * @return the name, such as {@code sessions/0b0d...}
+   */
+  String name();
+
+  /**
+   * Gives the session's token, which only a session just issued has.
+   *
+   * @return the token, or empty
    */
   Optional<String> token();
 
-  /**
-   * Gives the time at which the session ends, however often it is used.
-   *
-   * @return the time
-   */
   Instant expireTime();
 
   /**
-   * Tells whether the session is live: not deleted, not expired, and not idle for longer than {@code idleLifetime}.
+   * Tells whether the session signs its account in.
    *
-   * @return whether it is live
+   * @return true when it has not ended
    */
   boolean isLive();
 
   /**
-   * Authenticates the secret of the session's token, and extends the session's idle expiry, up to its expiry time.
+   * Gives the principal of the session, if a token's secret is the session's.
    *
-   * @param secret the secret of the token
-   * @return the principal of the session's account, or a failure with {@code UNAUTHENTICATED}
+   * @param secret the token's secret
+   * @return the principal, or a failure with {@code UNAUTHENTICATED}
    */
   Future<Principal> authenticate(String secret);
 
   /**
-   * Ends the session.
+   * Ends the session. The purge deletes it.
    *
-   * @return when ended
+   * @return a future that completes once it is ended
    */
   Future<Void> end();
+
+  /**
+   * Gives the session as a message.
+   *
+   * @return the message of {@code pyrite.authentication.v1}
+   */
+  dev.horizon.pyrite.authentication.v1.Session message();
 }

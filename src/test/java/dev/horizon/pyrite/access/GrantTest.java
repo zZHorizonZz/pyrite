@@ -17,7 +17,6 @@ import dev.horizon.pyrite.access.v1.Grant;
 import dev.horizon.pyrite.access.v1.ListGrantsRequest;
 import io.vertx.grpc.common.GrpcStatus;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,10 +28,10 @@ class GrantTest extends PyriteTest {
 
   @BeforeEach
   void open() throws Exception {
-    pyrite.create(ANNE, "", "acme.dev/Organization", "acme", Map.of());
-    pyrite.create(ANNE, "organizations/acme", "acme.dev/Project", "ledger", Map.of());
-    pyrite.create(ANNE, "organizations/acme", "acme.dev/Group", "finance", Map.of());
-    pyrite.create(ANNE, "organizations/acme", "acme.dev/Group", "audit", Map.of());
+    pyrite.create(ANNE, "organizations/acme", "");
+    pyrite.create(ANNE, "projects/ledger", "organizations/acme");
+    pyrite.create(ANNE, "groups/finance", "organizations/acme");
+    pyrite.create(ANNE, "groups/audit", "organizations/acme");
   }
 
   private List<String> grants(String object) throws Exception {
@@ -69,9 +68,9 @@ class GrantTest extends PyriteTest {
       assertThat(granted.getObject()).isEqualTo("projects/ledger");
       assertThat(granted.getRelation()).isEqualTo("viewer");
       assertThat(granted.getGrantee()).isEqualTo(BOB);
-      assertThat(pyrite.get(BOB, "projects/ledger").getName()).isEqualTo("projects/ledger");
+      assertThat(pyrite.check(BOB, "projects/ledger", "can_view", Struct.getDefaultInstance())).isTrue();
       revoke(ANNE, "projects/ledger", "viewer", BOB);
-      assertThat(status(() -> pyrite.get(BOB, "projects/ledger"))).isEqualTo(GrpcStatus.PERMISSION_DENIED);
+      assertThat(pyrite.check(BOB, "projects/ledger", "can_view", Struct.getDefaultInstance())).isFalse();
     }
 
     @Test
@@ -91,7 +90,7 @@ class GrantTest extends PyriteTest {
     void wildcard() throws Exception {
       pyrite.grant(ANNE, "projects/ledger", "viewer", "user:*");
 
-      assertThat(pyrite.get("user:anyone", "projects/ledger").getName()).isEqualTo("projects/ledger");
+      assertThat(pyrite.check("user:anyone", "projects/ledger", "can_view", Struct.getDefaultInstance())).isTrue();
     }
   }
 
@@ -106,9 +105,9 @@ class GrantTest extends PyriteTest {
       pyrite.grant(ANNE, "groups/finance", "member", "group:audit#member");
       pyrite.grant(ANNE, "projects/ledger", "viewer", "group:finance#member");
 
-      assertThat(pyrite.get(CAROL, "projects/ledger").getName()).isEqualTo("projects/ledger");
+      assertThat(pyrite.check(CAROL, "projects/ledger", "can_view", Struct.getDefaultInstance())).isTrue();
       revoke(ANNE, "groups/audit", "member", CAROL);
-      assertThat(status(() -> pyrite.get(CAROL, "projects/ledger"))).isEqualTo(GrpcStatus.PERMISSION_DENIED);
+      assertThat(pyrite.check(CAROL, "projects/ledger", "can_view", Struct.getDefaultInstance())).isFalse();
     }
 
     @Test
