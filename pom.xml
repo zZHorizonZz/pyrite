@@ -60,7 +60,7 @@
     <mariadb-client.version>3.5.10</mariadb-client.version>
     <mssql-jdbc.version>13.6.1.jre11</mssql-jdbc.version>
     <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
-    <google-common-protos.version>2.76.0</google-common-protos.version>
+    <google-common-protos.version>2.78.0</google-common-protos.version>
     <pyrite.migrations>${project.basedir}/src/main/resources/pyrite/migration</pyrite.migrations>
   </properties>
   <dependencyManagement>
