@@ -1,6 +1,7 @@
 package dev.horizon.pyrite.database;
 
 import dev.horizon.cinder.Driver;
+import dev.horizon.cinder.sqlserver.SqlServerDriver;
 import io.vertx.core.Vertx;
 import io.vertx.sqlclient.Pool;
 import java.time.Duration;
@@ -20,6 +21,12 @@ public record RunningDatabase(Vertx vertx, Pool pool, Driver driver) implements 
     for (String table : TABLES) {
       pool.query("DELETE FROM " + table).execute().await(TIMEOUT);
     }
+  }
+
+  public void rename(String table, String to) throws TimeoutException {
+    pool.query(driver instanceof SqlServerDriver
+        ? "EXEC sp_rename '" + table + "', '" + to + "'"
+        : "ALTER TABLE " + table + " RENAME TO " + to).execute().await(TIMEOUT);
   }
 
   @Override

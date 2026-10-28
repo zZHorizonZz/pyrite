@@ -65,6 +65,18 @@ class PasswordTest extends PyriteTest {
     }
 
     @Test
+    @DisplayName("an account that cannot be read fails the sign-in as an internal error, never as a wrong password")
+    void unreadableAccount() throws Exception {
+      Flow flow = pyrite.start("", "sign-in", "anne@acme.dev");
+      pyrite.database.rename("pyrite_account", "pyrite_account_away");
+      try {
+        assertThat(status(() -> pyrite.answer(flow, password(PASSWORD)))).isEqualTo(GrpcStatus.INTERNAL);
+      } finally {
+        pyrite.database.rename("pyrite_account_away", "pyrite_account");
+      }
+    }
+
+    @Test
     @DisplayName("a wrong password keeps the flow at its revision, so the right one still signs in")
     void retry() throws Exception {
       Flow flow = pyrite.start("", "sign-in", "anne@acme.dev");

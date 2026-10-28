@@ -158,6 +158,17 @@ class SessionTest extends PyriteTest {
     }
 
     @Test
+    @DisplayName("a session whose account cannot be read fails as an internal error, never as signed out")
+    void unreadableAccount() throws Exception {
+      pyrite.database.rename("pyrite_account", "pyrite_account_away");
+      try {
+        assertThat(status(() -> pyrite.authenticate(token))).isEqualTo(GrpcStatus.INTERNAL);
+      } finally {
+        pyrite.database.rename("pyrite_account_away", "pyrite_account");
+      }
+    }
+
+    @Test
     @DisplayName("a session is read by its account, and by nobody else")
     void read() throws Exception {
       String session = pyrite.authenticate(token).getSession();

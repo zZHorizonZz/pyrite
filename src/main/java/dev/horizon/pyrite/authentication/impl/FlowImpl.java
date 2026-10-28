@@ -90,7 +90,9 @@ final class FlowImpl implements Flow {
       return Future.succeededFuture(Optional.empty());
     }
     return type.accounts().account(row.getAccount()).map(account -> Optional.of((AccountImpl) account))
-        .recover(missing -> Future.succeededFuture(Optional.empty()));
+        .recover(failure -> failure instanceof PyriteException refusal && refusal.status() == GrpcStatus.NOT_FOUND
+            ? Future.succeededFuture(Optional.empty())
+            : Future.failedFuture(failure));
   }
 
   <F extends Factor> Future<List<F>> factors(Class<F> kind) {
