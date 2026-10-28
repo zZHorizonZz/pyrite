@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/zZHorizonZz/pyrite/compare/v0.3.0...v0.3.1) (2026-10-28)
+
+
+### Fixes
+
+* **authentication:** fail a flow or a session whose account cannot be read, instead of treating the account as missing. ([#27](https://github.com/zZHorizonZz/pyrite/issues/27)) ([f9bef63](https://github.com/zZHorizonZz/pyrite/commit/f9bef63c3dcd7f56d4ebf8e6b45ed2c0edda2f31))
+
 ## [0.3.0](https://github.com/zZHorizonZz/pyrite/compare/v0.2.0...v0.3.0) (2026-10-25)
 
 
