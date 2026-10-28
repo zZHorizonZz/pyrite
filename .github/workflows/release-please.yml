@@ -61,4 +61,4 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
-          files: '*/target/pyrite*.jar'
+          files: 'target/pyrite-*.jar'
