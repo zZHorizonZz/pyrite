@@ -50,7 +50,7 @@
     <spectrum.version>0.2.1</spectrum.version>
     <tink.version>1.24.0</tink.version>
     <vertx.version>5.2.1</vertx.version>
-    <webauthn4j.version>0.31.8.RELEASE</webauthn4j.version>
+    <webauthn4j.version>0.31.11.RELEASE</webauthn4j.version>
 
     <junit.version>6.1.3</junit.version>
     <assertj.version>3.27.7</assertj.version>
