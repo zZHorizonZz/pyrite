@@ -41,7 +41,7 @@
     <bouncycastle.version>1.84</bouncycastle.version>
     <caffeine.version>3.3.1</caffeine.version>
     <cel.version>0.14.0</cel.version>
-    <guava.version>33.6.0-jre</guava.version>
+    <guava.version>33.7.2-jre</guava.version>
     <cinder.version>0.4.1</cinder.version>
     <leadseal.version>0.2.0</leadseal.version>
     <openfga-language.version>0.2.1</openfga-language.version>
