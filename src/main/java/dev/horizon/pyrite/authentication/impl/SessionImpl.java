@@ -60,8 +60,10 @@ final class SessionImpl implements Session {
             : Future.failedFuture(new PyriteException(GrpcStatus.UNAUTHENTICATED, "The session token is not"
                 + " valid.")))
         .compose(touched -> type.account(row.getParent())
-            .recover(missing -> Future.failedFuture(new PyriteException(GrpcStatus.UNAUTHENTICATED, "The account of"
-                + " the session is deleted.")))
+            .recover(failure -> Future.failedFuture(failure instanceof PyriteException refusal
+                && refusal.status() == GrpcStatus.NOT_FOUND
+                    ? new PyriteException(GrpcStatus.UNAUTHENTICATED, "The account of the session is deleted.")
+                    : failure))
             .map(account -> Principal.newBuilder().setSubject(account.subject()).setAccount(account.name())
                 .setSession(name()).setExpireTime(timestamp(touched.expireTime())).build()));
   }

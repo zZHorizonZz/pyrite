@@ -83,7 +83,10 @@ public final class FlowTypeImpl implements FlowType {
       case IDENTIFIER -> identifier(request).compose(identifier -> identifier.isEmpty()
           ? Future.succeededFuture(new Found(Optional.empty(), Optional.empty()))
           : accounts().account(identifier.get().account()).map(account -> new Found(Optional.of(account), identifier))
-              .recover(missing -> Future.succeededFuture(new Found(Optional.empty(), identifier))));
+              .recover(failure -> failure instanceof PyriteException refusal
+                  && refusal.status() == GrpcStatus.NOT_FOUND
+                      ? Future.succeededFuture(new Found(Optional.empty(), identifier))
+                      : Future.failedFuture(failure)));
       case SUBJECT -> accounts().account(Subject.parse(request.getSubject()))
           .map(account -> new Found(Optional.of(account), Optional.empty()));
       case SUBJECT_IDENTIFIER -> accounts().account(Subject.parse(request.getSubject()))
