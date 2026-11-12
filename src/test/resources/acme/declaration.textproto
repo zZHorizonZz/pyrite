@@ -390,3 +390,10 @@ flows {
 flows { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
 flows { name: "enrol-totp" input: SUBJECT stages { enrol: TOTP } completes: ACTIVATE_FACTOR }
 flows { name: "enrol-recovery-codes" input: SUBJECT stages { enrol: RECOVERY_CODES } completes: ACTIVATE_FACTOR }
+flows { name: "enrol-passkey" input: SUBJECT stages { enrol: PASSKEY } completes: ACTIVATE_FACTOR }
+flows {
+  name: "sign-in-with-passkey"
+  input: IDENTIFIER
+  stages { factors: 1 phishing_resistant: true }
+  completes: ISSUE_SESSION
+}

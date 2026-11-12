@@ -4,68 +4,99 @@ In this guide, you serve Pyrite on PostgreSQL over the Vert.x event bus. You dec
 projects, make one of each known to Pyrite, grant a relation on the organization, and check what another user may do
 on the project.
 
-## Before you begin
+## Prerequisites
 
-- Java 25
-- A PostgreSQL 13 or later database
-- Flyway, to create the tables
+- Java 25 or later, Maven and Vert.x 5.
+- A GitHub account. GitHub Packages requires a token, also for public packages.
+- A PostgreSQL 13 or later database.
+- Flyway, to create the tables.
 
 ## 1. Add the dependencies
 
-Add Pyrite, the Cinder driver of your database, its Vert.x client, and the Vert.x gRPC event bus:
+1. Add the GitHub Packages repositories of Pyrite and Cinder, and the dependencies of Pyrite, the Cinder driver of
+   your database, its Vert.x client and the Vert.x gRPC event bus, to your `pom.xml`:
 
-<!-- x-release-please-start-version -->
-```xml
-<dependency>
-  <groupId>dev.horizon</groupId>
-  <artifactId>pyrite</artifactId>
-  <version>0.3.2-SNAPSHOT</version>
-</dependency>
-```
-<!-- x-release-please-end -->
+   <!-- x-release-please-start-version -->
+   ```xml
+   <repositories>
+     <repository>
+       <id>github-pyrite</id>
+       <url>https://maven.pkg.github.com/zZHorizonZz/pyrite</url>
+     </repository>
+     <repository>
+       <id>github-cinder</id>
+       <url>https://maven.pkg.github.com/zZHorizonZz/cinder</url>
+     </repository>
+   </repositories>
 
-```xml
-<dependency>
-  <groupId>dev.horizon</groupId>
-  <artifactId>cinder-database-postgres</artifactId>
-  <version>0.3.0</version>
-</dependency>
-<dependency>
-  <groupId>io.vertx</groupId>
-  <artifactId>vertx-pg-client</artifactId>
-  <version>5.2.1</version>
-</dependency>
-<dependency>
-  <groupId>io.vertx</groupId>
-  <artifactId>vertx-grpc-eventbus</artifactId>
-  <version>5.2.1</version>
-</dependency>
-```
+   <dependencies>
+     <dependency>
+       <groupId>dev.horizon</groupId>
+       <artifactId>pyrite</artifactId>
+       <version>0.3.2-SNAPSHOT</version>
+     </dependency>
+   </dependencies>
+   ```
+   <!-- x-release-please-end -->
 
-Pyrite brings Spectrum, which serves OpenFGA's API from the same database. Pyrite keeps its grants there. Pyrite
-also contains its own copy of CEL, which evaluates the identifier kinds of a declaration, so you add no CEL
-dependency.
+   ```xml
+   <dependency>
+     <groupId>dev.horizon</groupId>
+     <artifactId>cinder-database-postgres</artifactId>
+     <version>0.6.0</version>
+   </dependency>
+   <dependency>
+     <groupId>io.vertx</groupId>
+     <artifactId>vertx-pg-client</artifactId>
+     <version>5.2.1</version>
+   </dependency>
+   <dependency>
+     <groupId>io.vertx</groupId>
+     <artifactId>vertx-grpc-eventbus</artifactId>
+     <version>5.2.1</version>
+   </dependency>
+   ```
+
+2. Create a personal access token with the `read:packages` scope, and add it to `~/.m2/settings.xml` for the ids of
+   your repositories and of those that Pyrite's POM names, `github-aquery`, `github-basepoint`, `github-leadseal` and
+   `github-spectrum`:
+
+   ```xml
+   <settings>
+     <servers>
+       <server>
+         <id>github-pyrite</id>
+         <username>YOUR_GITHUB_USERNAME</username>
+         <password>YOUR_TOKEN</password>
+       </server>
+       <!-- The same for github-cinder, github-aquery, github-basepoint, github-leadseal and github-spectrum. -->
+     </servers>
+   </settings>
+   ```
+
+Pyrite brings Spectrum, which serves OpenFGA's API from the same database, and keeps its grants there. The JAR holds
+its own copy of CEL, so you add no CEL dependency.
 
 ## 2. Create the tables
 
-Run Pyrite's migrations and Spectrum's, each with its own history table:
+Run Pyrite's migrations and Spectrum's, each with its own history table. Flyway needs its module
+`flyway-database-postgresql` and the PostgreSQL JDBC driver:
 
 ```java
 String url = "jdbc:postgresql://localhost:5432/app";
-for (String[] migrations : new String[][] { { "pyrite/migration/**/postgresql", "pyrite" },
-    { "spectrum/migration/**/postgresql", "spectrum" } }) {
-  Flyway.configure().dataSource(url, "app", "secret").locations("classpath:" + migrations[0])
-      .table(migrations[1] + "_schema_history").baselineOnMigrate(true).load().migrate();
+for (String set : List.of("pyrite", "spectrum")) {
+  Flyway.configure().dataSource(url, "app", "secret").locations("classpath:" + set + "/migration/**/postgresql")
+      .table(set + "_schema_history").baselineOnMigrate(true).load().migrate();
 }
 ```
 
-Pyrite does not store your resources. Your application keeps them in its own tables, as it does today. For more
-information, refer to [Create the tables](how-to/create-the-tables.md).
+Pyrite does not store your resources. Your application keeps them in its own tables. See
+[Create the tables](deployment/create-the-tables.md).
 
 ## 3. Declare the types
 
-Save the declaration as `declaration.textproto`. It is a `pyrite.schema.v1.Declaration` in protobuf text format.
-A member of an organization views its projects, and the creator of each resource is granted a relation on it:
+Save the declaration as `declaration.textproto`. It is a `pyrite.schema.v1.Declaration` in protobuf text format. A
+member of an organization views its projects, and the creator of each resource gets a relation on it:
 
 ```textproto
 # proto-message: pyrite.schema.v1.Declaration
@@ -118,27 +149,28 @@ types {
 }
 ```
 
-For each field and rule, refer to [Declaration](reference/declaration.md).
+Pyrite adds the relation `parent` to each type with parents, so `tuple_to_userset` reaches the organization of a
+project. See [Declaration reference](declarations/declaration-reference.md).
 
 ## 4. Serve the services
 
-Create Spectrum's service and Pyrite's services on one pool, and add them to an event bus server. Give every service
-of Pyrite the same options:
+Add Spectrum's service and Pyrite's services, on one pool, to an event bus server:
 
 ```java
 Vertx vertx = Vertx.vertx();
 Pool pool = PgBuilder.pool().connectingTo("postgresql://app:secret@localhost:5432/app").using(vertx).build();
+PostgresDriver driver = new PostgresDriver();
 
 EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await();
 EventBusGrpcClient client = EventBusGrpcClient.client(vertx).await();
-PostgresDriver driver = new PostgresDriver();
 server.addService(OpenFgaService.create(vertx, pool, driver));
 OpenFGAServiceGrpcClient openFga = OpenFGAServiceGrpcClient.create(client);
 
-PyriteServiceOptions options = new PyriteServiceOptions();
-server.addService(SchemaService.create(vertx, pool, driver, openFga, options));
-server.addService(AccessService.create(vertx, pool, driver, openFga, options));
+Pyrite.pyrite(vertx, pool, driver, openFga, new PyriteOptions()).bind(server);
 ```
+
+`bind` adds the four services: schema, access, cryptography and authentication. See
+[Serve the services](deployment/serve-the-services.md).
 
 ## 5. Write the declaration
 
@@ -149,15 +181,16 @@ Declaration.Builder declaration = Declaration.newBuilder();
 TextFormat.merge(Files.readString(Path.of("declaration.textproto")), declaration);
 
 SchemaGrpcClient schema = SchemaGrpcClient.create(client);
-schema.writeDeclaration(WriteDeclarationRequest.newBuilder().setDeclaration(declaration).build()).await();
+String id = schema.writeDeclaration(WriteDeclarationRequest.newBuilder().setDeclaration(declaration).build())
+    .await().getId();
 ```
 
 Every service reads the latest declaration from then on.
 
 ## 6. Call the services
 
-1. Your application creates an organization in its own table. Make it known to Pyrite as `user:anne`. Anne becomes
-   its `admin`, the type's `creator` relation:
+1. Your application creates an organization in its own table. Make it known to Pyrite as `user:anne`. Anne gets
+   `admin`, the type's `creator` relation:
 
    ```java
    AccessGrpcClient access = AccessGrpcClient.create(client);
@@ -184,15 +217,7 @@ Every service reads the latest declaration from then on.
    ```java
    boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
        .setPermission("viewer").build()).await().getAllowed();
-   System.out.println(allowed);
    ```
-
-   ```txt
-   true
-   ```
-
-   Bob views the project because he is a member of its organization. The same check as `user:carol` returns
-   `false`.
 
 5. List the projects that Bob views:
 
@@ -201,12 +226,16 @@ Every service reads the latest declaration from then on.
        .setType("acme.dev/Project").setPermission("viewer").build()).await().getNamesList();
    ```
 
-   ```txt
-   [projects/ledger]
-   ```
+## Verify
+
+`allowed` is `true`, because Bob is a member of the organization of the project, and `projects` is
+`[projects/ledger]`. The same check as `user:carol` returns `false`. A call before step 5 fails with
+`FAILED_PRECONDITION: No declaration is written; write one with pyrite.schema.v1.Schema.WriteDeclaration.` See
+[Troubleshooting deployment](deployment/troubleshooting-deployment.md).
 
 ## Next steps
 
-- [Subjects and permissions](concepts/subjects-and-permissions.md) explains how Pyrite checks each call.
-- [Declare a type](how-to/declare-a-type.md) adds your own types and relations.
-- [Sign in with a password](how-to/sign-in-with-a-password.md) adds accounts and sessions.
+- [About subjects and permissions](access/about-subjects-and-permissions.md): how Pyrite checks each call.
+- [Declare a type](declarations/declare-a-type.md): your own types and relations.
+- [Sign in with a password](accounts/sign-in-with-a-password.md): accounts and sessions.
+- [Encrypt data](keys/encrypt-data.md): keys and their versions.

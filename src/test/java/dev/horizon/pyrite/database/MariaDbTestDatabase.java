@@ -25,6 +25,11 @@ public final class MariaDbTestDatabase implements TestDatabase {
   }
 
   @Override
+  public void stop() {
+    CONTAINER.stop();
+  }
+
+  @Override
   public String migrations() {
     return "mariadb";
   }

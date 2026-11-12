@@ -17,35 +17,43 @@ message Account {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
-  string name = 2 [(leadseal.v1.column).text = {
-    length: 255
-    collation: [
-      { key: "postgresql" value: "C" },
-      { key: "mariadb" value: "utf8mb4_bin" },
-      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
-    ]
+  string name = 2 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.declaration.v1.Node" field: "name" on_delete: ACTION_CASCADE }
   }];
 
   optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
 
-  // HUMAN or SERVICE.
-  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    HUMAN = 1;
+    SERVICE = 2;
+  }
+
+  Kind kind = 11;
 }
 
 // An identifier of an account: the resource pyrite.dev/Identifier, under its account.
@@ -59,7 +67,7 @@ message Identifier {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -70,17 +78,27 @@ message Identifier {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
@@ -116,7 +134,7 @@ message Factor {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -127,27 +145,50 @@ message Factor {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
 
-  // PASSWORD, TOTP, PASSKEY or RECOVERY_CODES.
-  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    PASSWORD = 1;
+    TOTP = 2;
+    PASSKEY = 3;
+    RECOVERY_CODES = 4;
+  }
+
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    PENDING = 1;
+    ACTIVE = 2;
+  }
+
+  Kind kind = 11;
 
   // PENDING while it is enrolled, then ACTIVE.
-  string state = 12 [(leadseal.v1.column).text = { length: 16 }];
+  State state = 12;
 
   // The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, or the recovery codes' MACs.
   bytes secret = 13;
@@ -172,7 +213,7 @@ message Session {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -183,17 +224,27 @@ message Session {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
@@ -216,7 +267,17 @@ message Flow {
   string definition = 2 [(leadseal.v1.column).text = { length: 63 }];
 
   // The account; unset for a flow that names no account that exists.
-  optional string account = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string account = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   // The identifier that the flow started with, if any.
   optional string identifier = 4 [(leadseal.v1.column).text = { length: 255 }];

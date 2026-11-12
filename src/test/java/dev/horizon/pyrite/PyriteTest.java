@@ -11,7 +11,7 @@ import org.junit.jupiter.api.TestInstance;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class PyriteTest {
 
-  protected Pyrite pyrite;
+  protected PyriteFixture pyrite;
 
   private RunningDatabase database;
 
@@ -29,7 +29,7 @@ public abstract class PyriteTest {
 
   @BeforeEach
   void startPyrite() throws Exception {
-    pyrite = new Pyrite(database);
+    pyrite = new PyriteFixture(database);
   }
 
   @AfterEach

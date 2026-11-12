@@ -20,7 +20,7 @@ public final class SqliteTestDatabase implements TestDatabase {
     try {
       Path file = Files.createTempFile("pyrite", ".db");
       file.toFile().deleteOnExit();
-      this.url = "jdbc:sqlite:" + file;
+      this.url = "jdbc:sqlite:" + file + "?foreign_keys=on";
     } catch (IOException failed) {
       throw new UncheckedIOException(failed);
     }
