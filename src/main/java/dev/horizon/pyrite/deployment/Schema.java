@@ -7,8 +7,8 @@ import dev.horizon.pyrite.PyriteOptions;
 import dev.horizon.pyrite.access.OpenFga;
 import dev.horizon.pyrite.declaration.ResourceType;
 import dev.horizon.pyrite.declaration.TypeSystem;
-import dev.horizon.pyrite.flow.FlowInterceptor;
-import dev.horizon.pyrite.flow.FlowType;
+import dev.horizon.pyrite.exchange.ExchangeInterceptor;
+import dev.horizon.pyrite.exchange.ExchangeType;
 import dev.horizon.pyrite.identity.AccountObserver;
 import dev.horizon.pyrite.identity.AccountType;
 import dev.horizon.pyrite.identity.CredentialType;
@@ -25,7 +25,7 @@ import java.util.Optional;
 
 /**
  * A declaration bound to its database and its OpenFGA store: its types, the tree of the resources that Pyrite knows,
- * and Pyrite's own keys, accounts and flows.
+ * and Pyrite's own keys, accounts and exchanges.
  *
  * <p>
  * A schema is what a call works on. The application keeps its resources itself; the tree knows each one's type and
@@ -38,10 +38,10 @@ public final class Schema {
   private final PyriteOptions options;
   private final Optional<KeyType> keys;
   private final Optional<AccountType> accounts;
-  private final Optional<FlowType> flows;
+  private final Optional<ExchangeType> exchanges;
 
   Schema(TypeSystem types, Database database, OpenFga openFga, Vertx vertx, PyriteOptions options,
-      FlowInterceptor interceptor, AccountObserver accountObserver, SessionObserver sessionObserver) {
+      ExchangeInterceptor interceptor, AccountObserver accountObserver, SessionObserver sessionObserver) {
     this.types = types;
     this.resources = new ResourceTree(types, openFga, database);
     this.options = options;
@@ -55,7 +55,7 @@ public final class Schema {
           new CredentialType(database, vertx, authentication, keys()),
           new SessionType(database, authentication, keys(), sessionObserver), accountObserver);
     });
-    this.flows = accounts.map(accountType -> new FlowType(database, types, vertx,
+    this.exchanges = accounts.map(accountType -> new ExchangeType(database, types,
         options.getAuthenticationOptions(), accountType, keys(), interceptor));
   }
 
@@ -109,14 +109,14 @@ public final class Schema {
   }
 
   /**
-   * Gives the flows of the declaration.
+   * Gives the exchanges of the declaration.
    *
-   * @return the flows
+   * @return the exchanges
    * @throws PyriteException with {@code FAILED_PRECONDITION} when the declaration has no {@code pyrite.dev/Account}
    */
-  public FlowType flows() {
-    return flows.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
-        + " accounts, so it has no flows."));
+  public ExchangeType exchanges() {
+    return exchanges.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
+        + " accounts, so it has no exchanges."));
   }
 
   /**

@@ -10,7 +10,8 @@ import dev.horizon.pyrite.schema.v1.WriteDeclarationResponse;
 import io.vertx.core.Future;
 
 /**
- * The service {@code pyrite.schema.v1.Schema}: the declarations of the types, relations and flows of an application.
+ * The service {@code pyrite.schema.v1.Schema}: the declarations of the types, relations and exchanges of an
+ * application.
  *
  * <p>
  * A declaration that breaks a rule fails {@code WriteDeclaration} with {@code INVALID_ARGUMENT}, and one that the

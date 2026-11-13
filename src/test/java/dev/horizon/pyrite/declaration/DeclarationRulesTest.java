@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.TextFormat;
 import dev.horizon.pyrite.schema.v1.Declaration;
-import dev.horizon.pyrite.schema.v1.FlowDefinition;
+import dev.horizon.pyrite.schema.v1.ExchangeDefinition;
 import dev.horizon.pyrite.schema.v1.IdentifierKind;
 import dev.horizon.pyrite.schema.v1.Stage;
 import dev.horizon.pyrite.schema.v1.Type;
@@ -222,70 +222,71 @@ class DeclarationRulesTest {
   }
 
   @Nested
-  @DisplayName("Flows")
-  class Flows {
+  @DisplayName("Exchanges")
+  class Exchanges {
 
-    private static FlowDefinition.Builder flow(String name, FlowDefinition.Input input,
-        FlowDefinition.Completion completion, Stage... stages) {
-      FlowDefinition.Builder flow = FlowDefinition.newBuilder().setName(name).setInput(input).addCompletes(
+    private static ExchangeDefinition.Builder exchange(String name, ExchangeDefinition.Input input,
+        ExchangeDefinition.Completion completion, Stage... stages) {
+      ExchangeDefinition.Builder exchange = ExchangeDefinition.newBuilder().setName(name).setInput(input).addCompletes(
           completion);
       for (Stage stage : stages) {
-        flow.addStages(stage);
+        exchange.addStages(stage);
       }
-      return flow;
+      return exchange;
     }
 
     static Stream<Arguments> rules() {
       Stage password = Stage.newBuilder().setFactors(1).build();
       return Stream.of(
-          rule("has flows but no accounts", declaration -> declaration.removeTypes(declaration.getTypesCount() - 1)),
-          rule("does not match", declaration -> declaration.addFlows(flow("Sign_In", FlowDefinition.Input.IDENTIFIER,
-              FlowDefinition.Completion.ISSUE_SESSION, password))),
-          rule("is declared twice", declaration -> declaration.addFlows(declaration.getFlows(0))),
-          rule("has no input", declaration -> declaration.addFlows(flow("odd",
-              FlowDefinition.Input.INPUT_UNSPECIFIED, FlowDefinition.Completion.ISSUE_SESSION, password))),
-          rule("has no stages or no completions", declaration -> declaration.addFlows(flow("empty",
-              FlowDefinition.Input.IDENTIFIER, FlowDefinition.Completion.ISSUE_SESSION))),
-          rule("a stage requires 0 to 3", declaration -> declaration.addFlows(flow("many",
-              FlowDefinition.Input.IDENTIFIER, FlowDefinition.Completion.ISSUE_SESSION, Stage.newBuilder()
+          rule("has exchanges but no accounts", declaration -> declaration.removeTypes(declaration.getTypesCount() - 1)),
+          rule("does not match",
+              declaration -> declaration.addExchanges(exchange("Sign_In", ExchangeDefinition.Input.IDENTIFIER,
+                  ExchangeDefinition.Completion.ISSUE_SESSION, password))),
+          rule("is declared twice", declaration -> declaration.addExchanges(declaration.getExchanges(0))),
+          rule("has no input", declaration -> declaration.addExchanges(exchange("odd",
+              ExchangeDefinition.Input.INPUT_UNSPECIFIED, ExchangeDefinition.Completion.ISSUE_SESSION, password))),
+          rule("has no stages or no completions", declaration -> declaration.addExchanges(exchange("empty",
+              ExchangeDefinition.Input.IDENTIFIER, ExchangeDefinition.Completion.ISSUE_SESSION))),
+          rule("a stage requires 0 to 3", declaration -> declaration.addExchanges(exchange("many",
+              ExchangeDefinition.Input.IDENTIFIER, ExchangeDefinition.Completion.ISSUE_SESSION, Stage.newBuilder()
                   .setFactors(4).build()))),
-          rule("an enrolment is a stage of its own", declaration -> declaration.addFlows(flow("mixed",
-              FlowDefinition.Input.SUBJECT, FlowDefinition.Completion.ACTIVATE_FACTOR, Stage.newBuilder()
+          rule("an enrolment is a stage of its own", declaration -> declaration.addExchanges(exchange("mixed",
+              ExchangeDefinition.Input.SUBJECT, ExchangeDefinition.Completion.ACTIVATE_FACTOR, Stage.newBuilder()
                   .setFactors(1).setEnrol(Stage.Factor.TOTP).build()))),
-          rule("has a stage that requires nothing", declaration -> declaration.addFlows(flow("nothing",
-              FlowDefinition.Input.IDENTIFIER, FlowDefinition.Completion.ISSUE_SESSION, password,
+          rule("has a stage that requires nothing", declaration -> declaration.addExchanges(exchange("nothing",
+              ExchangeDefinition.Input.IDENTIFIER, ExchangeDefinition.Completion.ISSUE_SESSION, password,
               Stage.getDefaultInstance()))),
-          rule("before the account is proven", declaration -> declaration.addFlows(flow("takeover",
-              FlowDefinition.Input.IDENTIFIER, FlowDefinition.Completion.ACTIVATE_FACTOR, Stage.newBuilder()
+          rule("before the account is proven", declaration -> declaration.addExchanges(exchange("takeover",
+              ExchangeDefinition.Input.IDENTIFIER, ExchangeDefinition.Completion.ACTIVATE_FACTOR, Stage.newBuilder()
                   .setEnrol(Stage.Factor.PASSWORD).build()))),
-          rule("enrols a factor twice", declaration -> declaration.addFlows(flow("twice",
-              FlowDefinition.Input.SUBJECT, FlowDefinition.Completion.ACTIVATE_FACTOR, Stage.newBuilder()
+          rule("enrols a factor twice", declaration -> declaration.addExchanges(exchange("twice",
+              ExchangeDefinition.Input.SUBJECT, ExchangeDefinition.Completion.ACTIVATE_FACTOR, Stage.newBuilder()
                   .setEnrol(Stage.Factor.PASSWORD).build(),
               Stage.newBuilder().setEnrol(Stage.Factor.TOTP)
                   .build()))),
-          rule("completes with ISSUE_SESSION", declaration -> declaration.addFlows(flow("session",
-              FlowDefinition.Input.SUBJECT, FlowDefinition.Completion.ISSUE_SESSION, password))),
-          rule("completes with ISSUE_SESSION", declaration -> declaration.addFlows(flow("codeOnly".toLowerCase(),
-              FlowDefinition.Input.IDENTIFIER, FlowDefinition.Completion.ISSUE_SESSION, Stage.newBuilder()
+          rule("completes with ISSUE_SESSION", declaration -> declaration.addExchanges(exchange("session",
+              ExchangeDefinition.Input.SUBJECT, ExchangeDefinition.Completion.ISSUE_SESSION, password))),
+          rule("completes with ISSUE_SESSION", declaration -> declaration.addExchanges(exchange("codeOnly".toLowerCase(),
+              ExchangeDefinition.Input.IDENTIFIER, ExchangeDefinition.Completion.ISSUE_SESSION, Stage.newBuilder()
                   .setIdentifier(true).build()))),
-          rule("completes with MARK_VERIFIED", declaration -> declaration.addFlows(flow("verified",
-              FlowDefinition.Input.IDENTIFIER, FlowDefinition.Completion.MARK_VERIFIED, Stage.newBuilder()
+          rule("completes with MARK_VERIFIED", declaration -> declaration.addExchanges(exchange("verified",
+              ExchangeDefinition.Input.IDENTIFIER, ExchangeDefinition.Completion.MARK_VERIFIED, Stage.newBuilder()
                   .setIdentifier(true).build()))),
-          rule("completes with ACTIVATE_FACTOR", declaration -> declaration.addFlows(flow("activate",
-              FlowDefinition.Input.SUBJECT, FlowDefinition.Completion.ACTIVATE_FACTOR, password))));
+          rule("completes with ACTIVATE_FACTOR", declaration -> declaration.addExchanges(exchange("activate",
+              ExchangeDefinition.Input.SUBJECT, ExchangeDefinition.Completion.ACTIVATE_FACTOR, password))));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("rules")
-    @DisplayName("a flow that breaks a rule is refused")
+    @DisplayName("an exchange that breaks a rule is refused")
     void refused(String message, Consumer<Declaration.Builder> breaking) throws Exception {
       broken(breaking, message);
     }
 
     @Test
-    @DisplayName("a declaration without accounts and flows needs no accounts")
+    @DisplayName("a declaration without accounts and exchanges needs no accounts")
     void noAccounts() throws Exception {
-      Declaration.Builder declaration = acme().toBuilder().clearFlows();
+      Declaration.Builder declaration = acme().toBuilder().clearExchanges();
       declaration.removeTypes(declaration.getTypesCount() - 1);
 
       assertThatCode(() -> new TypeSystem(declaration.build())).doesNotThrowAnyException();

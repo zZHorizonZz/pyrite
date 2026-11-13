@@ -2,10 +2,11 @@ package dev.horizon.pyrite.conformance;
 
 import com.google.protobuf.ByteString;
 import com.webauthn4j.test.client.ClientPlatform;
-import dev.horizon.pyrite.FlowContext;
+import dev.horizon.pyrite.ExchangeContext;
+import dev.horizon.pyrite.FakeProvider;
 import dev.horizon.pyrite.access.v1.Grant;
 import dev.horizon.pyrite.authentication.v1.Account;
-import dev.horizon.pyrite.authentication.v1.Flow;
+import dev.horizon.pyrite.authentication.v1.Exchange;
 import dev.horizon.pyrite.authentication.v1.Identifier;
 import dev.horizon.pyrite.authentication.v1.Principal;
 import dev.horizon.pyrite.authentication.v1.Session;
@@ -25,14 +26,19 @@ import java.util.List;
  */
 public record Value<T>(String name) {
 
-  public static final Value<String> SESSION_TOKEN = new Value<>("the token of the last session");
+  public static final Value<String> ACCESS_TOKEN = new Value<>("the access token of the last session");
+  public static final Value<String> REFRESH_TOKEN = new Value<>("the refresh token of the last session");
+  public static final Value<String> SPENT_REFRESH_TOKEN = new Value<>("the refresh token that the last refresh traded");
   public static final Value<String> SESSION = new Value<>("the name of the last session");
   public static final Value<Principal> PRINCIPAL = new Value<>("the principal of the last authentication");
   public static final Value<Session> SESSION_READ = new Value<>("the session that the last read gave");
   public static final Value<Long> PURGE_COUNT = new Value<>("the number of rows that the last purge deleted");
-  public static final Value<Flow> FLOW = new Value<>("the last flow");
-  public static final Value<Flow> FLOW_START = new Value<>("the last flow as it started");
-  public static final Value<Flow> OTHER_FLOW = new Value<>("a flow kept aside");
+  public static final Value<Exchange> EXCHANGE = new Value<>("the last exchange");
+  public static final Value<FakeProvider.Callback> PROVIDER_CALLBACK = new Value<>(
+      "what the provider sent to the callback last");
+  public static final Value<String> PROVIDER_ACCOUNT = new Value<>("the account that a sign-in at a provider reached");
+  public static final Value<Exchange> EXCHANGE_START = new Value<>("the last exchange as it started");
+  public static final Value<Exchange> OTHER_EXCHANGE = new Value<>("an exchange kept aside");
   public static final Value<Identifier> IDENTIFIER = new Value<>("the last identifier added");
   public static final Value<List<Identifier>> IDENTIFIERS = new Value<>("the identifiers of the last list");
   public static final Value<Account> ACCOUNT = new Value<>("the last account read");
@@ -41,7 +47,7 @@ public record Value<T>(String name) {
   public static final Value<byte[]> OTHER_TOTP_SECRET = new Value<>("a TOTP secret kept aside");
   public static final Value<List<String>> RECOVERY_CODES = new Value<>("the recovery codes of the last enrolment");
   public static final Value<List<String>> OTHER_RECOVERY_CODES = new Value<>("recovery codes kept aside");
-  public static final Value<List<FlowContext>> INTERCEPTIONS = new Value<>("the contexts that an interceptor saw");
+  public static final Value<List<ExchangeContext>> INTERCEPTIONS = new Value<>("the contexts that an interceptor saw");
   public static final Value<List<String>> ACCOUNT_CREATES = new Value<>("the accounts that the handler heard of as"
       + " created");
   public static final Value<List<String>> ACCOUNT_DELETES = new Value<>("the accounts that the handler heard of as"

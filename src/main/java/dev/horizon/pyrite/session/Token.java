@@ -7,11 +7,11 @@ import java.util.Base64;
 import java.util.UUID;
 
 /**
- * A session token: the id of its session, a dot, and a secret of 32 random bytes in base64url without padding, such
- * as {@code 3d5e7a1c-0f42-4b8e-9c61-2a7d9e4f1b03.q8C3...}. The id finds the session, and the secret proves the token;
- * the session keeps only a MAC of the secret.
+ * A refresh token: the id of its row, a dot, and a secret of 32 random bytes in base64url without padding, such as
+ * {@code 3d5e7a1c-0f42-4b8e-9c61-2a7d9e4f1b03.q8C3...}. The id finds the row, and the secret proves the token; the row
+ * keeps only a MAC of the secret.
  *
- * @param id the id of the session, the last segment of its name
+ * @param id the id of the token's row
  * @param secret the secret
  */
 public record Token(String id, String secret) {
@@ -29,13 +29,13 @@ public record Token(String id, String secret) {
   public static Token parse(String token) {
     int dot = token.indexOf('.');
     if (dot <= 0 || dot == token.length() - 1) {
-      throw new PyriteException(GrpcStatus.UNAUTHENTICATED, "The session token is not valid.");
+      throw new PyriteException(GrpcStatus.UNAUTHENTICATED, "The refresh token is not valid.");
     }
     return new Token(token.substring(0, dot), token.substring(dot + 1));
   }
 
   /**
-   * Makes a token of a new session, with a random id and a random secret.
+   * Makes a new token, with a random id and a random secret.
    *
    * @return the token
    */

@@ -7,7 +7,7 @@ import dev.horizon.pyrite.conformance.condition.AnswerTotp;
 import dev.horizon.pyrite.conformance.condition.CreateAccount;
 import dev.horizon.pyrite.conformance.condition.KeepTotpSecret;
 import dev.horizon.pyrite.conformance.condition.PrepareAccounts;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 
 /**
  * A scenario of accounts, which starts with anne's account: her email address, unverified, and her password.
@@ -29,7 +29,7 @@ public abstract class AccountModule extends ConformanceModule {
    * Starts a sign-in with two factors, and answers its first with anne's password.
    */
   protected final void passPasswordStage() {
-    call(new StartFlow("", "sign-in-with-two-factors", EMAIL));
+    call(new StartExchange("", "sign-in-with-two-factors", EMAIL));
     call(new AnswerPassword(PASSWORD));
   }
 
@@ -38,7 +38,7 @@ public abstract class AccountModule extends ConformanceModule {
    * current step is still free.
    */
   protected final void enrolTotp() {
-    call(new StartFlow(ANNE, "enrol-totp", ""));
+    call(new StartExchange(ANNE, "enrol-totp", ""));
     call(new KeepTotpSecret(Value.TOTP_SECRET));
     call(new AnswerTotp(Value.TOTP_SECRET, -1));
   }

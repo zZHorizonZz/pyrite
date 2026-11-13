@@ -5,8 +5,8 @@ import io.vertx.core.Future;
 
 /**
  * An identifier of an account, under it: a value of a declared identifier kind, such as an email address, in the form
- * that the kind normalizes, and unique among the identifiers of its kind. It is unverified until a flow proves it with
- * a code.
+ * that the kind normalizes, and unique among the identifiers of its kind. It is unverified until an exchange proves it
+ * with a code.
  */
 public final class Identifier {
 

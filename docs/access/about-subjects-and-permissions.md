@@ -15,15 +15,15 @@ Bob asks whether he has `can_edit` on `projects/ledger`. Pyrite finds the projec
 
 The subject is a principal of the form `type:id`, such as `user:anne`, which each request names in its `subject`
 field. The type matches `[a-z][a-z0-9_]{0,49}`, and the id has no `#`, `*`, white space or control characters.
-Pyrite does not verify the subject. The caller sets it from a credential that it verified, such as a session token
+Pyrite does not verify the subject. The caller sets it from a credential that it verified, such as an access token
 that `Authenticate` accepted.
 
 Serve Pyrite only to code that you control: a gateway, or a verticle in the same Vert.x instance. A client that sets
 `subject` itself acts as anyone.
 
-A few calls take no subject: `WriteDeclaration` and `ReadDeclaration`, `Purge`, which your application makes on its
-own behalf, and `ContinueFlow` and `Authenticate`, which prove who the caller is. `StartFlow` takes one only for a
-flow whose input is the account that calls.
+A few calls take no subject: `WriteDeclaration` and `ReadDeclaration`, `Purge`, which your application makes on its own
+behalf, and `ContinueExchange` and `Authenticate`, which prove who the caller is. `StartExchange` takes one only for an
+exchange whose input is the account that calls.
 
 The type `user` is an account, so `user:anne` is the principal of `accounts/anne`. A grant names its grantee in one of
 three forms:
@@ -85,13 +85,13 @@ the subject may not see, so it can hold fewer changes than its size, and still h
 
 ## Who can ask about whom
 
-| Call           | Without the type's `grant` permission             | With it                                 |
-| -------------- | ------------------------------------------------- | --------------------------------------- |
-| `Check`        | The subject checks itself, with `principal` empty | The subject checks any principal        |
-| `ListGrants`   | Fails with `PERMISSION_DENIED`                    | Lists the grants on the resource        |
-| `ListSubjects` | Fails with `PERMISSION_DENIED`                    | Lists the principals with a permission  |
-| `ListChanges`  | Leaves out the changes on that resource           | Includes the changes on that resource   |
-| `CreateGrant`, `DeleteGrant`, `DeleteObject` | Fails with `PERMISSION_DENIED` | Grants, revokes, forgets the resource |
+| Call                                         | Without the type's `grant` permission             | With it                                |
+| -------------------------------------------- | ------------------------------------------------- | -------------------------------------- |
+| `Check`                                      | The subject checks itself, with `principal` empty | The subject checks any principal       |
+| `ListGrants`                                 | Fails with `PERMISSION_DENIED`                    | Lists the grants on the resource       |
+| `ListSubjects`                               | Fails with `PERMISSION_DENIED`                    | Lists the principals with a permission |
+| `ListChanges`                                | Leaves out the changes on that resource           | Includes the changes on that resource  |
+| `CreateGrant`, `DeleteGrant`, `DeleteObject` | Fails with `PERMISSION_DENIED`                    | Grants, revokes, forgets the resource  |
 
 `ListObjects` needs no permission: the subject lists its own resources.
 

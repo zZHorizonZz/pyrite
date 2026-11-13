@@ -38,9 +38,9 @@ database wrote such a declaration.
 FAILED_PRECONDITION: The declaration has accounts, which need the type pyrite.dev/Key and the options of authentication; these lack macKey, issuer.
 ```
 
-**Cause:** `WriteDeclaration` of a declaration with `pyrite.dev/Account`, while the options of authentication lack
-what the message names: `macKey`, `encryptionKey`, `issuer` or `relyingPartyOptions`, whose id and name are both
-needed. A declaration without `pyrite.dev/Key` fails with `...; it has no keys.` at the end.
+**Cause:** `WriteDeclaration` of a declaration with `pyrite.dev/Account`, while the options of authentication lack what
+the message names: `macKey`, `encryptionKey`, `accessTokenKey`, `issuer` or `relyingPartyOptions`, whose id and name are
+both needed. A declaration without `pyrite.dev/Key` fails with `...; it has no keys.` at the end.
 
 **Fix:** Declare `pyrite.dev/Key`, and set what the message names in the options of authentication. See
 [Options](options.md#authenticationoptions).
@@ -53,14 +53,15 @@ needed. A declaration without `pyrite.dev/Key` fails with `...; it has no keys.`
 NOT_FOUND: The key keys/sessions does not exist.
 ```
 
-**Cause:** `macKey` or `encryptionKey` of the options of authentication names a key that nobody created. A flow that
-sends a code or issues a session needs the key of `macKey`, `Authenticate` needs it too, and the enrolment of a TOTP
-factor needs the key of `encryptionKey`.
+**Cause:** `macKey`, `encryptionKey` or `accessTokenKey` of the options of authentication names a key that nobody
+created. An exchange that sends a code or issues a session, and `RefreshSession`, need the key of `macKey`; issuing a
+session and `Authenticate` need the key of `accessTokenKey`; and the enrolment of a TOTP factor needs the key of
+`encryptionKey`.
 
-**Fix:** After the first declaration, create both keys with `CreateKey`, with the ids of the names in the options:
-`sessions` with `HMAC_SHA256`, and `factors` with `AES256_GCM`.
+**Fix:** After the first declaration, create the three keys with `CreateKey`, with the ids of the names in the
+options: `sessions` with `HMAC_SHA256`, `factors` with `AES256_GCM`, and `access` with `ES256`.
 
-**Verify:** A flow that issues a session returns a session token.
+**Verify:** An exchange that issues a session returns its tokens.
 
 ## The key keys/sessions encrypts; it does not sign
 
@@ -71,10 +72,11 @@ FAILED_PRECONDITION: The key keys/sessions encrypts; it does not sign.
 **Cause:** `macKey` names a key of the purpose `ENCRYPTION`. When `encryptionKey` names a key that signs, the calls
 fail with `The key keys/factors signs; it does not encrypt.`
 
-**Fix:** Name a key of `HMAC_SHA256` in `macKey`, and a key of `AES256_GCM` in `encryptionKey`. The algorithm of a key
+**Fix:** Name a key of `HMAC_SHA256` in `macKey`, a key of `AES256_GCM` in `encryptionKey`, and a key of `ES256`,
+`EDDSA` or `RS256` in `accessTokenKey`. The algorithm of a key
 never changes, so create a key with the right algorithm and name it in the options of every Pyrite.
 
-**Verify:** A flow that issues a session returns a session token.
+**Verify:** An exchange that issues a session returns its tokens.
 
 ## The name sessions is not a key's, keys/{key}
 
@@ -86,7 +88,7 @@ INVALID_ARGUMENT: The name sessions is not a key's, keys/{key}.
 
 **Fix:** Set the name of the key, such as `setMacKey("keys/sessions")`.
 
-**Verify:** A flow that issues a session returns a session token.
+**Verify:** An exchange that issues a session returns its tokens.
 
 ## Internal error
 
@@ -126,8 +128,8 @@ java.lang.IllegalArgumentException: The session lifetime is positive.
 ```
 
 **Cause:** A setter of the options got a value that no Pyrite runs with. The other messages are
-`The idle lifetime is positive.`, `The flow lifetime is positive.`, `The code lifetime is positive.`,
-`A flow takes at least one answer.`, `The clock skew is not negative.`, `The default page size is at least 1.`,
+`The idle lifetime is positive.`, `The exchange lifetime is positive.`, `The code lifetime is positive.`,
+`An exchange takes at least one answer.`, `The clock skew is not negative.`, `The default page size is at least 1.`,
 `The largest page is at least 1.`, `A read takes at least 1 tuple.`, and `The memory is at least 1.`,
 `The iterations is at least 1.` and `The parallelism is at least 1.` for Argon2.
 

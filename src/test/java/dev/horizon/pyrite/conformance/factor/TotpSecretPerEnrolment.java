@@ -8,7 +8,7 @@ import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.Value;
 import dev.horizon.pyrite.conformance.condition.ExpectDifferentSecrets;
 import dev.horizon.pyrite.conformance.condition.KeepTotpSecret;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 
 @Summary("Each enrolment gets its own secret.")
 final class TotpSecretPerEnrolment extends AccountModule {
@@ -16,9 +16,9 @@ final class TotpSecretPerEnrolment extends AccountModule {
   @Override
   protected void run() {
     prepareAnne();
-    call(new StartFlow(ANNE, "enrol-totp", ""));
+    call(new StartExchange(ANNE, "enrol-totp", ""));
     call(new KeepTotpSecret(Value.OTHER_TOTP_SECRET));
-    call(new StartFlow(ANNE, "enrol-totp", ""));
+    call(new StartExchange(ANNE, "enrol-totp", ""));
     call(new KeepTotpSecret(Value.TOTP_SECRET));
     callAndStopOnFailure(new ExpectDifferentSecrets(), Requirement.TOTP_PROVISIONING);
   }

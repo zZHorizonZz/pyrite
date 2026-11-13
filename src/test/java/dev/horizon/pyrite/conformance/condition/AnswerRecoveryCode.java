@@ -7,7 +7,7 @@ import dev.horizon.pyrite.conformance.Value;
 import java.util.List;
 
 /**
- * Answers the last flow with a recovery code of an enrolment.
+ * Answers the last exchange with a recovery code of an enrolment.
  */
 public record AnswerRecoveryCode(Value<List<String>> codes, int index) implements Condition {
 

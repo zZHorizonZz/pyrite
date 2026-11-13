@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * A new set of recovery codes: the credential that holds their MACs, and the codes, which Pyrite gives out only once,
- * in the result of the flow that creates them.
+ * in the result of the exchange that creates them.
  *
  * @param credential the credential that holds their MACs
  * @param codes the codes
@@ -18,7 +18,7 @@ public record RecoveryCodeSet(RecoveryCodeCredential credential, List<String> co
   }
 
   /**
-   * Gives the codes as the result of a flow gives them out, in {@code issued}.
+   * Gives the codes as the result of an exchange gives them out, in {@code issued}.
    *
    * @return the codes, as {@code RecoveryCodes} packed in an {@code Any}
    */

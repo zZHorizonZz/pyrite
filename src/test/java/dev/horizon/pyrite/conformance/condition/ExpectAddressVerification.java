@@ -7,12 +7,12 @@ import dev.horizon.pyrite.conformance.Environment;
 import dev.horizon.pyrite.conformance.Value;
 
 /**
- * Checks that the last flow marked its identifier verified.
+ * Checks that the last exchange marked its identifier verified.
  */
 public record ExpectAddressVerification() implements Condition {
 
   @Override
   public void evaluate(Environment environment) {
-    assertThat(environment.get(Value.FLOW).getResult().getIdentifiers(0).getVerified()).isTrue();
+    assertThat(environment.get(Value.EXCHANGE).getResult().getIdentifiers(0).getVerified()).isTrue();
   }
 }

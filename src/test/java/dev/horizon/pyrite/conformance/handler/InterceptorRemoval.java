@@ -7,7 +7,7 @@ import dev.horizon.pyrite.conformance.condition.AddAndRemoveRecorder;
 import dev.horizon.pyrite.conformance.condition.AnswerPassword;
 import dev.horizon.pyrite.conformance.condition.ExpectInterceptions;
 import dev.horizon.pyrite.conformance.condition.Moment;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 
 @Summary("An interceptor that is removed no longer runs.")
 final class InterceptorRemoval extends AccountModule {
@@ -16,7 +16,7 @@ final class InterceptorRemoval extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new AddAndRemoveRecorder(Moment.END));
-    call(new StartFlow("", "sign-in", EMAIL));
+    call(new StartExchange("", "sign-in", EMAIL));
     call(new AnswerPassword(PASSWORD));
     callAndStopOnFailure(new ExpectInterceptions(0, "sign-in"), Requirement.HANDLER_REMOVE);
   }

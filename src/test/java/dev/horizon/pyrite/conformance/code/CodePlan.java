@@ -17,7 +17,8 @@ public final class CodePlan implements Plan {
 
   @Override
   public List<Supplier<ConformanceModule>> modules() {
-    return List.<Supplier<ConformanceModule>> of(CodeVerification::new, WrongCode::new, CodeExpiry::new, CodeOfOtherFlow::new,
+    return List.<Supplier<ConformanceModule>> of(CodeVerification::new, WrongCode::new, CodeExpiry::new,
+        CodeOfOtherExchange::new,
         AddressOfOtherAccount::new, RecoveryWithoutVerification::new, Recovery::new, RecoveryCodeFirst::new,
         RecoveryWrongCode::new, UnknownRecoveryAddress::new, CodeGuessing::new);
   }

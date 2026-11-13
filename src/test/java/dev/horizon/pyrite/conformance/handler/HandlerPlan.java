@@ -17,8 +17,9 @@ public final class HandlerPlan implements Plan {
 
   @Override
   public List<Supplier<ConformanceModule>> modules() {
-    return List.<Supplier<ConformanceModule>> of(FlowEndInterceptor::new, FlowEndRefusal::new, CompletionRemoval::new,
-        FlowStartRefusal::new, FlowFailureInterceptor::new, StageEndInterceptor::new, InterceptorRemoval::new, CodeRefusal::new,
+    return List.<Supplier<ConformanceModule>> of(ExchangeEndInterceptor::new, ExchangeEndRefusal::new,
+        ExchangeStartRefusal::new, ExchangeFailureInterceptor::new, StageEndInterceptor::new, InterceptorRemoval::new,
+        CodeRefusal::new,
         AccountObservation::new, SessionObservation::new, ThrowingHandler::new);
   }
 }

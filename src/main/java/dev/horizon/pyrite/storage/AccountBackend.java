@@ -5,7 +5,7 @@ import dev.horizon.pyrite.schema.authentication.v1.Tables;
 
 /**
  * The rows of accounts, in the table {@code pyrite_account}. The database deletes the row of an account with its
- * node, and the rows of its identifiers, factors, sessions and flows with it.
+ * node, and the rows of its identifiers, factors, sessions and exchanges with it.
  *
  * @param database the database of Pyrite's tables
  */

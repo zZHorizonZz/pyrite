@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
 /**
- * Answers the last flow with a recovery code as it is written.
+ * Answers the last exchange with a recovery code as it is written.
  */
 public record AnswerRecoveryCodeText(String code) implements Condition {
 

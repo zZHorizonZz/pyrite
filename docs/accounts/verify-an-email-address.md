@@ -11,25 +11,25 @@ Prove that a person receives mail at an address of their account, and mark the a
 
 ## Verify the address
 
-1. Declare the flow. Its input is the account and one of its identifiers, and its stage requires the code:
+1. Declare the exchange. Its input is the account and one of its identifiers, and its stage requires the code:
 
    ```textproto
-   flows { name: "verify" input: SUBJECT_IDENTIFIER stages { identifier: true } completes: MARK_VERIFIED }
+   exchanges { name: "verify" input: SUBJECT_IDENTIFIER stages { identifier: true } completes: MARK_VERIFIED }
    ```
 
-2. Start the flow as the account, with the address:
+2. Start the exchange as the account, with the address:
 
    ```java
-   Flow flow = authentication.startFlow(StartFlowRequest.newBuilder().setSubject("user:anne")
+   Exchange exchange = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
        .setDefinition("verify").setIdentifierKind("email").setIdentifier("anne@acme.dev").build()).await();
    ```
 
    An address that is not the account's fails with `NOT_FOUND`, so an account verifies only its own addresses.
 
-3. Take the delivery of the flow, and send its code to its address. Its `kind` is `email`, so send a mail:
+3. Take the delivery of the exchange, and send its code to its address. Its `kind` is `email`, so send a mail:
 
    ```java
-   Delivery delivery = flow.getDeliveries(0);
+   Delivery delivery = exchange.getDeliveries(0);
    mailer.send(delivery.getTo(), "Your code is " + delivery.getCode());
    ```
 
@@ -37,20 +37,20 @@ Prove that a person receives mail at an address of their account, and mark the a
    minutes by default. `delivery.getIdentifier()` names the identifier, such as `identifiers/0b0d...`.
 
    To send codes from a code interceptor instead, so that no response carries one, see
-   [Intercept flows](intercept-flows.md#send-codes-from-your-application).
+   [Intercept exchanges](intercept-exchanges.md#send-codes-from-your-application).
 
 4. Answer with the code that the person types:
 
    ```java
-   Flow done = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(flow.getName())
-       .setRevision(flow.getRevision()).setRequestId(UUID.randomUUID().toString())
+   Exchange done = authentication.continueExchange(ContinueExchangeRequest.newBuilder().setExchange(exchange.getName())
+       .setRevision(exchange.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(CodeAnswer.newBuilder().setCode("381204").build())).build()).await();
    ```
 
-   A wrong code, an expired one, or the code of another flow fails with `PERMISSION_DENIED`. After `maxAnswers`
-   wrong codes, 5 by default, start another flow, which sends a new code.
+   A wrong code, an expired one, or the code of another exchange fails with `PERMISSION_DENIED`. After `maxAnswers`
+   wrong codes, 5 by default, start another exchange, which sends a new code.
 
-Show the code to nobody but the owner of the address: not in the response to the caller that started the flow, and
+Show the code to nobody but the owner of the address: not in the response to the caller that started the exchange, and
 not in a log.
 
 ## Verify
@@ -60,6 +60,6 @@ same way from then on, and a recovery sends codes to it.
 
 ## Related
 
-- [About accounts and flows](about-accounts-and-flows.md)
+- [About accounts and exchanges](about-accounts-and-exchanges.md)
 - [Recover an account](recover-an-account.md)
-- [Intercept flows](intercept-flows.md)
+- [Intercept exchanges](intercept-exchanges.md)

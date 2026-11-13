@@ -1,6 +1,7 @@
 package dev.horizon.pyrite.identity;
 
 import com.google.protobuf.ByteString;
+import dev.horizon.pyrite.authentication.v1.RecoveryCodeAnswer;
 import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -9,12 +10,13 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A set of recovery codes, which an account uses once each in place of a second factor. The credential holds a JSON
  * array of the MAC of each code that is left, which the MAC key of the options signs, never the codes.
  */
-public final class RecoveryCodeCredential extends Credential {
+public final class RecoveryCodeCredential extends Credential<RecoveryCodeAnswer> {
 
   static final int CODES = 10;
 
@@ -46,12 +48,14 @@ public final class RecoveryCodeCredential extends Credential {
   }
 
   /**
-   * Uses a code: if one of the codes that are left is this one, the credential no longer holds it.
+   * Verifies a code, with spaces around it or not: if one of the codes that are left is this one, the credential no
+   * longer holds it, so each code works once.
    *
-   * @param code the code, as the person typed it, with spaces around it or not
-   * @return whether the code was one that was left
+   * @return {@link Proof#POSSESSION} when the code was one that was left
    */
-  public Future<Boolean> use(String code) {
+  @Override
+  public Future<Set<Proof>> verify(RecoveryCodeAnswer answer, byte[] nonce) {
+    String code = answer.getCode();
     JsonArray macs = new JsonArray(row().getSecret().toString(StandardCharsets.UTF_8));
     return type().macKey().compose(key -> {
       Future<Integer> match = Future.succeededFuture(-1);
@@ -64,15 +68,20 @@ public final class RecoveryCodeCredential extends Credential {
       return match;
     }).compose(at -> {
       if (at < 0) {
-        return Future.succeededFuture(false);
+        return Future.succeededFuture(Set.<Proof> of());
       }
       macs.remove(at.intValue());
-      return change(row().toBuilder().setSecret(ByteString.copyFromUtf8(macs.encode()))).map(true);
+      return change(row().toBuilder().setSecret(ByteString.copyFromUtf8(macs.encode()))).map(Set.of(Proof.POSSESSION));
     });
   }
 
   @Override
   boolean replacesActive() {
     return true;
+  }
+
+  @Override
+  boolean signsInAlone() {
+    return false;
   }
 }

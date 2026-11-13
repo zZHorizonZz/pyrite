@@ -11,7 +11,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Answers the last flow with the TOTP code of a secret, at a step from the current one.
+ * Answers the last exchange with the TOTP code of a secret, at a step from the current one.
  *
  * @param offset the steps from the current one: -1 for the step before, 0 for the current one
  */

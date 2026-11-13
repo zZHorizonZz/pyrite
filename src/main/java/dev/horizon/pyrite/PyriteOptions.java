@@ -16,7 +16,7 @@ import javax.crypto.SecretKey;
  *
  * <p>
  * Give every Pyrite on the same database the same options. A key version opens only with the root key that sealed it,
- * and a session token signs in only with the MAC key that the options name.
+ * and a refresh token works only with the MAC key that the options name.
  */
 public class PyriteOptions {
 
@@ -158,8 +158,8 @@ public class PyriteOptions {
   }
 
   /**
-   * Sets the options of accounts, sessions and flows. A declaration with {@code pyrite.dev/Account} needs their keys,
-   * their issuer and their relying party.
+   * Sets the options of accounts, sessions and exchanges. A declaration with {@code pyrite.dev/Account} needs their
+   * keys, their issuer and their relying party.
    *
    * @param authenticationOptions the options; by default, options without keys, issuer or relying party
    * @return these options

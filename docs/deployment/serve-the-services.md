@@ -112,6 +112,6 @@ fails with `FAILED_PRECONDITION`. See [Troubleshooting deployment](troubleshooti
 ## Related
 
 - [Options](options.md)
-- [Intercept flows](../accounts/intercept-flows.md)
+- [Intercept exchanges](../accounts/intercept-exchanges.md)
 - [About subjects and permissions](../access/about-subjects-and-permissions.md)
 - [Vert.x gRPC](https://vertx.io/docs/vertx-grpc/java/)

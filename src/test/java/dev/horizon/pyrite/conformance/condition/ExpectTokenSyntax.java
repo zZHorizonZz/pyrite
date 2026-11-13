@@ -10,16 +10,16 @@ import io.vertx.grpc.common.GrpcStatus;
 import java.util.List;
 
 /**
- * Checks that text that is not a token, such as the id of the last session without its secret, is refused.
+ * Checks that text that is not a token, such as the id of the last refresh token without its secret, is refused.
  */
 public record ExpectTokenSyntax() implements Condition {
 
   @Override
   public void evaluate(Environment environment) {
-    String token = environment.get(Value.SESSION_TOKEN);
+    String token = environment.get(Value.REFRESH_TOKEN);
     for (String text : List.of("", ".", "x", "x.", ".x", "x.y", token.substring(0, token.indexOf('.')),
         "00000000-0000-0000-0000-000000000000." + token.substring(token.indexOf('.') + 1))) {
-      assertThat(status(() -> AuthenticateToken.principal(environment, text))).as(text)
+      assertThat(status(() -> Refresh.tokens(environment, text))).as(text)
           .isEqualTo(GrpcStatus.UNAUTHENTICATED);
     }
   }

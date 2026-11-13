@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
 /**
- * Answers the last flow with an answer as it is packed, such as one that does not parse.
+ * Answers the last exchange with an answer as it is packed, such as one that does not parse.
  *
  * @param label what the answer is, for the trace
  */

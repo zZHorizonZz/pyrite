@@ -7,8 +7,8 @@ import dev.horizon.cinder.protobuf.ProtobufExtension;
 import dev.horizon.cinder.sqlserver.SqlServerDriver;
 import dev.horizon.pyrite.storage.AccountBackend;
 import dev.horizon.pyrite.storage.DeclarationBackend;
+import dev.horizon.pyrite.storage.ExchangeBackend;
 import dev.horizon.pyrite.storage.FactorBackend;
-import dev.horizon.pyrite.storage.FlowBackend;
 import dev.horizon.pyrite.storage.IdentifierBackend;
 import dev.horizon.pyrite.storage.KeyBackend;
 import dev.horizon.pyrite.storage.KeyVersionBackend;
@@ -33,7 +33,7 @@ public record RunningDatabase(Vertx vertx, Pool pool, Driver driver) implements 
     NodeBackend nodes = new NodeBackend(rows);
     nodes.execute(nodes.update().set("parent", null).all()).await(TIMEOUT);
     for (Backend<?, ?> backend : List.<Backend<?, ?>> of(new SessionBackend(rows), new FactorBackend(rows),
-        new IdentifierBackend(rows), new FlowBackend(rows), new AccountBackend(rows), new KeyVersionBackend(rows),
+        new IdentifierBackend(rows), new ExchangeBackend(rows), new AccountBackend(rows), new KeyVersionBackend(rows),
         new KeyBackend(rows), new DeclarationBackend(rows), nodes)) {
       backend.execute(backend.delete().all()).await(TIMEOUT);
     }

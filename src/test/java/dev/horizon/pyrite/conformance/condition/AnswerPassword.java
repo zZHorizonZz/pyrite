@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
 /**
- * Answers the last flow with a password.
+ * Answers the last exchange with a password.
  */
 public record AnswerPassword(String password) implements Condition {
 

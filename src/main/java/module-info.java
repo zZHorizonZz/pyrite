@@ -9,6 +9,7 @@ module dev.horizon.pyrite {
   requires transitive io.vertx.grpc.client;
   requires transitive io.vertx.grpc.common;
   requires transitive io.vertx.sql.client;
+  requires transitive io.vertx.auth.oauth2;
   requires transitive com.google.protobuf;
   requires transitive com.google.crypto.tink;
   requires transitive dev.horizon.cinder;

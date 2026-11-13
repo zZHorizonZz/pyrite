@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
 /**
- * Answers the last flow with the current TOTP code of a secret that no account has.
+ * Answers the last exchange with the current TOTP code of a secret that no account has.
  */
 public record AnswerForeignTotp() implements Condition {
 

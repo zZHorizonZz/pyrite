@@ -6,53 +6,63 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The options of accounts, sessions and flows. A declaration with {@code pyrite.dev/Account} needs both keys, the
- * issuer, and the id and name of the relying party.
+ * The options of accounts, sessions and exchanges. A declaration with {@code pyrite.dev/Account} needs the three keys,
+ * the issuer, and the id and name of the relying party.
  *
  * <pre>{@code
  * AuthenticationOptions authentication = new AuthenticationOptions().setMacKey("keys/sessions")
- *     .setEncryptionKey("keys/factors").setIssuer("Acme").setSessionLifetime(Duration.ofDays(14))
+ *     .setEncryptionKey("keys/factors").setAccessTokenKey("keys/access").setIssuer("Acme")
+ *     .setSessionLifetime(Duration.ofDays(14))
  *     .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme"));
  * }</pre>
  *
  * <p>
- * The two keys that the options name are resources of {@code pyrite.dev/Key}, which the application creates with
- * {@code CreateKey} after the first declaration: the MAC key with {@code HMAC_SHA256}, and the encryption key with
- * {@code AES256_GCM}. The lifetimes are counted by the clock of the database.
+ * The three keys that the options name are resources of {@code pyrite.dev/Key}, which the application creates with
+ * {@code CreateKey} after the first declaration: the MAC key with {@code HMAC_SHA256}, the encryption key with
+ * {@code AES256_GCM}, and the access token key with {@code ES256}, {@code EDDSA} or {@code RS256}. The lifetimes of
+ * sessions, exchanges and codes are counted by the clock of the database; the lifetime of an access token, which a
+ * service checks on its own, by the clock of Java.
  */
 public class AuthenticationOptions {
 
+  /** The lifetime of an access token: 5 minutes. */
+  public static final Duration DEFAULT_ACCESS_TOKEN_LIFETIME = Duration.ofMinutes(5);
   /** The lifetime of a session: 30 days. */
   public static final Duration DEFAULT_SESSION_LIFETIME = Duration.ofDays(30);
   /** The lifetime of a session after its last use: 7 days. */
   public static final Duration DEFAULT_IDLE_LIFETIME = Duration.ofDays(7);
-  /** The lifetime of a flow: 15 minutes. */
-  public static final Duration DEFAULT_FLOW_LIFETIME = Duration.ofMinutes(15);
+  /** The lifetime of an exchange: 15 minutes. */
+  public static final Duration DEFAULT_EXCHANGE_LIFETIME = Duration.ofMinutes(15);
   /** The lifetime of a one-time code: 10 minutes. */
   public static final Duration DEFAULT_CODE_LIFETIME = Duration.ofMinutes(10);
-  /** The most answers of a flow: 5. */
+  /** The most answers of an exchange: 5. */
   public static final int DEFAULT_MAX_ANSWERS = 5;
 
   private String macKey;
   private String encryptionKey;
+  private String accessTokenKey;
+  private Duration accessTokenLifetime;
   private RelyingPartyOptions relyingPartyOptions;
+  private List<ProviderOptions> providers;
   private String issuer;
   private Duration sessionLifetime;
   private Duration idleLifetime;
-  private Duration flowLifetime;
+  private Duration exchangeLifetime;
   private Duration codeLifetime;
   private int maxAnswers;
   private Argon2Options argon2Options;
 
   /**
-   * Creates the default options: no keys, relying party or issuer; sessions of 30 days that idle out after 7, flows
-   * of 15 minutes, codes of 10 minutes, 5 answers per flow, and the default cost of password hashes.
+   * Creates the default options: no keys, relying party or issuer; sessions of 30 days that idle out after 7, exchanges
+   * of 15 minutes, codes of 10 minutes, 5 answers per exchange, and the default cost of password hashes.
    */
   public AuthenticationOptions() {
     relyingPartyOptions = new RelyingPartyOptions();
+    providers = new ArrayList<>();
+    accessTokenLifetime = DEFAULT_ACCESS_TOKEN_LIFETIME;
     sessionLifetime = DEFAULT_SESSION_LIFETIME;
     idleLifetime = DEFAULT_IDLE_LIFETIME;
-    flowLifetime = DEFAULT_FLOW_LIFETIME;
+    exchangeLifetime = DEFAULT_EXCHANGE_LIFETIME;
     codeLifetime = DEFAULT_CODE_LIFETIME;
     maxAnswers = DEFAULT_MAX_ANSWERS;
     argon2Options = new Argon2Options();
@@ -66,11 +76,14 @@ public class AuthenticationOptions {
   public AuthenticationOptions(AuthenticationOptions other) {
     macKey = other.macKey;
     encryptionKey = other.encryptionKey;
+    accessTokenKey = other.accessTokenKey;
+    accessTokenLifetime = other.accessTokenLifetime;
     relyingPartyOptions = new RelyingPartyOptions(other.relyingPartyOptions);
+    providers = new ArrayList<>(other.providers.stream().map(ProviderOptions::new).toList());
     issuer = other.issuer;
     sessionLifetime = other.sessionLifetime;
     idleLifetime = other.idleLifetime;
-    flowLifetime = other.flowLifetime;
+    exchangeLifetime = other.exchangeLifetime;
     codeLifetime = other.codeLifetime;
     maxAnswers = other.maxAnswers;
     argon2Options = new Argon2Options(other.argon2Options);
@@ -79,8 +92,8 @@ public class AuthenticationOptions {
   /**
    * Tells which of what a declaration with accounts needs these options lack.
    *
-   * @return the names of the options that are not set, of {@code macKey}, {@code encryptionKey}, {@code issuer} and
-   * {@code relyingPartyOptions}; empty when none is missing
+   * @return the names of the options that are not set, of {@code macKey}, {@code encryptionKey},
+   * {@code accessTokenKey}, {@code issuer} and {@code relyingPartyOptions}; empty when none is missing
    */
   public List<String> missing() {
     List<String> missing = new ArrayList<>();
@@ -89,6 +102,9 @@ public class AuthenticationOptions {
     }
     if (encryptionKey == null) {
       missing.add("encryptionKey");
+    }
+    if (accessTokenKey == null) {
+      missing.add("accessTokenKey");
     }
     if (issuer == null) {
       missing.add("issuer");
@@ -109,7 +125,7 @@ public class AuthenticationOptions {
   }
 
   /**
-   * Sets the name of the MAC key that signs session tokens, one-time codes and recovery codes.
+   * Sets the name of the MAC key that signs refresh tokens, one-time codes and recovery codes.
    *
    * @param macKey the name of a key of {@code HMAC_SHA256}, such as {@code keys/sessions}; none by default
    * @return these options
@@ -139,6 +155,82 @@ public class AuthenticationOptions {
     return this;
   }
 
+  /**
+   * Gives the name of the access token key.
+   *
+   * @return the name, or {@code null} when none is set
+   */
+  public String getAccessTokenKey() {
+    return accessTokenKey;
+  }
+
+  /**
+   * Sets the name of the key that signs access tokens. Services verify an access token with its public key, without a
+   * call to Pyrite, so give the key no other use: a JWT that it signs for another purpose would pass as an access
+   * token.
+   *
+   * @param accessTokenKey the name of a key of {@code ES256}, {@code EDDSA} or {@code RS256}, such as
+   * {@code keys/access}; none by default
+   * @return these options
+   */
+  public AuthenticationOptions setAccessTokenKey(String accessTokenKey) {
+    this.accessTokenKey = Objects.requireNonNull(accessTokenKey, "accessTokenKey");
+    return this;
+  }
+
+  public Duration getAccessTokenLifetime() {
+    return accessTokenLifetime;
+  }
+
+  /**
+   * Sets how long an access token lasts. A service that verifies it without a call to Pyrite takes it until then,
+   * even after its session ends, so keep it short.
+   *
+   * @param accessTokenLifetime the lifetime, positive; 5 minutes by default
+   * @return these options
+   * @throws IllegalArgumentException if the lifetime is zero or negative
+   */
+  public AuthenticationOptions setAccessTokenLifetime(Duration accessTokenLifetime) {
+    this.accessTokenLifetime = positive(accessTokenLifetime, "access token lifetime");
+    return this;
+  }
+
+  /**
+   * Gives the providers that people sign in at.
+   *
+   * @return the providers, which a change changes in these options
+   */
+  public List<ProviderOptions> getProviders() {
+    return providers;
+  }
+
+  /**
+   * Sets the providers that people sign in at, in place of those before.
+   *
+   * @param providers the providers, each with a name, a Vert.x provider and a callback; none by default
+   * @return these options
+   */
+  public AuthenticationOptions setProviders(List<ProviderOptions> providers) {
+    this.providers = new ArrayList<>(providers);
+    return this;
+  }
+
+  /**
+   * Adds a provider that people sign in at, which an exchange takes as a factor, and whose accounts the stage
+   * {@code enrol: PROVIDER} links.
+   *
+   * @param provider the provider, with a name, a Vert.x provider and a callback
+   * @return these options
+   * @throws IllegalArgumentException if the provider lacks its name, its Vert.x provider or its callback
+   */
+  public AuthenticationOptions addProvider(ProviderOptions provider) {
+    if (provider.getName() == null || provider.getAuth() == null || provider.getRedirectUri() == null) {
+      throw new IllegalArgumentException("A provider has a name, a Vert.x provider and a callback.");
+    }
+    providers.add(provider);
+    return this;
+  }
+
   public RelyingPartyOptions getRelyingPartyOptions() {
     return relyingPartyOptions;
   }
@@ -164,7 +256,8 @@ public class AuthenticationOptions {
   }
 
   /**
-   * Sets the issuer that authenticator apps show next to a TOTP code.
+   * Sets the issuer that authenticator apps show next to a TOTP code, which is also the {@code iss} of access
+   * tokens.
    *
    * @param issuer the issuer, such as {@code Acme}; none by default
    * @return these options
@@ -207,20 +300,20 @@ public class AuthenticationOptions {
     return this;
   }
 
-  public Duration getFlowLifetime() {
-    return flowLifetime;
+  public Duration getExchangeLifetime() {
+    return exchangeLifetime;
   }
 
   /**
-   * Sets how long a flow lasts after it starts, and how long an enrolment that no flow finishes lasts before a purge
-   * deletes it.
+   * Sets how long an exchange lasts after it starts, and how long an enrolment that no exchange finishes lasts before a
+   * purge deletes it.
    *
-   * @param flowLifetime the lifetime, positive; 15 minutes by default
+   * @param exchangeLifetime the lifetime, positive; 15 minutes by default
    * @return these options
    * @throws IllegalArgumentException if the lifetime is zero or negative
    */
-  public AuthenticationOptions setFlowLifetime(Duration flowLifetime) {
-    this.flowLifetime = positive(flowLifetime, "flow lifetime");
+  public AuthenticationOptions setExchangeLifetime(Duration exchangeLifetime) {
+    this.exchangeLifetime = positive(exchangeLifetime, "exchange lifetime");
     return this;
   }
 
@@ -229,7 +322,8 @@ public class AuthenticationOptions {
   }
 
   /**
-   * Sets how long a one-time code lasts after Pyrite makes it.
+   * Sets how long the nonce of a stage lasts after the exchange reaches the stage: the one-time code that the stage
+   * sends, and the challenge that a passkey answer of the stage signs.
    *
    * @param codeLifetime the lifetime, positive; 10 minutes by default
    * @return these options
@@ -245,8 +339,8 @@ public class AuthenticationOptions {
   }
 
   /**
-   * Sets the most wrong answers that a flow takes. After them, the flow refuses even the right answer; a right answer
-   * does not count.
+   * Sets the most wrong answers that an exchange takes. After them, the exchange refuses even the right answer; a right
+   * answer does not count.
    *
    * @param maxAnswers the number of wrong answers, at least 1; 5 by default
    * @return these options
@@ -254,7 +348,7 @@ public class AuthenticationOptions {
    */
   public AuthenticationOptions setMaxAnswers(int maxAnswers) {
     if (maxAnswers < 1) {
-      throw new IllegalArgumentException("A flow takes at least one answer.");
+      throw new IllegalArgumentException("An exchange takes at least one answer.");
     }
     this.maxAnswers = maxAnswers;
     return this;

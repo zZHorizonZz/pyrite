@@ -8,15 +8,15 @@ import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
 /**
- * Asks for the principal of a session token as it is written.
+ * Asks for the principal of an access token as it is written.
  */
 public record AuthenticateToken(String token) implements Condition {
 
   /**
-   * Asks for the principal of a session token.
+   * Asks for the principal of an access token.
    */
   public static Principal principal(Environment environment, String token) throws Exception {
-    return environment.pyrite().authentication.authenticate(AuthenticateRequest.newBuilder().setSessionToken(token)
+    return environment.pyrite().authentication.authenticate(AuthenticateRequest.newBuilder().setAccessToken(token)
         .build()).await(TIMEOUT);
   }
 

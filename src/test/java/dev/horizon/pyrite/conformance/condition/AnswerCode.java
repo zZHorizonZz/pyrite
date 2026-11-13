@@ -6,13 +6,13 @@ import dev.horizon.pyrite.conformance.Environment;
 import dev.horizon.pyrite.conformance.Value;
 
 /**
- * Answers the last flow with the code that Pyrite sent for it.
+ * Answers the last exchange with the code that Pyrite sent for it.
  */
 public record AnswerCode() implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    environment.answer(CodeAnswer.newBuilder().setCode(environment.code(environment.get(Value.FLOW)).getCode())
+    environment.answer(CodeAnswer.newBuilder().setCode(environment.code(environment.get(Value.EXCHANGE)).getCode())
         .build());
   }
 }

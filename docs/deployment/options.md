@@ -13,6 +13,7 @@ PyriteOptions options = new PyriteOptions()
     .setAuthenticationOptions(new AuthenticationOptions()
         .setMacKey("keys/sessions")
         .setEncryptionKey("keys/factors")
+        .setAccessTokenKey("keys/access")
         .setIssuer("Acme")
         .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme")
             .addOrigin("https://acme.dev")));
@@ -30,7 +31,7 @@ A setter throws an `IllegalArgumentException` for a value that no Pyrite runs wi
 | `tuplesPerRead`         | `100`                         | The most tuples that Pyrite reads from OpenFGA in one call       | At least 1 |
 | `pageTokenKey`          | A random 256-bit AES key      | The `SecretKey` that Pyrite's database encrypts page tokens with | Not null   |
 | `keyOptions`            | `new KeyOptions()`            | The options of keys                                              | Not null   |
-| `authenticationOptions` | `new AuthenticationOptions()` | The options of accounts, sessions and flows                      | Not null   |
+| `authenticationOptions` | `new AuthenticationOptions()` | The options of accounts, sessions and exchanges                  | Not null   |
 
 `ListGrants` and `ListChanges` read a page of tuples from OpenFGA, so their pages have at most `tuplesPerRead` items,
 whatever the page size, and their page tokens are the continuation tokens of OpenFGA.
@@ -53,21 +54,26 @@ A declaration with `pyrite.dev/Account` needs `macKey`, `encryptionKey`, `issuer
 party. Writing such a declaration without them fails with `FAILED_PRECONDITION`, and the message names what is
 missing; `missing()` gives the same names.
 
-| Option                | Default                     | Sets                                                                             | Limits     |
-| --------------------- | --------------------------- | -------------------------------------------------------------------------------- | ---------- |
-| `macKey`              | None                        | The name of the key that signs session tokens and codes, such as `keys/sessions` | Not null   |
-| `encryptionKey`       | None                        | The name of the key that encrypts the secrets of factors, such as `keys/factors` | Not null   |
-| `relyingPartyOptions` | `new RelyingPartyOptions()` | The WebAuthn relying party of passkeys                                           | Not null   |
-| `issuer`              | None                        | The issuer that authenticator apps show next to a TOTP code, such as `Acme`      | Not null   |
-| `sessionLifetime`     | `30 days`                   | How long a session lasts after it is issued                                      | Positive   |
-| `idleLifetime`        | `7 days`                    | How long a session lasts after its last authentication, up to its lifetime       | Positive   |
-| `flowLifetime`        | `15 minutes`                | How long a flow lasts after it starts, and an enrolment that no flow finishes    | Positive   |
-| `codeLifetime`        | `10 minutes`                | How long a code lasts after Pyrite sends it                                      | Positive   |
-| `maxAnswers`          | `5`                         | The most wrong answers that a flow takes                                         | At least 1 |
-| `argon2Options`       | `new Argon2Options()`       | The cost of password hashes                                                      | Not null   |
+| Option                | Default                     | Sets                                                                                                                      | Limits                                             |
+| --------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `macKey`              | None                        | The name of the key that signs refresh tokens and codes, such as `keys/sessions`                                          | Not null                                           |
+| `encryptionKey`       | None                        | The name of the key that encrypts the secrets of factors, such as `keys/factors`                                          | Not null                                           |
+| `accessTokenKey`      | None                        | The name of the key that signs access tokens, of `ES256`, `EDDSA` or `RS256`, such as `keys/access`; give it no other use | Not null                                           |
+| `accessTokenLifetime` | `5 minutes`                 | How long an access token lasts; a service that verifies it on its own takes it until then                                 | Positive                                           |
+| `relyingPartyOptions` | `new RelyingPartyOptions()` | The WebAuthn relying party of passkeys                                                                                    | Not null                                           |
+| `providers`           | Empty                       | The providers that people sign in at; `addProvider` adds one                                                              | Each with a name, a Vert.x provider and a callback |
+| `issuer`              | None                        | The issuer that authenticator apps show next to a TOTP code, such as `Acme`                                               | Not null                                           |
+| `sessionLifetime`     | `30 days`                   | How long a session lasts after it is issued                                                                               | Positive                                           |
+| `idleLifetime`        | `7 days`                    | How long a session lasts after its last authentication, up to its lifetime                                                | Positive                                           |
+| `exchangeLifetime`    | `15 minutes`                | How long an exchange lasts after it starts, and an enrolment that no exchange finishes                                    | Positive                                           |
+| `codeLifetime`        | `10 minutes`                | How long the code and the passkey challenge of a stage last after it starts                                               | Positive                                           |
+| `maxAnswers`          | `5`                         | The most wrong answers that an exchange takes                                                                             | At least 1                                         |
+| `argon2Options`       | `new Argon2Options()`       | The cost of password hashes                                                                                               | Not null                                           |
 
-The keys that `macKey` and `encryptionKey` name are resources of `pyrite.dev/Key`. Create them with `CreateKey` after
-the first declaration: the key of `macKey` with `HMAC_SHA256`, and the key of `encryptionKey` with `AES256_GCM`.
+The keys that `macKey`, `encryptionKey` and `accessTokenKey` name are resources of `pyrite.dev/Key`. Create them with
+`CreateKey` after the first declaration: the key of `macKey` with `HMAC_SHA256`, the key of `encryptionKey` with
+`AES256_GCM`, and the key of `accessTokenKey` with `ES256`, `EDDSA` or `RS256`, so that services verify access tokens
+with its public key.
 
 ## RelyingPartyOptions
 
@@ -76,6 +82,18 @@ the first declaration: the key of `macKey` with `HMAC_SHA256`, and the key of `e
 | `id`      | None    | The WebAuthn relying party id, your domain, such as `acme.dev`                                   |
 | `name`    | None    | The name that authenticators show, such as `Acme`                                                |
 | `origins` | Empty   | The origins that passkey answers may come from, such as `https://acme.dev`; `addOrigin` adds one |
+
+## ProviderOptions
+
+| Option        | Default | Sets                                                                                                               |
+| ------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `name`        | None    | The name that answers and linked factors use, such as `google`; matches `[a-z][a-z0-9-]{0,62}`                     |
+| `auth`        | None    | The Vert.x provider, such as `GoogleAuth.discover(...)` or `GithubAuth.create(...)`, with the client id and secret |
+| `redirectUri` | None    | The callback of your application that the provider sends the person back to                                        |
+| `scopes`      | Empty   | The scopes to ask for, such as `openid` and `email`; `addScope` adds one                                           |
+
+An OpenID Connect provider needs the scope `openid`, and discovery, so that Vert.x checks its ID tokens. See
+[Sign in with a provider](../accounts/sign-in-with-a-provider.md).
 
 ## Argon2Options
 
@@ -91,5 +109,5 @@ Pyrite hashes passwords with Argon2id. The defaults are the second recommended o
 
 - [Serve the services](serve-the-services.md)
 - [About keys and versions](../keys/about-keys-and-versions.md)
-- [About accounts and flows](../accounts/about-accounts-and-flows.md)
+- [About accounts and exchanges](../accounts/about-accounts-and-exchanges.md)
 - [Troubleshooting deployment](troubleshooting-deployment.md)

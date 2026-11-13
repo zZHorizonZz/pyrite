@@ -16,9 +16,9 @@ public enum DeclarationChange {
    */
   EMPTY_TYPE,
   /**
-   * Only the flows, which need the types of accounts.
+   * Only the exchanges, which need the types of accounts.
    */
-  FLOWS_ONLY;
+  EXCHANGES_ONLY;
 
   Declaration apply(Declaration acme) {
     return switch (this) {
@@ -32,7 +32,7 @@ public enum DeclarationChange {
         yield declaration.build();
       }
       case EMPTY_TYPE -> acme.toBuilder().addTypes(Type.newBuilder().setName("acme.dev/Folder")).build();
-      case FLOWS_ONLY -> Declaration.newBuilder().addAllFlows(acme.getFlowsList()).build();
+      case EXCHANGES_ONLY -> Declaration.newBuilder().addAllExchanges(acme.getExchangesList()).build();
     };
   }
 }

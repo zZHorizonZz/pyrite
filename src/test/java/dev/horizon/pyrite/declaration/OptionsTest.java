@@ -14,7 +14,7 @@ import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.PyriteOptions;
 import dev.horizon.pyrite.PyriteTest;
 import dev.horizon.pyrite.deployment.Deployment;
-import dev.horizon.pyrite.flow.FlowInterceptor;
+import dev.horizon.pyrite.exchange.ExchangeInterceptor;
 import dev.horizon.pyrite.identity.AccountObserver;
 import dev.horizon.pyrite.schema.v1.Declaration;
 import dev.horizon.pyrite.schema.v1.Type;
@@ -27,7 +27,7 @@ class OptionsTest extends PyriteTest {
 
   private Deployment deployment(PyriteOptions options) {
     return new Deployment(pyrite.vertx, pyrite.database.pool(), pyrite.database.driver(), pyrite.openFga, options,
-        new FlowInterceptor(), new AccountObserver(), new SessionObserver());
+        new ExchangeInterceptor(), new AccountObserver(), new SessionObserver());
   }
 
   private static Declaration without(Declaration declaration, String type) {

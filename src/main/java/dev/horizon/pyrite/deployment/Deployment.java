@@ -8,7 +8,7 @@ import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.PyriteOptions;
 import dev.horizon.pyrite.access.OpenFga;
 import dev.horizon.pyrite.declaration.TypeSystem;
-import dev.horizon.pyrite.flow.FlowInterceptor;
+import dev.horizon.pyrite.exchange.ExchangeInterceptor;
 import dev.horizon.pyrite.identity.AccountObserver;
 import dev.horizon.pyrite.schema.declaration.v1.Tables;
 import dev.horizon.pyrite.schema.v1.Declaration;
@@ -58,12 +58,12 @@ public final class Deployment {
       return size() > SCHEMAS;
     }
   });
-  private final FlowInterceptor interceptor;
+  private final ExchangeInterceptor interceptor;
   private final AccountObserver accountObserver;
   private final SessionObserver sessionObserver;
 
   public Deployment(Vertx vertx, Pool pool, Driver driver, OpenFGAServiceGrpcClient openFga,
-      PyriteOptions options, FlowInterceptor interceptor, AccountObserver accountObserver,
+      PyriteOptions options, ExchangeInterceptor interceptor, AccountObserver accountObserver,
       SessionObserver sessionObserver) {
     this.vertx = vertx;
     this.interceptor = interceptor;

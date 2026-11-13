@@ -1,6 +1,7 @@
 package dev.horizon.pyrite.resource;
 
 import dev.horizon.pyrite.PyriteException;
+import dev.horizon.pyrite.declaration.TypeSystem;
 import io.vertx.grpc.common.GrpcStatus;
 import java.util.regex.Pattern;
 
@@ -31,6 +32,16 @@ public record Subject(String type, String id) {
           + " form type:id, such as user:anne.");
     }
     return new Subject(text.substring(0, colon), text.substring(colon + 1));
+  }
+
+  /**
+   * Gives the subject that an account is.
+   *
+   * @param account the name of the account, such as {@code accounts/anne}
+   * @return the subject, such as {@code user:anne}
+   */
+  public static Subject account(String account) {
+    return new Subject(TypeSystem.USER, account.substring(account.indexOf('/') + 1));
   }
 
   @Override

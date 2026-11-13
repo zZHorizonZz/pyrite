@@ -57,7 +57,7 @@ old one.
 - The sessions that `EndSession` or an `END_SESSIONS` completion ended, and those that passed their `expire_time`. A
   session that went idle stays until its `expire_time`.
 - The factors that a newer factor of the same kind replaced.
-- The factors whose enrolment no flow finished within `flowLifetime` of its start.
+- The factors whose enrolment no exchange finished within `exchangeLifetime` of its start.
 
 ## Verify
 
@@ -68,5 +68,5 @@ old one.
 ## Related
 
 - [About resources](about-resources.md)
-- [About accounts and flows](../accounts/about-accounts-and-flows.md)
+- [About accounts and exchanges](../accounts/about-accounts-and-exchanges.md)
 - [Troubleshooting access](troubleshooting-access.md)

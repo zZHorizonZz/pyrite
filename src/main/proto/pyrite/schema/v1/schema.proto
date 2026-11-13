@@ -9,7 +9,7 @@ option java_multiple_files = true;
 option java_outer_classname = "SchemaProto";
 option java_package = "dev.horizon.pyrite.schema.v1";
 
-// The declaration of the application's types, conditions, identifier kinds and flows, which every other service of
+// The declaration of the application's types, conditions, identifier kinds and exchanges, which every other service of
 // Pyrite reads.
 service Schema {
   // Checks a declaration, writes its authorization model to OpenFGA, and makes it the latest. Every service uses the
@@ -26,9 +26,9 @@ message Declaration {
   // The conditions that relations name, by name.
   map<string, openfga.v1.Condition> conditions = 2;
 
-  repeated FlowDefinition flows = 3;
+  repeated ExchangeDefinition exchanges = 3;
 
-  // The kinds of identifiers that accounts have, such as email or username. A flow that starts from what a person
+  // The kinds of identifiers that accounts have, such as email or username. An exchange that starts from what a person
   // typed takes the first kind, in this order, whose match the value meets.
   repeated IdentifierKind identifier_kinds = 4;
 }
@@ -47,8 +47,8 @@ message IdentifierKind {
   // value.trim().lowerAscii(). Leave it empty to keep the value as given. The normalized value must still match.
   string normalize = 3;
 
-  // Whether the application sends codes to identifiers of this kind, so that a flow verifies one or signs in with a
-  // code sent to it. A username takes no codes; an email address does.
+  // Whether the application sends codes to identifiers of this kind, so that an exchange verifies one or signs in with
+  // a code sent to it. A username takes no codes; an email address does.
   bool receives_codes = 4;
 }
 
@@ -94,9 +94,9 @@ message Permissions {
   string grant = 5;
 }
 
-// A flow of pyrite.authentication.v1.Authentication: what it takes, what has to be proven, stage by stage, and what
-// follows.
-message FlowDefinition {
+// An exchange of pyrite.authentication.v1.Authentication: what it takes, what has to be proven, stage by stage, and
+// what follows.
+message ExchangeDefinition {
   // The name, such as sign-in.
   string name = 1;
 
@@ -106,6 +106,10 @@ message FlowDefinition {
 
   repeated Completion completes = 4;
 
+  // What an exchange of the input NONE does with a provider account that no account links, whose provider verified an
+  // email address that a verified identifier of an account holds.
+  EmailMatch email_match = 5;
+
   enum Input {
     INPUT_UNSPECIFIED = 0;
     // An identifier, such as an email address.
@@ -114,6 +118,17 @@ message FlowDefinition {
     SUBJECT = 2;
     // The account that calls, and one of its identifiers.
     SUBJECT_IDENTIFIER = 3;
+    // Nothing: an answer names the account, such as a sign-in at a provider.
+    NONE = 4;
+  }
+
+  enum EmailMatch {
+    // The email address reaches no account: the exchange creates one, with CREATE_ACCOUNT, or refuses.
+    EMAIL_MATCH_UNSPECIFIED = 0;
+    // The provider sign-in signs in to the account, and the exchange links the provider account to it.
+    SIGN_IN = 1;
+    // The exchange asks for a factor of the account, and links the provider account once the stage is met.
+    CONFIRM = 2;
   }
 
   enum Completion {
@@ -122,10 +137,12 @@ message FlowDefinition {
     MARK_VERIFIED = 2;
     ACTIVATE_FACTOR = 3;
     END_SESSIONS = 4;
+    // Creates an account for an account at a provider that is linked to none, and links it. It needs the input NONE.
+    CREATE_ACCOUNT = 5;
   }
 }
 
-// What one stage of a flow requires: distinct factors, phishing resistance, a code sent to the identifier, or the
+// What one stage of an exchange requires: distinct factors, phishing resistance, a code sent to the identifier, or the
 // enrolment of a factor, which is a stage of its own.
 message Stage {
   int32 factors = 1;
@@ -142,6 +159,7 @@ message Stage {
     TOTP = 2;
     PASSKEY = 3;
     RECOVERY_CODES = 4;
+    PROVIDER = 5;
   }
 }
 

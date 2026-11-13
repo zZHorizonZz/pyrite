@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * <p>
  * The options name the algorithms ES256, EdDSA and RS256, a timeout of five minutes, no attestation, and prefer a
  * discoverable passkey and user verification. A credential verifies only from an origin of the relying party, for its
- * id, with the user present, and for the challenge of the flow that gave the options.
+ * id, with the user present, and for the challenge of the exchange that gave the options.
  */
 public final class WebAuthn {
 
@@ -77,7 +77,7 @@ public final class WebAuthn {
    * Gives the creation options of a passkey of an account.
    *
    * @param account the name of the account, which is the name of the user and, in base64url, its id
-   * @param challenge the challenge of the flow
+   * @param challenge the challenge of the exchange
    * @param existing the ids of the passkeys that the account has, which the options exclude
    * @return the options, as {@code PublicKeyCredentialCreationOptionsJSON}
    */
@@ -107,7 +107,7 @@ public final class WebAuthn {
    * Gives the request options of a sign-in. They list no passkeys, so the browser offers the discoverable passkeys of
    * the relying party.
    *
-   * @param challenge the challenge of the flow
+   * @param challenge the challenge of the exchange
    * @return the options, as {@code PublicKeyCredentialRequestOptionsJSON}
    */
   public JsonObject request(byte[] challenge) {
@@ -123,7 +123,7 @@ public final class WebAuthn {
    * Verifies the attestation of a new passkey.
    *
    * @param credential the JSON of the credential that {@code navigator.credentials.create} gave
-   * @param challenge the challenge of the flow, which the creation options held
+   * @param challenge the challenge of the exchange, which the creation options held
    * @return the passkey, or nothing if the credential does not parse or does not verify
    */
   public Optional<Registration> register(String credential, byte[] challenge) {

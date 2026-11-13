@@ -7,7 +7,7 @@ import dev.horizon.pyrite.conformance.Requirement;
 import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.condition.CreateAccount;
 import dev.horizon.pyrite.conformance.condition.ExpectStatus;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 import io.vertx.grpc.common.GrpcStatus;
 
 @Summary("An account verifies only an address of its own.")
@@ -17,9 +17,9 @@ final class AddressOfOtherAccount extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new CreateAccount("bob", "bob@acme.dev", "another long passphrase"));
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new StartFlow(ANNE, "verify", "bob@acme.dev")),
+    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new StartExchange(ANNE, "verify", "bob@acme.dev")),
         Requirement.CODE_OWNER);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new StartFlow(ANNE, "verify",
+    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new StartExchange(ANNE, "verify",
         "nobody@acme.dev")), Requirement.CODE_OWNER);
   }
 }

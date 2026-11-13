@@ -380,25 +380,25 @@ FAILED_PRECONDITION: The declaration has accounts, which need the type pyrite.de
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The declaration has flows but no accounts
+## The declaration has exchanges but no accounts
 
 ```text
-INVALID_ARGUMENT: The declaration has flows but no accounts; declare the type pyrite.dev/Account.
+INVALID_ARGUMENT: The declaration has exchanges but no accounts; declare the type pyrite.dev/Account.
 ```
 
-**Cause:** The declaration has `flows`, and no `pyrite.dev/Account`. A flow works on accounts.
+**Cause:** The declaration has `exchanges`, and no `pyrite.dev/Account`. An exchange works on accounts.
 
-**Fix:** Declare `pyrite.dev/Account`, or remove the flows.
+**Fix:** Declare `pyrite.dev/Account`, or remove the exchanges.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... starts from an identifier, but the declaration has no identifier kinds
+## The exchange ... starts from an identifier, but the declaration has no identifier kinds
 
 ```text
-INVALID_ARGUMENT: The flow sign-in starts from an identifier, but the declaration has no identifier kinds.
+INVALID_ARGUMENT: The exchange sign-in starts from an identifier, but the declaration has no identifier kinds.
 ```
 
-**Cause:** The input of the flow is `IDENTIFIER` or `SUBJECT_IDENTIFIER`, and the declaration has no
+**Cause:** The input of the exchange is `IDENTIFIER` or `SUBJECT_IDENTIFIER`, and the declaration has no
 `identifier_kinds`. Pyrite has no kinds of its own.
 
 **Fix:** Declare the kinds that people sign in with, such as `email`. See
@@ -406,52 +406,52 @@ INVALID_ARGUMENT: The flow sign-in starts from an identifier, but the declaratio
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... sends a code to an identifier, but no identifier kind...
+## The exchange ... sends a code to an identifier, but no identifier kind...
 
 ```text
-INVALID_ARGUMENT: The flow verify sends a code to an identifier, but no identifier kind of the declaration receives codes.
+INVALID_ARGUMENT: The exchange verify sends a code to an identifier, but no identifier kind of the declaration receives codes.
 ```
 
-**Cause:** A stage of the flow has `identifier: true`, and no declared kind has `receives_codes: true`.
+**Cause:** A stage of the exchange has `identifier: true`, and no declared kind has `receives_codes: true`.
 
 **Fix:** Set `receives_codes: true` on each kind that your application can send a code to, such as `email` or
 `phone`.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... completes with ... without the stages and the input that it needs
+## The exchange ... completes with ... without the stages and the input that it needs
 
 ```text
-INVALID_ARGUMENT: The flow sign-in completes with ISSUE_SESSION without the stages and the input that it needs.
+INVALID_ARGUMENT: The exchange sign-in completes with ISSUE_SESSION without the stages and the input that it needs.
 ```
 
 **Cause:** A completion lacks what it needs. `ISSUE_SESSION` needs the input `IDENTIFIER` and a stage with factors.
 `MARK_VERIFIED` needs the input `SUBJECT_IDENTIFIER` and a stage with `identifier`. `ACTIVATE_FACTOR` needs a stage
 that enrols. `END_SESSIONS` needs a proven account.
 
-**Fix:** Add the stage or change the input that the completion needs, or move the completion to a flow of its own.
-See [Declaration reference](declaration-reference.md#rules-of-flows).
+**Fix:** Add the stage or change the input that the completion needs, or move the completion to an exchange of its own.
+See [Declaration reference](declaration-reference.md#rules-of-exchanges).
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... enrols a factor twice, or before the account is proven...
+## The exchange ... enrols a factor twice, or before the account is proven...
 
 ```text
-INVALID_ARGUMENT: The flow takeover enrols a factor twice, or before the account is proven by the input SUBJECT or by an earlier stage.
+INVALID_ARGUMENT: The exchange takeover enrols a factor twice, or before the account is proven by the input SUBJECT or by an earlier stage.
 ```
 
-**Cause:** A flow that starts from an identifier enrols a factor before a stage proves the account, or a flow has two
-stages that enrol.
+**Cause:** An exchange that starts from an identifier enrols a factor before a stage proves the account, or an exchange
+has two stages that enrol.
 
-**Fix:** Start the flow from `SUBJECT`, or prove the account first, such as with a stage with `identifier: true`.
-Enrol one factor in each flow.
+**Fix:** Start the exchange from `SUBJECT`, or prove the account first, such as with a stage with `identifier: true`.
+Enrol one factor in each exchange.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... enrols a factor in a stage that requires more
+## The exchange ... enrols a factor in a stage that requires more
 
 ```text
-INVALID_ARGUMENT: The flow mixed enrols a factor in a stage that requires more; an enrolment is a stage of its own.
+INVALID_ARGUMENT: The exchange mixed enrols a factor in a stage that requires more; an enrolment is a stage of its own.
 ```
 
 **Cause:** A stage with `enrol` also has `factors`, `phishing_resistant` or `identifier`.
@@ -460,10 +460,10 @@ INVALID_ARGUMENT: The flow mixed enrols a factor in a stage that requires more; 
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... has a stage that requires nothing
+## The exchange ... has a stage that requires nothing
 
 ```text
-INVALID_ARGUMENT: The flow nothing has a stage that requires nothing.
+INVALID_ARGUMENT: The exchange nothing has a stage that requires nothing.
 ```
 
 **Cause:** A stage has no `factors`, no `phishing_resistant`, no `identifier` and no `enrol`.
@@ -472,10 +472,10 @@ INVALID_ARGUMENT: The flow nothing has a stage that requires nothing.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... requires ... factors; a stage requires 0 to 3
+## The exchange ... requires ... factors; a stage requires 0 to 3
 
 ```text
-INVALID_ARGUMENT: The flow many requires 4 factors; a stage requires 0 to 3.
+INVALID_ARGUMENT: The exchange many requires 4 factors; a stage requires 0 to 3.
 ```
 
 **Cause:** A stage has `factors` below 0 or above 3.
@@ -484,39 +484,39 @@ INVALID_ARGUMENT: The flow many requires 4 factors; a stage requires 0 to 3.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... has no input, or a completion with no kind
+## The exchange ... has no input, or a completion with no kind
 
 ```text
-INVALID_ARGUMENT: The flow odd has no input, or a completion with no kind.
+INVALID_ARGUMENT: The exchange odd has no input, or a completion with no kind.
 ```
 
-**Cause:** The flow has no `input`, or a completion of `COMPLETION_UNSPECIFIED`.
+**Cause:** The exchange has no `input`, or a completion of `COMPLETION_UNSPECIFIED`.
 
 **Fix:** Set the `input` and the kind of each completion.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... has no stages or no completions
+## The exchange ... has no stages or no completions
 
 ```text
-INVALID_ARGUMENT: The flow empty has no stages or no completions.
+INVALID_ARGUMENT: The exchange empty has no stages or no completions.
 ```
 
-**Cause:** The flow has no `stages`, or no `completes`.
+**Cause:** The exchange has no `stages`, or no `completes`.
 
-**Fix:** Give the flow at least one stage and one completion.
+**Fix:** Give the exchange at least one stage and one completion.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The flow ... has a name that does not match ...
+## The exchange ... has a name that does not match ...
 
 ```text
-INVALID_ARGUMENT: The flow Sign_In has a name that does not match [a-z][a-z0-9-]{0,62}.
+INVALID_ARGUMENT: The exchange Sign_In has a name that does not match [a-z][a-z0-9-]{0,62}.
 ```
 
-**Cause:** The name of the flow has capitals, underscores or other characters that the pattern does not take.
+**Cause:** The name of the exchange has capitals, underscores or other characters that the pattern does not take.
 
-**Fix:** Name the flow with lowercase letters, digits and hyphens, such as `sign-in`.
+**Fix:** Name the exchange with lowercase letters, digits and hyphens, such as `sign-in`.
 
 **Verify:** `WriteDeclaration` gives an id.
 
@@ -553,8 +553,8 @@ fails with `has no match.` instead.
 INVALID_ARGUMENT: The type acme.dev/Project is declared twice.
 ```
 
-**Cause:** Two types, two identifier kinds or two flows have the same name. The message starts with `The type`,
-`The identifier kind` or `The flow`.
+**Cause:** Two types, two identifier kinds or two exchanges have the same name. The message starts with `The type`,
+`The identifier kind` or `The exchange`.
 
 **Fix:** Keep one of them, or rename one.
 
@@ -580,7 +580,7 @@ FAILED_PRECONDITION: The declaration has no keys; declare the type pyrite.dev/Ke
 
 **Cause:** A call of the cryptography service, and the latest declaration has no `pyrite.dev/Key`. The authentication
 service fails with `The declaration has no accounts; declare the type pyrite.dev/Account.` without
-`pyrite.dev/Account`, and a flow with `The declaration has no accounts, so it has no flows.`
+`pyrite.dev/Account`, and an exchange with `The declaration has no accounts, so it has no exchanges.`
 
 **Fix:** Declare the type, with the relations that its service checks. See [Pyrite's types](pyrite-types.md).
 

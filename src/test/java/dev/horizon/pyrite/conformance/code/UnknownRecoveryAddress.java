@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.condition.AnswerCodeText;
 import dev.horizon.pyrite.conformance.condition.ExpectNoDelivery;
 import dev.horizon.pyrite.conformance.condition.ExpectStatus;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 import io.vertx.grpc.common.GrpcStatus;
 import java.util.List;
 
@@ -15,7 +15,7 @@ final class UnknownRecoveryAddress extends RecoveryModule {
   @Override
   protected void run() {
     prepareVerifiedAnne();
-    call(new StartFlow("", "recover", "nobody@acme.dev"));
+    call(new StartExchange("", "recover", "nobody@acme.dev"));
     callAndContinueOnFailure(new ExpectNoDelivery(), Requirement.RECOVERY_ADDRESS);
     for (String guess : List.of("000000", "123456", "999999")) {
       callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerCodeText(guess)),

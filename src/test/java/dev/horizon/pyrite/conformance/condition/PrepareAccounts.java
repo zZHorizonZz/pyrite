@@ -17,5 +17,6 @@ public record PrepareAccounts() implements Condition {
     new CreateObject(ANNE, "organizations/acme", "").evaluate(environment);
     new CreateKey("organizations/acme", "sessions", Algorithm.HMAC_SHA256).evaluate(environment);
     new CreateKey("organizations/acme", "factors", Algorithm.AES256_GCM).evaluate(environment);
+    new CreateKey("organizations/acme", "access", Algorithm.ES256).evaluate(environment);
   }
 }

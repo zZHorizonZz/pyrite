@@ -10,10 +10,10 @@ To serve Pyrite and check your first permission, see [Get started](get-started.m
 
 ## Areas
 
-| Area                                   | What you do there                                                                         |
-| -------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [Declarations](declarations/README.md) | Declare your types, their parents, relations and permissions, and let users define roles. |
-| [Access](access/README.md)             | Make resources known, grant relations, check permissions and list what a subject can do.  |
-| [Accounts](accounts/README.md)         | Keep accounts, sign people in with flows, add factors and passkeys, and handle the flows. |
-| [Keys](keys/README.md)                 | Encrypt data, sign and verify tokens, and rotate keys.                                    |
-| [Deployment](deployment/README.md)     | Create the tables, serve the services, set the options, and read the status codes.        |
+| Area                                   | What you do there                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [Declarations](declarations/README.md) | Declare your types, their parents, relations and permissions, and let users define roles.         |
+| [Access](access/README.md)             | Make resources known, grant relations, check permissions and list what a subject can do.          |
+| [Accounts](accounts/README.md)         | Keep accounts, sign people in with exchanges, add factors and passkeys, and handle the exchanges. |
+| [Keys](keys/README.md)                 | Encrypt data, sign and verify tokens, and rotate keys.                                            |
+| [Deployment](deployment/README.md)     | Create the tables, serve the services, set the options, and read the status codes.                |

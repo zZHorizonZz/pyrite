@@ -8,7 +8,7 @@ import dev.horizon.pyrite.conformance.Value;
 import java.net.URI;
 
 /**
- * Keeps the secret of the TOTP enrolment that the last flow started.
+ * Keeps the secret of the TOTP enrolment that the last exchange started.
  */
 public record KeepTotpSecret(Value<byte[]> into) implements Condition {
 
@@ -26,7 +26,7 @@ public record KeepTotpSecret(Value<byte[]> into) implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    environment.put(into, secret(environment.get(Value.FLOW).getChallenges(0).getParameters()
+    environment.put(into, secret(environment.get(Value.EXCHANGE).getChallenges(0).getParameters()
         .unpack(TotpProvisioning.class).getUri()));
   }
 }

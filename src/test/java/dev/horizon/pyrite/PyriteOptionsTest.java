@@ -45,9 +45,11 @@ class PyriteOptionsTest {
   @DisplayName("the options of authentication name what accounts need and they lack")
   void missing() {
     AuthenticationOptions options = new AuthenticationOptions();
-    assertThat(options.missing()).containsExactly("macKey", "encryptionKey", "issuer", "relyingPartyOptions");
+    assertThat(options.missing()).containsExactly("macKey", "encryptionKey", "accessTokenKey", "issuer",
+        "relyingPartyOptions");
 
-    options.setMacKey("keys/sessions").setEncryptionKey("keys/factors").setIssuer("Acme")
+    options.setMacKey("keys/sessions").setEncryptionKey("keys/factors").setAccessTokenKey("keys/access")
+        .setIssuer("Acme")
         .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme"));
     assertThat(options.missing()).isEmpty();
   }

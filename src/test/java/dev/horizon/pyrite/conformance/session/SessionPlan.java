@@ -21,6 +21,7 @@ public final class SessionPlan implements Plan {
         AuthenticationWithoutCredential::new, SecretForgery::new,
         SecretBorrowing::new, TokenSyntax::new, SessionIdleLifetime::new, SessionIdleExtension::new, SessionLifetime::new,
         SessionEnd::new, AccountDeletion::new, AccountStorageFailure::new, SessionRead::new, ForeignSessionEnd::new,
-        SessionPurge::new);
+        SessionPurge::new, SessionRefresh::new, RefreshReuse::new,
+        RefreshOfEndedSession::new, AccessTokenClaims::new, AccessTokenForgery::new);
   }
 }

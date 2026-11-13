@@ -1,8 +1,8 @@
 package dev.horizon.pyrite.conformance.condition;
 
 import dev.horizon.pyrite.authentication.v1.CodeAnswer;
-import dev.horizon.pyrite.authentication.v1.Flow;
-import dev.horizon.pyrite.authentication.v1.StartFlowRequest;
+import dev.horizon.pyrite.authentication.v1.Exchange;
+import dev.horizon.pyrite.authentication.v1.StartExchangeRequest;
 import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
@@ -13,8 +13,8 @@ public record VerifyAddress(String subject, String email) implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    Flow flow = environment.start(StartFlowRequest.newBuilder().setSubject(subject).setDefinition("verify")
+    Exchange exchange = environment.start(StartExchangeRequest.newBuilder().setSubject(subject).setDefinition("verify")
         .setIdentifierKind("email").setIdentifier(email).build());
-    environment.answer(CodeAnswer.newBuilder().setCode(environment.code(flow).getCode()).build());
+    environment.answer(CodeAnswer.newBuilder().setCode(environment.code(exchange).getCode()).build());
   }
 }

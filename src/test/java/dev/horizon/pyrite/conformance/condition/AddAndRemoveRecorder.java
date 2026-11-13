@@ -1,6 +1,6 @@
 package dev.horizon.pyrite.conformance.condition;
 
-import dev.horizon.pyrite.FlowContext;
+import dev.horizon.pyrite.ExchangeContext;
 import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 import dev.horizon.pyrite.conformance.Value;
@@ -15,9 +15,9 @@ public record AddAndRemoveRecorder(Moment moment) implements Condition {
 
   @Override
   public void evaluate(Environment environment) {
-    List<FlowContext> seen = new CopyOnWriteArrayList<>();
+    List<ExchangeContext> seen = new CopyOnWriteArrayList<>();
     environment.put(Value.INTERCEPTIONS, seen);
-    Handler<FlowContext> recorder = context -> {
+    Handler<ExchangeContext> recorder = context -> {
       seen.add(context);
       context.next();
     };

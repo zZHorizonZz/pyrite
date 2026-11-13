@@ -9,15 +9,15 @@ the app is lost.
 - Set the issuer in the options of authentication, such as `setIssuer("Acme")`. Authenticator apps show it next to
   the account.
 
-## Declare the flows
+## Declare the exchanges
 
-Add a flow that enrols a TOTP authenticator, one that gives out recovery codes, and a sign-in that takes two
+Add an exchange that enrols a TOTP authenticator, one that gives out recovery codes, and a sign-in that takes two
 factors:
 
 ```textproto
-flows { name: "enrol-totp" input: SUBJECT stages { enrol: TOTP } completes: ACTIVATE_FACTOR }
-flows { name: "enrol-recovery-codes" input: SUBJECT stages { enrol: RECOVERY_CODES } completes: ACTIVATE_FACTOR }
-flows { name: "sign-in-with-two-factors" input: IDENTIFIER stages { factors: 2 } completes: ISSUE_SESSION }
+exchanges { name: "enrol-totp" input: SUBJECT stages { enrol: TOTP } completes: ACTIVATE_FACTOR }
+exchanges { name: "enrol-recovery-codes" input: SUBJECT stages { enrol: RECOVERY_CODES } completes: ACTIVATE_FACTOR }
+exchanges { name: "sign-in-with-two-factors" input: IDENTIFIER stages { factors: 2 } completes: ISSUE_SESSION }
 ```
 
 A password proves knowledge, and a TOTP code or a recovery code proves possession, so a password with either code
@@ -28,7 +28,7 @@ meets `factors: 2`. Two passwords do not.
 1. Start the enrolment as the account:
 
    ```java
-   Flow enrolment = authentication.startFlow(StartFlowRequest.newBuilder().setSubject("user:anne")
+   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
        .setDefinition("enrol-totp").build()).await();
    ```
 
@@ -47,7 +47,8 @@ meets `factors: 2`. Two passwords do not.
 3. Answer with the code that the app shows. The answer proves that the app holds the secret:
 
    ```java
-   Flow enrolled = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(enrolment.getName())
+   Exchange enrolled = authentication.continueExchange(ContinueExchangeRequest.newBuilder()
+       .setExchange(enrolment.getName())
        .setRevision(enrolment.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(TotpAnswer.newBuilder().setCode("492039").build())).build()).await();
    ```
@@ -57,10 +58,10 @@ meets `factors: 2`. Two passwords do not.
 
 ## Give out recovery codes
 
-Start the flow. It needs no answer, so it is done at once, and its result holds ten codes:
+Start the exchange. It needs no answer, so it is done at once, and its result holds ten codes:
 
 ```java
-Flow codes = authentication.startFlow(StartFlowRequest.newBuilder().setSubject("user:anne")
+Exchange codes = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
     .setDefinition("enrol-recovery-codes").build()).await();
 List<String> recovery = codes.getResult().getIssued(0).unpack(RecoveryCodes.class).getCodesList();
 ```
@@ -70,14 +71,15 @@ new codes replace the old ones.
 
 ## Sign in with two factors
 
-1. Start the sign-in, and answer with the password, as for one factor. The flow is not done: its challenges now
+1. Start the sign-in, and answer with the password, as for one factor. The exchange is not done: its challenges now
    take `pyrite.authentication.v1.TotpAnswer`, `pyrite.authentication.v1.RecoveryCodeAnswer` and
    `pyrite.authentication.v1.PasskeyAnswer`.
 
    ```java
-   Flow signIn = authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in-with-two-factors")
+   Exchange signIn = authentication.startExchange(StartExchangeRequest.newBuilder()
+       .setDefinition("sign-in-with-two-factors")
        .setIdentifier("anne@acme.dev").build()).await();
-   Flow halfway = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(signIn.getName())
+   Exchange halfway = authentication.continueExchange(ContinueExchangeRequest.newBuilder().setExchange(signIn.getName())
        .setRevision(signIn.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(PasswordAnswer.newBuilder().setPassword("correct horse battery staple").build()))
        .build()).await();
@@ -86,7 +88,7 @@ new codes replace the old ones.
 2. Answer with a code from the app:
 
    ```java
-   Flow done = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(halfway.getName())
+   Exchange done = authentication.continueExchange(ContinueExchangeRequest.newBuilder().setExchange(halfway.getName())
        .setRevision(halfway.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(TotpAnswer.newBuilder().setCode("719306").build())).build()).await();
    ```
@@ -97,12 +99,12 @@ new codes replace the old ones.
    Or answer with a recovery code instead:
 
    ```java
-   Flow done = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(halfway.getName())
+   Exchange done = authentication.continueExchange(ContinueExchangeRequest.newBuilder().setExchange(halfway.getName())
        .setRevision(halfway.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(RecoveryCodeAnswer.newBuilder().setCode(recovery.getFirst()).build())).build()).await();
    ```
 
-3. Take the session token from `done.getResult().getIssued(0)`, a `SessionToken`, as for one factor.
+3. Take the tokens of the session from `done.getResult().getIssued(0)`, a `TokenSet`, as for one factor.
 
 ## Verify
 
@@ -113,6 +115,6 @@ next time.
 
 ## Related
 
-- [About accounts and flows](about-accounts-and-flows.md)
+- [About accounts and exchanges](about-accounts-and-exchanges.md)
 - [Add a passkey](add-a-passkey.md)
 - [RFC 6238: TOTP](https://www.rfc-editor.org/rfc/rfc6238)

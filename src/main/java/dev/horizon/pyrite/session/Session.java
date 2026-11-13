@@ -1,14 +1,15 @@
 package dev.horizon.pyrite.session;
 
+import dev.horizon.pyrite.authentication.v1.TokenSet;
 import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import dev.horizon.pyrite.storage.DatabaseTime;
 import io.vertx.core.Future;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 /**
- * A session of an account, under it, which a session token authenticates until its lifetime ends, its idle lifetime
- * ends without a use, or it is ended, on the clock of the database.
+ * A session of an account, under it: the server's record of one sign-in. Its access tokens authenticate calls, and its
+ * refresh tokens issue new ones, until its lifetime ends, its idle lifetime ends without a refresh, or it is ended, on
+ * the clock of the database.
  */
 public final class Session {
 
@@ -18,13 +19,6 @@ public final class Session {
   Session(SessionType type, Tables.Session row) {
     this.type = type;
     this.row = row;
-  }
-
-  /**
-   * Gives the data whose MAC a session holds in place of the secret of its token.
-   */
-  static byte[] data(String secret) {
-    return ("session\0" + secret).getBytes(StandardCharsets.UTF_8);
   }
 
   public String name() {
@@ -42,6 +36,15 @@ public final class Session {
    */
   public Instant expireTime() {
     return DatabaseTime.instant(row.getExpireTime());
+  }
+
+  /**
+   * Issues tokens of the session: a new access token, and a new refresh token, which Pyrite gives out only this once.
+   *
+   * @return the tokens, or a failure with {@code NOT_FOUND} when a key that the options name does not exist
+   */
+  public Future<TokenSet> issueTokens() {
+    return type.issueTokens(this);
   }
 
   /**

@@ -1,7 +1,7 @@
 package dev.horizon.pyrite.conformance.condition;
 
 import dev.horizon.pyrite.authentication.v1.PasswordAnswer;
-import dev.horizon.pyrite.authentication.v1.StartFlowRequest;
+import dev.horizon.pyrite.authentication.v1.StartExchangeRequest;
 import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 import dev.horizon.pyrite.conformance.Value;
@@ -18,7 +18,7 @@ public record ExpectRecoveryCodeForgeryRefusal(String email, String password) im
   public void evaluate(Environment environment) throws Exception {
     String code = environment.get(Value.RECOVERY_CODES).getFirst();
     for (String guess : List.of("", code.toUpperCase(), code.substring(1), code + "a", "0000000000")) {
-      environment.start(StartFlowRequest.newBuilder().setDefinition("sign-in-with-two-factors")
+      environment.start(StartExchangeRequest.newBuilder().setDefinition("sign-in-with-two-factors")
           .setIdentifierKind("email").setIdentifier(email).build());
       environment.answer(PasswordAnswer.newBuilder().setPassword(password).build());
       new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerRecoveryCodeText(guess)).evaluate(environment);

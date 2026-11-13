@@ -7,7 +7,7 @@ import dev.horizon.pyrite.conformance.condition.AddRecorder;
 import dev.horizon.pyrite.conformance.condition.AnswerPassword;
 import dev.horizon.pyrite.conformance.condition.ExpectInterceptions;
 import dev.horizon.pyrite.conformance.condition.Moment;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 
 @Summary("An interceptor of stages runs when an answer meets a stage.")
 final class StageEndInterceptor extends AccountModule {
@@ -16,7 +16,7 @@ final class StageEndInterceptor extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new AddRecorder(Moment.STAGE_END));
-    call(new StartFlow("", "sign-in", EMAIL));
+    call(new StartExchange("", "sign-in", EMAIL));
     call(new AnswerPassword(PASSWORD));
     callAndStopOnFailure(new ExpectInterceptions(1, "sign-in"), Requirement.HANDLER_STAGE_END);
   }

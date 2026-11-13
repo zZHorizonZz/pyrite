@@ -23,14 +23,14 @@ import io.vertx.core.json.JsonObject;
 import java.util.List;
 
 /**
- * Makes a passkey with the browser, for the creation options of the last flow, and answers the flow with it as a
- * browser gives it. The authenticator signs with ES256, which the options offer first.
+ * Makes a passkey with the browser, for the creation options of the last exchange, and answers the exchange with it as
+ * a browser gives it. The authenticator signs with ES256, which the options offer first.
  */
 public record AnswerPasskeyCreation() implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    JsonObject options = PasskeyOptions.of(environment.get(Value.FLOW));
+    JsonObject options = PasskeyOptions.of(environment.get(Value.EXCHANGE));
     JsonObject rp = options.getJsonObject("rp");
     JsonObject user = options.getJsonObject("user");
     PublicKeyCredential<AuthenticatorAttestationResponse, RegistrationExtensionClientOutput> credential = environment

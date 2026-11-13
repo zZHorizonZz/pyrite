@@ -8,7 +8,7 @@ import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.condition.AnswerCodeText;
 import dev.horizon.pyrite.conformance.condition.AnswerWrongCode;
 import dev.horizon.pyrite.conformance.condition.ExpectStatus;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 import io.vertx.grpc.common.GrpcStatus;
 
 @Summary("A wrong code verifies nothing.")
@@ -17,7 +17,7 @@ final class WrongCode extends AccountModule {
   @Override
   protected void run() {
     prepareAnne();
-    call(new StartFlow(ANNE, "verify", EMAIL));
+    call(new StartExchange(ANNE, "verify", EMAIL));
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerWrongCode()), Requirement.CODE_PROOF);
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerCodeText("")), Requirement.CODE_PROOF);
   }

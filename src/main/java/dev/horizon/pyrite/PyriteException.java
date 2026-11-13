@@ -12,10 +12,10 @@ import io.vertx.grpc.server.StatusException;
  * names the resource, the field or the rule, such as {@code The resource projects/ledger is not known.}
  *
  * <p>
- * An interceptor of flows fails a flow with one to end the call with a status of its choice:
+ * An interceptor of exchanges fails an exchange with one to end the call with a status of its choice:
  *
  * <pre>{@code
- * pyrite.addFlowStartInterceptor(context -> {
+ * pyrite.addExchangeStartInterceptor(context -> {
  *   if (closed.contains(context.definition())) {
  *     context.fail(new PyriteException(GrpcStatus.UNAVAILABLE, "Sign-in is closed."));
  *   } else {

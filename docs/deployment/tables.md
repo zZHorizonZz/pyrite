@@ -1,7 +1,7 @@
 # Tables
 
 Pyrite stores what it knows in nine tables with the prefix `pyrite_`: the resources that your application made known,
-its own keys and accounts, the flows of the authentication service, and the declarations. Your application's
+its own keys and accounts, the exchanges of the authentication service, and the declarations. Your application's
 resources stay in your tables, which Pyrite never reads. See [Create the tables](create-the-tables.md).
 
 The types below are the portable ones; each database has its own, such as `uuid` and `jsonb` on PostgreSQL. A column
@@ -9,32 +9,39 @@ is `NOT NULL` unless its description says that it can be null.
 
 ## Pyrite's tables
 
-| Table                | Holds                                                       |
-| -------------------- | ----------------------------------------------------------- |
-| `pyrite_declaration` | Every declaration written, with its OpenFGA store and model |
-| `pyrite_node`        | Every known resource, with its type and its parent          |
-| `pyrite_key`         | The resources of `pyrite.dev/Key`                           |
-| `pyrite_key_version` | The versions of keys                                        |
-| `pyrite_account`     | The resources of `pyrite.dev/Account`                       |
-| `pyrite_identifier`  | The identifiers of accounts                                 |
-| `pyrite_factor`      | The factors of accounts                                     |
-| `pyrite_session`     | The sessions of accounts                                    |
-| `pyrite_flow`        | The flows of the authentication service                     |
+| Table                  | Holds                                                                       |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `pyrite_declaration`   | Every declaration written, with its OpenFGA store and model                 |
+| `pyrite_node`          | Every known resource, with its type and its parent                          |
+| `pyrite_key`           | The resources of `pyrite.dev/Key`                                           |
+| `pyrite_key_version`   | The versions of keys                                                        |
+| `pyrite_account`       | The resources of `pyrite.dev/Account`                                       |
+| `pyrite_identifier`    | The identifiers of accounts                                                 |
+| `pyrite_factor`        | The factors of accounts                                                     |
+| `pyrite_provider_link` | The provider accounts that factors link, unique per provider                |
+| `pyrite_session`       | The sessions of accounts                                                    |
+| `pyrite_refresh_token` | The refresh tokens of sessions, the used ones too, until their session goes |
+| `pyrite_exchange`      | The exchanges of the authentication service                                 |
 
 ## What the database keeps
 
 The migrations give the database the rules that keep the rows consistent:
 
-- **Links.** A foreign key holds each link: an account and a key to their node, an identifier, a factor, a session
-  and a flow to their account, a version to its key, and a node to its parent. Deleting a node deletes the rows of
-  its resource, and the rows under those, in the same statement. A node with nodes under it is not deleted.
+- **Links.** A foreign key holds each link: an account and a key to their node, an identifier, a factor, a session and
+  an exchange to their account, a refresh token to its session, a version to its key, and a node to its parent. Deleting
+  a node deletes the rows of its resource, and the rows under those, in the same statement. A node with nodes under it
+  is not deleted.
 - **Kinds and states.** The kind of an account and of a factor, the state of a factor and of a version, and the purpose
   and algorithm of a key are enum columns, which take only their values.
+- **One link per provider account.** The provider and the id of a provider account are unique together, so no
+  provider account is linked to two accounts.
+- **Single use.** A refresh marks its refresh token as used in the statement that checks that it is unused, so two
+  refreshes with one token cannot both succeed.
 - **Unique values.** The name of each resource is unique, the number of a version is unique per key, so that two
   rotations at once cannot make the same version, and the value of an identifier is unique per kind.
 - **Revisions and times.** The database gives each row its `uid`, its first `revision` and its `create_time`, and
   each update of a resource a new `revision` and `update_time`.
-- **The clock.** Every time that Pyrite stores or compares is the database's: the expiry of a session, a flow or a
+- **The clock.** Every time that Pyrite stores or compares is the database's: the expiry of a session, an exchange or a
   code, the next rotation of a key, and the purge time of what was removed. Several Pyrites on one database agree on
   every time.
 
@@ -121,54 +128,76 @@ The `name` of an account is a foreign key to its node.
 | ---------- | ----------- | ------------------------------------------------------------------------ |
 | `kind`     | `TEXT(16)`  | The name of its identifier kind in the declaration, such as `email`      |
 | `value`    | `TEXT(320)` | The value as the kind normalized it. Unique with `kind`                  |
-| `verified` | `BOOLEAN`   | Whether a flow verified it with a code                                   |
+| `verified` | `BOOLEAN`   | Whether an exchange verified it with a code                              |
 | `primary`  | `BOOLEAN`   | Whether the account prefers it among its identifiers; the caller sets it |
 
 ## pyrite_factor
 
-| Column          | Type        | Description                                                                                                          |
-| --------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
-| `kind`          | Enum        | `PASSWORD`, `TOTP`, `PASSKEY` or `RECOVERY_CODES`                                                                    |
-| `state`         | Enum        | `PENDING` while a flow enrols it, then `ACTIVE`                                                                      |
-| `secret`        | `BYTES`     | The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, or the MACs of the recovery codes |
-| `credential_id` | `TEXT(255)` | A passkey's credential id; empty for the others. Indexed                                                             |
-| `counter`       | `BIGINT`    | A passkey's signature counter, or the last TOTP step that signed in                                                  |
-| `user_verified` | `BOOLEAN`   | Whether a passkey verified its user when it was registered                                                           |
+| Column          | Type        | Description                                                                                                                                |
+| --------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kind`          | Enum        | `PASSWORD`, `TOTP`, `PASSKEY` or `RECOVERY_CODES`                                                                                          |
+| `state`         | Enum        | `PENDING` while an exchange enrols it, then `ACTIVE`                                                                                       |
+| `secret`        | `BYTES`     | The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, the MACs of the recovery codes, or the provider account |
+| `credential_id` | `TEXT(255)` | A passkey's credential id, or a provider account as `google:1093...`; empty for the others. Indexed                                        |
+| `counter`       | `BIGINT`    | A passkey's signature counter, or the last TOTP step that signed in                                                                        |
+| `user_verified` | `BOOLEAN`   | Whether a passkey verified its user when it was registered                                                                                 |
 
-A pending factor has a `purge_time` of `flowLifetime` after its enrolment started.
+A pending factor has a `purge_time` of `exchangeLifetime` after its enrolment started.
+
+## pyrite_provider_link
+
+A link is not a resource. It goes with its factor, and goes at once when the factor is removed.
+
+| Column       | Type        | Description                                                                       |
+| ------------ | ----------- | --------------------------------------------------------------------------------- |
+| `factor`     | `TEXT(255)` | The name of the factor of the kind `PROVIDER`. The primary key, and a foreign key |
+| `provider`   | `TEXT(63)`  | The name of the provider in the options                                           |
+| `account_id` | `TEXT(255)` | The id of the account at the provider. Unique with `provider`                     |
 
 ## pyrite_session
 
 | Column             | Type        | Description                                                  |
 | ------------------ | ----------- | ------------------------------------------------------------ |
-| `token_mac`        | `BYTES`     | The MAC of the secret of the session token                   |
 | `expire_time`      | `TIMESTAMP` | When the session ends, `sessionLifetime` after it was issued |
-| `idle_expire_time` | `TIMESTAMP` | When the session ends unless it authenticates before         |
+| `idle_expire_time` | `TIMESTAMP` | When the session ends unless it is refreshed before          |
 
-## pyrite_flow
+## pyrite_refresh_token
 
-A flow is not a resource, and its table has none of the columns of a resource table.
+A refresh token is not a resource. Its rows go with their session, when it is purged or its account deleted.
 
-| Column             | Type        | Description                                                             |
-| ------------------ | ----------- | ----------------------------------------------------------------------- |
-| `id`               | `TEXT(36)`  | The flow's id, in its name `flows/<id>`. The primary key                |
-| `definition`       | `TEXT(63)`  | The name of the flow definition                                         |
-| `account`          | `TEXT(255)` | The account; null when the flow names no account that exists            |
-| `identifier`       | `TEXT(255)` | The identifier that the flow started with; can be null                  |
-| `revision`         | `BIGINT`    | One more after each answer that moves the flow on                       |
-| `stage`            | `INT`       | The index of the current stage                                          |
-| `proofs`           | `JSON`      | What the answers of the current stage proved                            |
-| `answers`          | `INT`       | The wrong answers taken, against `maxAnswers`                           |
-| `expire_time`      | `TIMESTAMP` | When the flow expires                                                   |
-| `code_mac`         | `BYTES`     | The MAC of the code that the flow sent; can be null                     |
-| `code_expire_time` | `TIMESTAMP` | When the code expires; can be null                                      |
-| `challenge`        | `BYTES`     | The WebAuthn challenge of a passkey answer; can be null                 |
-| `factor`           | `TEXT(255)` | The factor that the flow enrols; can be null                            |
-| `request_id`       | `TEXT(64)`  | The id of the last answer, for retries; can be null                     |
-| `response`         | `BYTES`     | The response to the last answer, returned again on a retry; can be null |
-| `done`             | `BOOLEAN`   | Whether the flow is done; a done flow takes no answers                  |
+| Column        | Type        | Description                                                                        |
+| ------------- | ----------- | ---------------------------------------------------------------------------------- |
+| `id`          | `TEXT(36)`  | The token's id, before the dot in the token. The primary key                       |
+| `session`     | `TEXT(255)` | The name of the session. A foreign key, so deleting the session deletes its tokens |
+| `mac`         | `BYTES`     | The MAC of the token's secret, made with the key of `macKey`                       |
+| `create_time` | `TIMESTAMP` | When the token was issued                                                          |
+| `use_time`    | `TIMESTAMP` | When a refresh traded the token; null while it works                               |
 
-`account` is a foreign key to the account, so deleting an account deletes its flows.
+## pyrite_exchange
+
+An exchange is not a resource, and its table has none of the columns of a resource table.
+
+| Column              | Type        | Description                                                                               |
+| ------------------- | ----------- | ----------------------------------------------------------------------------------------- |
+| `id`                | `TEXT(36)`  | The exchange's id, in its name `exchanges/<id>`. The primary key                          |
+| `definition`        | `TEXT(63)`  | The name of the exchange definition                                                       |
+| `account`           | `TEXT(255)` | The account; null when the exchange names no account that exists                          |
+| `identifier`        | `TEXT(255)` | The identifier that the exchange started with; can be null                                |
+| `revision`          | `BIGINT`    | One more after each answer that moves the exchange on                                     |
+| `stage`             | `INT`       | The index of the current stage                                                            |
+| `proofs`            | `JSON`      | What the answers of the current stage proved                                              |
+| `answers`           | `INT`       | The wrong answers taken, against `maxAnswers`                                             |
+| `expire_time`       | `TIMESTAMP` | When the exchange expires                                                                 |
+| `nonce`             | `BYTES`     | The random nonce of the current stage, which a passkey answer signs; can be null          |
+| `nonce_expire_time` | `TIMESTAMP` | When the nonce, and what the verifiers keep with it, expire; can be null                  |
+| `state`             | `JSON`      | What the verifiers keep for the stage, such as the MAC of the code that the exchange sent |
+| `factor`            | `TEXT(255)` | The factor that the exchange enrols; can be null                                          |
+| `request_id`        | `TEXT(64)`  | The id of the last answer, for retries; can be null                                       |
+| `response`          | `BYTES`     | The response to the last answer, returned again on a retry; can be null                   |
+| `done`              | `BOOLEAN`   | Whether the exchange is done; a done exchange takes no answers                            |
+| `provider_account`  | `BYTES`     | The provider account that the exchange creates an account for; can be null                |
+
+`account` is a foreign key to the account, so deleting an account deletes its exchanges.
 
 ## Related
 

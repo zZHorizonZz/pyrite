@@ -7,7 +7,7 @@ import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.condition.AnswerPasskeyCreation;
 import dev.horizon.pyrite.conformance.condition.CreatePasskeyClient;
 import dev.horizon.pyrite.conformance.condition.ExpectStatus;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 import io.vertx.grpc.common.GrpcStatus;
 
 @Summary("An answer from an origin that the relying party does not name is wrong.")
@@ -17,7 +17,7 @@ final class PasskeyOrigin extends PasskeyModule {
   protected void run() {
     prepareAnne();
     call(new CreatePasskeyClient("https://acme.example"));
-    call(new StartFlow(ANNE, "enrol-passkey", ""));
+    call(new StartExchange(ANNE, "enrol-passkey", ""));
     callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerPasskeyCreation()),
         Requirement.PASSKEY_ORIGIN);
   }

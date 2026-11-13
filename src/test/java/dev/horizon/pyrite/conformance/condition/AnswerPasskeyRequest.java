@@ -6,7 +6,7 @@ import com.webauthn4j.data.PublicKeyCredentialRequestOptions;
 import com.webauthn4j.data.UserVerificationRequirement;
 import com.webauthn4j.data.client.challenge.DefaultChallenge;
 import com.webauthn4j.data.extension.client.AuthenticationExtensionClientOutput;
-import dev.horizon.pyrite.authentication.v1.Flow;
+import dev.horizon.pyrite.authentication.v1.Exchange;
 import dev.horizon.pyrite.authentication.v1.PasskeyAnswer;
 import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
@@ -15,13 +15,14 @@ import io.vertx.core.json.JsonObject;
 import java.util.List;
 
 /**
- * Signs with the passkey of the browser, for the request options of a flow, and answers the last flow with it as a
- * browser gives it. The options are the last flow's, or another's to answer one flow with another's challenge.
+ * Signs with the passkey of the browser, for the request options of an exchange, and answers the last exchange with it
+ * as a browser gives it. The options are the last exchange's, or another's to answer one exchange with another's
+ * challenge.
  */
-public record AnswerPasskeyRequest(Value<Flow> optionsOf) implements Condition {
+public record AnswerPasskeyRequest(Value<Exchange> optionsOf) implements Condition {
 
   public AnswerPasskeyRequest() {
-    this(Value.FLOW);
+    this(Value.EXCHANGE);
   }
 
   @Override

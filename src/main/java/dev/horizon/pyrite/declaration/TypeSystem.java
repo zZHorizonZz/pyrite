@@ -1,7 +1,7 @@
 package dev.horizon.pyrite.declaration;
 
 import dev.horizon.pyrite.schema.v1.Declaration;
-import dev.horizon.pyrite.schema.v1.FlowDefinition;
+import dev.horizon.pyrite.schema.v1.ExchangeDefinition;
 import dev.horizon.pyrite.schema.v1.IdentifierKind;
 import dev.horizon.pyrite.schema.v1.Stage;
 import dev.horizon.pyrite.schema.v1.Type;
@@ -22,7 +22,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * A declaration, compiled: its types, their relations and hierarchy, its conditions and its flows, and the
+ * A declaration, compiled: its types, their relations and hierarchy, its conditions and its exchanges, and the
  * authorization model that it gives OpenFGA.
  *
  * <p>
@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  */
 public final class TypeSystem {
 
-  private static final Pattern FLOW = Pattern.compile("[a-z][a-z0-9-]{0,62}");
+  private static final Pattern EXCHANGE = Pattern.compile("[a-z][a-z0-9-]{0,62}");
 
   /** The singular name of {@code pyrite.dev/Account}, and the OpenFGA type of the subjects of calls. */
   public static final String USER = "user";
@@ -59,16 +59,16 @@ public final class TypeSystem {
   private final Map<String, ResourceType> byPlural = new HashMap<>();
   private final Map<String, ResourceType> bySingular = new HashMap<>();
   private final Map<String, Condition> conditions = new LinkedHashMap<>();
-  private final Map<String, FlowDefinition> flows = new LinkedHashMap<>();
+  private final Map<String, ExchangeDefinition> exchanges = new LinkedHashMap<>();
   private final Map<String, IdentifierFormat> kinds = new LinkedHashMap<>();
 
   /**
    * Compiles a declaration, and checks its rules: those of its conditions, then of each type on its own, of its
-   * identifier kinds, of each type with the others, and of its flows.
+   * identifier kinds, of each type with the others, and of its exchanges.
    *
    * @param declaration the declaration
    * @throws IllegalArgumentException at the first rule that the declaration breaks, with a message that names the
-   * type, the relation, the kind or the flow, and the rule
+   * type, the relation, the kind or the exchange, and the rule
    */
   public TypeSystem(Declaration declaration) {
     declaration.getConditionsMap().forEach((name, condition) -> {
@@ -100,20 +100,20 @@ public final class TypeSystem {
     for (ResourceType type : byName.values()) {
       type.check(this);
     }
-    for (FlowDefinition flow : declaration.getFlowsList()) {
-      if (flows.put(flow.getName(), flow) != null) {
-        throw new IllegalArgumentException("The flow " + flow.getName() + " is declared twice.");
+    for (ExchangeDefinition exchange : declaration.getExchangesList()) {
+      if (exchanges.put(exchange.getName(), exchange) != null) {
+        throw new IllegalArgumentException("The exchange " + exchange.getName() + " is declared twice.");
       }
     }
-    checkFlows();
+    checkExchanges();
   }
 
-  public Optional<FlowDefinition> flow(String name) {
-    return Optional.ofNullable(flows.get(name));
+  public Optional<ExchangeDefinition> exchange(String name) {
+    return Optional.ofNullable(exchanges.get(name));
   }
 
-  public List<FlowDefinition> flows() {
-    return List.copyOf(flows.values());
+  public List<ExchangeDefinition> exchanges() {
+    return List.copyOf(exchanges.values());
   }
 
   public List<IdentifierFormat> identifierKinds() {
@@ -240,42 +240,48 @@ public final class TypeSystem {
   }
 
   /**
-   * Checks that each flow of the declaration is named, has stages and completions, and has what each completion
+   * Checks that each exchange of the declaration is named, has stages and completions, and has what each completion
    * needs: an account proven by its stages or its input, and the identifier kinds that it sends codes to.
    */
-  private void checkFlows() {
-    if (!flows().isEmpty() && type(TypeSystem.ACCOUNT).isEmpty()) {
+  private void checkExchanges() {
+    if (!exchanges().isEmpty() && type(TypeSystem.ACCOUNT).isEmpty()) {
       throw new IllegalArgumentException(
-          "The declaration has flows but no accounts; declare the type " + TypeSystem.ACCOUNT + ".");
+          "The declaration has exchanges but no accounts; declare the type " + TypeSystem.ACCOUNT + ".");
     }
-    for (FlowDefinition flow : flows()) {
-      String where = "The flow " + flow.getName();
-      if (!FLOW.matcher(flow.getName()).matches()) {
-        throw new IllegalArgumentException(where + " has a name that does not match " + FLOW.pattern() + ".");
+    for (ExchangeDefinition exchange : exchanges()) {
+      String where = "The exchange " + exchange.getName();
+      if (!EXCHANGE.matcher(exchange.getName()).matches()) {
+        throw new IllegalArgumentException(where + " has a name that does not match " + EXCHANGE.pattern() + ".");
       }
-      if (flow.getInput() == FlowDefinition.Input.INPUT_UNSPECIFIED
-          || flow.getInput() == FlowDefinition.Input.UNRECOGNIZED
-          || flow.getCompletesList().contains(FlowDefinition.Completion.COMPLETION_UNSPECIFIED)
-          || flow.getCompletesList().contains(FlowDefinition.Completion.UNRECOGNIZED)) {
+      if (exchange.getInput() == ExchangeDefinition.Input.INPUT_UNSPECIFIED
+          || exchange.getInput() == ExchangeDefinition.Input.UNRECOGNIZED
+          || exchange.getCompletesList().contains(ExchangeDefinition.Completion.COMPLETION_UNSPECIFIED)
+          || exchange.getCompletesList().contains(ExchangeDefinition.Completion.UNRECOGNIZED)) {
         throw new IllegalArgumentException(where + " has no input, or a completion with no kind.");
       }
-      if (flow.getStagesList().isEmpty() || flow.getCompletesList().isEmpty()) {
+      if (exchange.getEmailMatch() != ExchangeDefinition.EmailMatch.EMAIL_MATCH_UNSPECIFIED
+          && exchange.getInput() != ExchangeDefinition.Input.NONE) {
+        throw new IllegalArgumentException(where + " matches emails, which only an exchange of the input NONE does.");
+      }
+      if (exchange.getStagesList().isEmpty() || exchange.getCompletesList().isEmpty()) {
         throw new IllegalArgumentException(where + " has no stages or no completions.");
       }
-      if (flow.getInput() != FlowDefinition.Input.SUBJECT && identifierKinds().isEmpty()) {
+      if ((exchange.getInput() == ExchangeDefinition.Input.IDENTIFIER
+          || exchange.getInput() == ExchangeDefinition.Input.SUBJECT_IDENTIFIER) && identifierKinds().isEmpty()) {
         throw new IllegalArgumentException(where + " starts from an identifier, but the declaration has no identifier"
             + " kinds.");
       }
-      if (flow.getStagesList().stream().anyMatch(Stage::getIdentifier)
+      if (exchange.getStagesList().stream().anyMatch(Stage::getIdentifier)
           && identifierKinds().stream().noneMatch(IdentifierFormat::receivesCodes)) {
         throw new IllegalArgumentException(where + " sends a code to an identifier, but no identifier kind of the"
             + " declaration receives codes.");
       }
-      boolean identified = flow.getInput() != FlowDefinition.Input.IDENTIFIER;
+      boolean identified = exchange.getInput() == ExchangeDefinition.Input.SUBJECT
+          || exchange.getInput() == ExchangeDefinition.Input.SUBJECT_IDENTIFIER;
       boolean factors = false;
       boolean identifier = false;
       boolean enrols = false;
-      for (Stage stage : flow.getStagesList()) {
+      for (Stage stage : exchange.getStagesList()) {
         if (stage.getFactors() < 0 || stage.getFactors() > 3) {
           throw new IllegalArgumentException(where + " requires " + stage.getFactors() + " factors; a stage requires"
               + " 0 to 3.");
@@ -298,10 +304,12 @@ public final class TypeSystem {
         enrols |= stage.getEnrol() != Stage.Factor.FACTOR_UNSPECIFIED;
         identified |= factors || identifier;
       }
-      for (FlowDefinition.Completion completion : flow.getCompletesList()) {
+      for (ExchangeDefinition.Completion completion : exchange.getCompletesList()) {
         boolean proven = switch (completion) {
-          case ISSUE_SESSION -> factors && flow.getInput() == FlowDefinition.Input.IDENTIFIER;
-          case MARK_VERIFIED -> identifier && flow.getInput() == FlowDefinition.Input.SUBJECT_IDENTIFIER;
+          case ISSUE_SESSION -> factors && (exchange.getInput() == ExchangeDefinition.Input.IDENTIFIER
+              || exchange.getInput() == ExchangeDefinition.Input.NONE);
+          case CREATE_ACCOUNT -> factors && exchange.getInput() == ExchangeDefinition.Input.NONE;
+          case MARK_VERIFIED -> identifier && exchange.getInput() == ExchangeDefinition.Input.SUBJECT_IDENTIFIER;
           case ACTIVATE_FACTOR -> enrols;
           case END_SESSIONS -> identified;
           case COMPLETION_UNSPECIFIED, UNRECOGNIZED -> false;

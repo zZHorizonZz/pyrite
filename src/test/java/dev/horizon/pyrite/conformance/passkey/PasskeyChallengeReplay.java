@@ -5,21 +5,21 @@ import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.Value;
 import dev.horizon.pyrite.conformance.condition.AnswerPasskeyRequest;
 import dev.horizon.pyrite.conformance.condition.ExpectStatus;
-import dev.horizon.pyrite.conformance.condition.KeepFlow;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.KeepExchange;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 import io.vertx.grpc.common.GrpcStatus;
 
-@Summary("An answer to the challenge of another flow is wrong.")
+@Summary("An answer to the challenge of another exchange is wrong.")
 final class PasskeyChallengeReplay extends PasskeyModule {
 
   @Override
   protected void run() {
     prepareAnne();
     enrolPasskey();
-    call(new StartFlow("", "sign-in", EMAIL));
-    call(new KeepFlow(Value.OTHER_FLOW));
-    call(new StartFlow("", "sign-in", EMAIL));
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerPasskeyRequest(Value.OTHER_FLOW)),
+    call(new StartExchange("", "sign-in", EMAIL));
+    call(new KeepExchange(Value.OTHER_EXCHANGE));
+    call(new StartExchange("", "sign-in", EMAIL));
+    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerPasskeyRequest(Value.OTHER_EXCHANGE)),
         Requirement.PASSKEY_CHALLENGE);
   }
 }

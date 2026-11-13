@@ -7,12 +7,12 @@ import dev.horizon.pyrite.conformance.Environment;
 import dev.horizon.pyrite.conformance.Value;
 
 /**
- * Checks the account that the result of the last flow names.
+ * Checks the account that the result of the last exchange names.
  */
 public record ExpectResultAccount(String account) implements Condition {
 
   @Override
   public void evaluate(Environment environment) {
-    assertThat(environment.get(Value.FLOW).getResult().getAccount()).isEqualTo(account);
+    assertThat(environment.get(Value.EXCHANGE).getResult().getAccount()).isEqualTo(account);
   }
 }

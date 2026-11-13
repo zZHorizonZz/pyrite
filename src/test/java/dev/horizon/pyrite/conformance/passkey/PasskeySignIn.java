@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Summary;
 import dev.horizon.pyrite.conformance.condition.AnswerPasskeyRequest;
 import dev.horizon.pyrite.conformance.condition.ExpectChallenge;
 import dev.horizon.pyrite.conformance.condition.ExpectSessionIssue;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 
 @Summary("A passkey of the account signs in.")
 final class PasskeySignIn extends PasskeyModule {
@@ -14,7 +14,7 @@ final class PasskeySignIn extends PasskeyModule {
   protected void run() {
     prepareAnne();
     enrolPasskey();
-    call(new StartFlow("", "sign-in", EMAIL));
+    call(new StartExchange("", "sign-in", EMAIL));
     callAndStopOnFailure(new ExpectChallenge("pyrite.authentication.v1.PasskeyAnswer", true),
         Requirement.PASSKEY_SIGN_IN);
     callAndStopOnFailure(new AnswerPasskeyRequest(), Requirement.PASSKEY_SIGN_IN);

@@ -6,7 +6,7 @@ import dev.horizon.pyrite.authentication.v1.Account;
 import dev.horizon.pyrite.authentication.v1.Session;
 import dev.horizon.pyrite.declaration.SchemaEndpoint;
 import dev.horizon.pyrite.deployment.Deployment;
-import dev.horizon.pyrite.flow.FlowInterceptor;
+import dev.horizon.pyrite.exchange.ExchangeInterceptor;
 import dev.horizon.pyrite.identity.AccountObserver;
 import dev.horizon.pyrite.identity.AuthenticationEndpoint;
 import dev.horizon.pyrite.key.CryptographyEndpoint;
@@ -40,13 +40,13 @@ import io.vertx.sqlclient.Pool;
  * expiry of a session, so that every Pyrite on the same database agrees on it.
  *
  * <p>
- * The interceptors that an application adds here take part in the flows of the authentication service, and the
+ * The interceptors that an application adds here take part in the exchanges of the authentication service, and the
  * handlers hear of the accounts and sessions that it creates and ends. The handlers set on one Pyrite hear only of
  * what that Pyrite does.
  */
 public final class Pyrite {
 
-  private final FlowInterceptor interceptor = new FlowInterceptor();
+  private final ExchangeInterceptor interceptor = new ExchangeInterceptor();
   private final AccountObserver accountObserver = new AccountObserver();
   private final SessionObserver sessionObserver = new SessionObserver();
   private final Service access;
@@ -118,7 +118,7 @@ public final class Pyrite {
 
   /**
    * Gives the service {@code pyrite.authentication.v1.Authentication}: accounts, their identifiers and sessions, and
-   * flows. It needs a declaration with {@code pyrite.dev/Account}.
+   * exchanges. It needs a declaration with {@code pyrite.dev/Account}.
    *
    * @return the service
    */
@@ -147,106 +147,104 @@ public final class Pyrite {
   }
 
   /**
-   * Adds an interceptor of the start of flows, which runs before a flow takes its first answer and can refuse it.
-   * The interceptors of a moment run in the order that they were added.
+   * Adds an interceptor of the start of exchanges, which runs before an exchange takes its first answer and can refuse
+   * it. The interceptors of a moment run in the order that they were added.
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
    */
-  public Pyrite addFlowStartInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite addExchangeStartInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.addStart(interceptor);
     return this;
   }
 
   /**
-   * Removes an interceptor of the start of flows.
+   * Removes an interceptor of the start of exchanges.
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
    */
-  public Pyrite removeFlowStartInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite removeExchangeStartInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.removeStart(interceptor);
     return this;
   }
 
   /**
-   * Adds an interceptor of the stages of flows, which runs each time that an answer meets a stage, before the next
+   * Adds an interceptor of the stages of exchanges, which runs each time that an answer meets a stage, before the next
    * stage.
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
    */
-  public Pyrite addStageEndInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite addStageEndInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.addStageEnd(interceptor);
     return this;
   }
 
   /**
-   * Removes an interceptor of the stages of flows.
+   * Removes an interceptor of the stages of exchanges.
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
    */
-  public Pyrite removeStageEndInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite removeStageEndInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.removeStageEnd(interceptor);
     return this;
   }
 
   /**
-   * Adds an interceptor of the end of flows, which runs after the interceptors added before it. The end starts with
-   * a {@link CompletionHandler}, which does what the declaration of a flow completes with;
-   * {@code removeFlowEndInterceptor(CompletionHandler.create())} removes it, and the flows then end without it.
+   * Adds an interceptor of the end of exchanges, which runs after the interceptors added before it, when the last stage
+   * is met. The interceptors of the end run before what the declaration of the exchange completes with, such as issuing
+   * a session, so one that fails stops the exchange before anything changes.
    *
-   * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context, and can fill
-   * in the result of the flow
+   * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
    */
-  public Pyrite addFlowEndInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite addExchangeEndInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.addEnd(interceptor);
     return this;
   }
 
   /**
-   * Removes an interceptor of the end of flows.
+   * Removes an interceptor of the end of exchanges.
    *
-   * @param interceptor the interceptor, as it was added, or {@code CompletionHandler.create()} for the one that does
-   * what the declaration of a flow completes with
+   * @param interceptor the interceptor, as it was added
    * @return this Pyrite
    */
-  public Pyrite removeFlowEndInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite removeExchangeEndInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.removeEnd(interceptor);
     return this;
   }
 
   /**
-   * Adds an interceptor of the failures of flows, which runs after a wrong answer or a refused one, before the call
+   * Adds an interceptor of the failures of exchanges, which runs after a wrong answer or a refused one, before the call
    * fails. It can fail the call with another cause.
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
    */
-  public Pyrite addFlowFailureInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite addExchangeFailureInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.addFailure(interceptor);
     return this;
   }
 
   /**
-   * Removes an interceptor of the failures of flows.
+   * Removes an interceptor of the failures of exchanges.
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
    */
-  public Pyrite removeFlowFailureInterceptor(Handler<FlowContext> interceptor) {
+  public Pyrite removeExchangeFailureInterceptor(Handler<ExchangeContext> interceptor) {
     this.interceptor.removeFailure(interceptor);
     return this;
   }
 
   /**
-   * Adds an interceptor that delivers one-time codes. With none, the response of a flow carries the code, for the
+   * Adds an interceptor that delivers one-time codes. With none, the response of an exchange carries the code, for the
    * application to deliver; with one, the interceptors deliver it, and the response never carries it.
    *
    * @param interceptor the interceptor, which calls {@code next()}, or {@code fail(cause)} on the context to stop the
-   * flow, such as when it cannot send the code
+   * exchange, such as when it cannot send the code
    * @return this Pyrite
    */
   public Pyrite addCodeInterceptor(Handler<CodeContext> interceptor) {
@@ -255,7 +253,7 @@ public final class Pyrite {
   }
 
   /**
-   * Removes an interceptor that delivers one-time codes. Without any, the responses of flows carry the codes again.
+   * Removes an interceptor that delivers one-time codes. Without any, the responses of exchanges carry the codes again.
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite

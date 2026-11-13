@@ -23,13 +23,13 @@ with webauthn4j.
   `PublicKeyCredential.parseCreationOptionsFromJSON`, `PublicKeyCredential.parseRequestOptionsFromJSON` and
   `toJSON()` of a credential.
 
-## Declare the flows
+## Declare the exchanges
 
-Add a flow that enrols a passkey, and a sign-in whose stage is phishing-resistant:
+Add an exchange that enrols a passkey, and a sign-in whose stage is phishing-resistant:
 
 ```textproto
-flows { name: "enrol-passkey" input: SUBJECT stages { enrol: PASSKEY } completes: ACTIVATE_FACTOR }
-flows {
+exchanges { name: "enrol-passkey" input: SUBJECT stages { enrol: PASSKEY } completes: ACTIVATE_FACTOR }
+exchanges {
   name: "sign-in-with-passkey"
   input: IDENTIFIER
   stages { factors: 1 phishing_resistant: true }
@@ -46,12 +46,12 @@ one in place of the password.
 1. Start the enrolment as the account, and take the creation options from its challenge:
 
    ```java
-   Flow enrolment = authentication.startFlow(StartFlowRequest.newBuilder().setSubject("user:anne")
+   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
        .setDefinition("enrol-passkey").build()).await();
    String options = enrolment.getChallenges(0).getParameters().unpack(PasskeyOptions.class).getOptions();
    ```
 
-   `options` is the JSON of the creation options, with the challenge of this flow:
+   `options` is the JSON of the creation options, with the challenge of this exchange:
 
    ```json
    {
@@ -78,15 +78,16 @@ one in place of the password.
    const answer = JSON.stringify(credential.toJSON());
    ```
 
-3. Answer the flow with it:
+3. Answer the exchange with it:
 
    ```java
-   Flow enrolled = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(enrolment.getName())
+   Exchange enrolled = authentication.continueExchange(ContinueExchangeRequest.newBuilder()
+       .setExchange(enrolment.getName())
        .setRevision(enrolment.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(PasskeyAnswer.newBuilder().setCredential(answer).build())).build()).await();
    ```
 
-   The flow activates the passkey. An account has as many passkeys as it enrols, and a new one replaces none.
+   The exchange activates the passkey. An account has as many passkeys as it enrols, and a new one replaces none.
 
 ## Sign in with a passkey
 
@@ -94,7 +95,8 @@ one in place of the password.
    `pyrite.authentication.v1.PasskeyAnswer`:
 
    ```java
-   Flow signIn = authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in-with-passkey")
+   Exchange signIn = authentication.startExchange(StartExchangeRequest.newBuilder()
+       .setDefinition("sign-in-with-passkey")
        .setIdentifier("anne@acme.dev").build()).await();
    String options = signIn.getChallengesList().stream()
        .filter(challenge -> challenge.getMethod().equals("pyrite.authentication.v1.PasskeyAnswer"))
@@ -116,28 +118,28 @@ one in place of the password.
    const answer = JSON.stringify(credential.toJSON());
    ```
 
-3. Answer the flow with it, and take the session token from the result:
+3. Answer the exchange with it, and take the tokens of the session from the result:
 
    ```java
-   Flow done = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(signIn.getName())
+   Exchange done = authentication.continueExchange(ContinueExchangeRequest.newBuilder().setExchange(signIn.getName())
        .setRevision(signIn.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(PasskeyAnswer.newBuilder().setCredential(answer).build())).build()).await();
-   String token = done.getResult().getIssued(0).unpack(SessionToken.class).getToken();
+   TokenSet tokens = done.getResult().getIssued(0).unpack(TokenSet.class);
    ```
 
 ## What Pyrite refuses
 
-Each refusal of a credential is a wrong answer: it fails with `PERMISSION_DENIED`, and counts against the flow.
+Each refusal of a credential is a wrong answer: it fails with `PERMISSION_DENIED`, and counts against the exchange.
 
-| Answer                                                                 | Result              |
-| ---------------------------------------------------------------------- | ------------------- |
-| A credential from an origin that the relying party does not name       | `PERMISSION_DENIED` |
-| A credential of another relying party id                               | `PERMISSION_DENIED` |
-| A credential made with the options of another flow                     | `PERMISSION_DENIED` |
-| A passkey of another account, or of none, as for an unknown address    | `PERMISSION_DENIED` |
-| Text that is not the JSON of a WebAuthn credential of the right kind   | `PERMISSION_DENIED` |
-| A `PasskeyAnswer` whose bytes do not parse                             | `INVALID_ARGUMENT`  |
-| A `PasswordAnswer` or another answer, at a phishing-resistant stage    | `INVALID_ARGUMENT`  |
+| Answer                                                               | Result              |
+| -------------------------------------------------------------------- | ------------------- |
+| A credential from an origin that the relying party does not name     | `PERMISSION_DENIED` |
+| A credential of another relying party id                             | `PERMISSION_DENIED` |
+| A credential made with the options of another exchange               | `PERMISSION_DENIED` |
+| A passkey of another account, or of none, as for an unknown address  | `PERMISSION_DENIED` |
+| Text that is not the JSON of a WebAuthn credential of the right kind | `PERMISSION_DENIED` |
+| A `PasskeyAnswer` whose bytes do not parse                           | `INVALID_ARGUMENT`  |
+| A `PasswordAnswer` or another answer, at a phishing-resistant stage  | `INVALID_ARGUMENT`  |
 
 The browser refuses, before Pyrite sees anything, to make a passkey on an authenticator that holds one of
 `excludeCredentials`, and to make or use a passkey on a page whose origin is not of the relying party id.
@@ -150,7 +152,7 @@ whose `excludeCredentials` holds the id of the first passkey.
 
 ## Related
 
-- [About accounts and flows](about-accounts-and-flows.md)
+- [About accounts and exchanges](about-accounts-and-exchanges.md)
 - [Add a second factor](add-a-second-factor.md)
 - [Troubleshooting accounts](troubleshooting-accounts.md)
 - [Web Authentication](https://www.w3.org/TR/webauthn-3/)

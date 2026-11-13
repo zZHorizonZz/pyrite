@@ -156,11 +156,11 @@ types {
 A declaration with `pyrite.dev/Account` also declares `pyrite.dev/Key`, and needs the authentication options. The
 calls of the authentication service check these relations on the account, without the values of conditions:
 
-| Call                                           | Checks                                                                  |
-| ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Call                                           | Checks                                                                       |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
 | `CreateAccount`                                | Nothing; any subject, which gets the type's `creator` relation if it has one |
-| `GetAccount`, `ListIdentifiers`, `GetSession`  | `viewer`                                                                |
-| `DeleteAccount`, `AddIdentifier`, `EndSession` | `admin`                                                                 |
+| `GetAccount`, `ListIdentifiers`, `GetSession`  | `viewer`                                                                     |
+| `DeleteAccount`, `AddIdentifier`, `EndSession` | `admin`                                                                      |
 
 ### Account
 
@@ -172,17 +172,17 @@ calls of the authentication service check these relations on the account, withou
 
 ### Identifier
 
-`AddIdentifier` takes the `account`, the `value`, the `kind` and `primary`, and adds the identifier, unverified. A
-flow that completes with `MARK_VERIFIED` verifies it.
+`AddIdentifier` takes the `account`, the `value`, the `kind` and `primary`, and adds the identifier, unverified. An
+exchange that completes with `MARK_VERIFIED` verifies it.
 
-| Field      | Type     | Description                                                                |
-| ---------- | -------- | -------------------------------------------------------------------------- |
-| `name`     | `string` | The name, such as `identifiers/0b0d...`                                    |
-| `account`  | `string` | The account, such as `accounts/anne`                                       |
-| `kind`     | `string` | The kind, as the declaration names it, such as `email`                     |
+| Field      | Type     | Description                                                                 |
+| ---------- | -------- | --------------------------------------------------------------------------- |
+| `name`     | `string` | The name, such as `identifiers/0b0d...`                                     |
+| `account`  | `string` | The account, such as `accounts/anne`                                        |
+| `kind`     | `string` | The kind, as the declaration names it, such as `email`                      |
 | `value`    | `string` | The value, as the `normalize` of its kind gives it, such as `anne@acme.dev` |
-| `verified` | `bool`   | Whether a `MARK_VERIFIED` flow proved it                                   |
-| `primary`  | `bool`   | Whether the account prefers this identifier of its kind                    |
+| `verified` | `bool`   | Whether a `MARK_VERIFIED` exchange proved it                                |
+| `primary`  | `bool`   | Whether the account prefers this identifier of its kind                     |
 
 The kinds are the `identifier_kinds` of the declaration. An empty `kind` in `AddIdentifier` takes the first kind whose
 `match` the value meets. `AddIdentifier` fails with `INVALID_ARGUMENT` for a kind that the declaration does not have,
@@ -191,7 +191,7 @@ for a value that does not meet the kind that the request names, and for a value 
 
 ### Factor
 
-Factors come only from flows that enrol them, in the `factors` of the result. No call gives the secret of a factor.
+Factors come only from exchanges that enrol them, in the `factors` of the result. No call gives the secret of a factor.
 
 | Field     | Type          | Description                                       |
 | --------- | ------------- | ------------------------------------------------- |
@@ -201,16 +201,16 @@ Factors come only from flows that enrol them, in the `factors` of the result. No
 
 ### Session
 
-Sessions come only from flows, in the `sessions` of the result. `EndSession` ends one, and `Purge` deletes it once it
-has ended.
+Sessions come only from exchanges, in the `sessions` of the result. `EndSession` ends one, and `Purge` deletes it once
+it has ended.
 
-| Field         | Type                        | Description                                         |
-| ------------- | --------------------------- | --------------------------------------------------- |
-| `name`        | `string`                    | The name, such as `sessions/0b0d...`                |
-| `account`     | `string`                    | The account, such as `accounts/anne`                |
-| `expire_time` | `google.protobuf.Timestamp` | `sessionLifetime` after the database issued it      |
+| Field         | Type                        | Description                                    |
+| ------------- | --------------------------- | ---------------------------------------------- |
+| `name`        | `string`                    | The name, such as `sessions/0b0d...`           |
+| `account`     | `string`                    | The account, such as `accounts/anne`           |
+| `expire_time` | `google.protobuf.Timestamp` | `sessionLifetime` after the database issued it |
 
-For more information, see [About accounts and flows](../accounts/about-accounts-and-flows.md).
+For more information, see [About accounts and exchanges](../accounts/about-accounts-and-exchanges.md).
 
 ## Related
 

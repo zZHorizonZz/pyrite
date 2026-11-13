@@ -5,10 +5,10 @@ import static dev.horizon.pyrite.database.RunningDatabase.TIMEOUT;
 import com.google.protobuf.Any;
 import com.google.protobuf.Message;
 import dev.horizon.pyrite.PyriteFixture;
-import dev.horizon.pyrite.authentication.v1.ContinueFlowRequest;
+import dev.horizon.pyrite.authentication.v1.ContinueExchangeRequest;
 import dev.horizon.pyrite.authentication.v1.Delivery;
-import dev.horizon.pyrite.authentication.v1.Flow;
-import dev.horizon.pyrite.authentication.v1.StartFlowRequest;
+import dev.horizon.pyrite.authentication.v1.Exchange;
+import dev.horizon.pyrite.authentication.v1.StartExchangeRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The state of one run of a module: the Pyrite that it runs on, its variant, the values that its steps left, and the
- * codes that Pyrite sent, which the variant gets from the responses of flows or from an interceptor.
+ * codes that Pyrite sent, which the variant gets from the responses of exchanges or from an interceptor.
  */
 public final class Environment {
 
@@ -66,70 +66,71 @@ public final class Environment {
   }
 
   /**
-   * Starts a flow, which becomes the last flow.
+   * Starts an exchange, which becomes the last exchange.
    */
-  public Flow start(StartFlowRequest request) throws Exception {
+  public Exchange start(StartExchangeRequest request) throws Exception {
     int before = intercepted.size();
     sent = List.of();
-    Flow flow = pyrite.authentication.startFlow(request).await(TIMEOUT);
-    keep(flow, before);
-    put(Value.FLOW_START, flow);
-    return flow;
+    Exchange exchange = pyrite.authentication.startExchange(request).await(TIMEOUT);
+    keep(exchange, before);
+    put(Value.EXCHANGE_START, exchange);
+    return exchange;
   }
 
   /**
-   * Answers the last flow at its revision; the flow that the answer gives becomes the last flow.
+   * Answers the last exchange at its revision; the exchange that the answer gives becomes the last exchange.
    */
-  public Flow answer(Message answer) throws Exception {
+  public Exchange answer(Message answer) throws Exception {
     return answer(Any.pack(answer));
   }
 
   /**
-   * Answers the last flow at its revision with an answer as it is packed, which may be no answer at all.
+   * Answers the last exchange at its revision with an answer as it is packed, which may be no answer at all.
    */
-  public Flow answer(Any answer) throws Exception {
-    Flow flow = get(Value.FLOW);
-    return continueFlow(ContinueFlowRequest.newBuilder().setFlow(flow.getName()).setRevision(flow.getRevision())
-        .setRequestId(UUID.randomUUID().toString()).setAnswer(answer).build());
+  public Exchange answer(Any answer) throws Exception {
+    Exchange exchange = get(Value.EXCHANGE);
+    return continueExchange(
+        ContinueExchangeRequest.newBuilder().setExchange(exchange.getName()).setRevision(exchange.getRevision())
+            .setRequestId(UUID.randomUUID().toString()).setAnswer(answer).build());
   }
 
   /**
-   * Sends an answer as a request names it; the flow that it gives becomes the last flow.
+   * Sends an answer as a request names it; the exchange that it gives becomes the last exchange.
    */
-  public Flow continueFlow(ContinueFlowRequest request) throws Exception {
+  public Exchange continueExchange(ContinueExchangeRequest request) throws Exception {
     int before = intercepted.size();
     sent = List.of();
-    Flow flow = pyrite.authentication.continueFlow(request).await(TIMEOUT);
-    keep(flow, before);
-    return flow;
+    Exchange exchange = pyrite.authentication.continueExchange(request).await(TIMEOUT);
+    keep(exchange, before);
+    return exchange;
   }
 
   /**
-   * Gives the codes that the last start or answer of a flow sent, the way the variant gets them.
+   * Gives the codes that the last start or answer of an exchange sent, the way the variant gets them.
    */
   public List<Delivery> sent() {
     return sent;
   }
 
   /**
-   * Gives the last code that Pyrite sent for a flow.
+   * Gives the last code that Pyrite sent for an exchange.
    *
    * @throws AssertionError when Pyrite sent none
    */
-  public Delivery code(Flow flow) {
-    Delivery delivery = codes.get(flow.getName());
+  public Delivery code(Exchange exchange) {
+    Delivery delivery = codes.get(exchange.getName());
     if (delivery == null) {
-      throw new AssertionError("Pyrite sent no code for " + flow.getName());
+      throw new AssertionError("Pyrite sent no code for " + exchange.getName());
     }
     return delivery;
   }
 
-  private void keep(Flow flow, int before) {
-    sent = variant.delivery() == CodeDelivery.RESPONSE ? flow.getDeliveriesList()
+  private void keep(Exchange exchange, int before) {
+    sent = variant.delivery() == CodeDelivery.RESPONSE ? exchange.getDeliveriesList()
         : List.copyOf(intercepted.subList(before, intercepted.size()));
     if (!sent.isEmpty()) {
-      codes.put(flow.getName(), sent.getLast());
+      codes.put(exchange.getName(), sent.getLast());
     }
-    put(Value.FLOW, flow);
+    put(Value.EXCHANGE, exchange);
   }
 }

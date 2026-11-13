@@ -5,12 +5,12 @@ import dev.horizon.pyrite.conformance.Environment;
 import dev.horizon.pyrite.conformance.Value;
 
 /**
- * Authenticates the token of the last session, and leaves the principal.
+ * Authenticates the access token of the last session, and leaves the principal.
  */
 public record Authenticate() implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    environment.put(Value.PRINCIPAL, AuthenticateToken.principal(environment, environment.get(Value.SESSION_TOKEN)));
+    environment.put(Value.PRINCIPAL, AuthenticateToken.principal(environment, environment.get(Value.ACCESS_TOKEN)));
   }
 }

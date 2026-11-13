@@ -56,29 +56,29 @@ sign-in issues.
    }
    ```
 
-   A flow that starts from an identifier needs at least one kind. See
+   An exchange that starts from an identifier needs at least one kind. See
    [Declaration reference](../declarations/declaration-reference.md).
 
-3. Declare a flow that enrols a password, and one that signs in:
+3. Declare an exchange that enrols a password, and one that signs in:
 
    ```textproto
-   flows { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
-   flows { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
+   exchanges { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
+   exchanges { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
    ```
 
-4. Give Pyrite the options of authentication: the MAC key of session tokens and codes, the encryption key of factor
-   secrets, the issuer that authenticator apps show, and the WebAuthn relying party:
+4. Give Pyrite the options of authentication: the MAC key of refresh tokens and codes, the encryption key of factor
+   secrets, the key that signs access tokens, the issuer, and the WebAuthn relying party:
 
    ```java
    PyriteOptions options = new PyriteOptions().setKeyOptions(new KeyOptions().setRoot(root))
        .setAuthenticationOptions(new AuthenticationOptions().setMacKey("keys/sessions")
-           .setEncryptionKey("keys/factors").setIssuer("Acme")
+           .setEncryptionKey("keys/factors").setAccessTokenKey("keys/access").setIssuer("Acme")
            .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme")
                .addOrigin("https://acme.dev")));
    ```
 
-   `WriteDeclaration` refuses a declaration with accounts while the MAC key, the encryption key, the issuer, or the
-   id or the name of the relying party is not set. See [Options](../deployment/options.md).
+   `WriteDeclaration` refuses a declaration with accounts while one of the three keys, the issuer, or the id or the
+   name of the relying party is not set. See [Options](../deployment/options.md).
 
 5. Make Pyrite with these options, and add its services to your server:
 
@@ -86,7 +86,7 @@ sign-in issues.
    Pyrite.pyrite(vertx, pool, driver, openFga, options).bind(server);
    ```
 
-6. Write the declaration, then create the two keys that the options name:
+6. Write the declaration, then create the three keys that the options name:
 
    ```java
    CryptographyGrpcClient cryptography = CryptographyGrpcClient.create(client);
@@ -94,7 +94,11 @@ sign-in issues.
        .setParent("organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
    cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("factors")
        .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("access")
+       .setParent("organizations/acme").setAlgorithm(Algorithm.ES256).build()).await();
    ```
+
+   Give the access token key no other use: a JWT that it signs for another purpose would pass as an access token.
 
 ## Create an account
 
@@ -124,14 +128,15 @@ sign-in issues.
 1. Start the enrolment as the account:
 
    ```java
-   Flow enrolment = authentication.startFlow(StartFlowRequest.newBuilder().setSubject("user:anne")
+   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
        .setDefinition("enrol-password").build()).await();
    ```
 
 2. Answer its challenge with the new password:
 
    ```java
-   Flow enrolled = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(enrolment.getName())
+   Exchange enrolled = authentication.continueExchange(ContinueExchangeRequest.newBuilder()
+       .setExchange(enrolment.getName())
        .setRevision(enrolment.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(PasswordAnswer.newBuilder().setPassword("correct horse battery staple").build()))
        .build()).await();
@@ -145,7 +150,7 @@ sign-in issues.
 1. Start the sign-in with the address, as the person typed it:
 
    ```java
-   Flow signIn = authentication.startFlow(StartFlowRequest.newBuilder().setDefinition("sign-in")
+   Exchange signIn = authentication.startExchange(StartExchangeRequest.newBuilder().setDefinition("sign-in")
        .setIdentifier("anne@acme.dev").build()).await();
    ```
 
@@ -155,32 +160,47 @@ sign-in issues.
 2. Answer with the password:
 
    ```java
-   Flow done = authentication.continueFlow(ContinueFlowRequest.newBuilder().setFlow(signIn.getName())
+   Exchange done = authentication.continueExchange(ContinueExchangeRequest.newBuilder().setExchange(signIn.getName())
        .setRevision(signIn.getRevision()).setRequestId(UUID.randomUUID().toString())
        .setAnswer(Any.pack(PasswordAnswer.newBuilder().setPassword("correct horse battery staple").build()))
        .build()).await();
    ```
 
-   A wrong password fails with `PERMISSION_DENIED`, and leaves the flow at its revision, so the person can try
-   again. After `maxAnswers` wrong answers, 5 by default, the flow takes no more.
+   A wrong password fails with `PERMISSION_DENIED`, and leaves the exchange at its revision, so the person can try
+   again. After `maxAnswers` wrong answers, 5 by default, the exchange takes no more.
 
-3. Take the session token from the result, and give it to the person, such as in a cookie:
+3. Take the tokens of the session from the result, and give them to the client, such as in cookies:
 
    ```java
-   String token = done.getResult().getIssued(0).unpack(SessionToken.class).getToken();
+   TokenSet tokens = done.getResult().getIssued(0).unpack(TokenSet.class);
    ```
 
-   Pyrite gives the token once, and keeps only a MAC of its secret.
+   Pyrite gives the tokens once, and keeps only a MAC of the secret of the refresh token.
 
 ## Authenticate a call
 
-Exchange the token for the principal, and use its subject in the calls that follow:
+Trade the access token for the principal, and use its subject in the calls that follow:
 
 ```java
-Principal principal = authentication.authenticate(AuthenticateRequest.newBuilder().setSessionToken(token)
-    .build()).await();
+Principal principal = authentication.authenticate(AuthenticateRequest.newBuilder()
+    .setAccessToken(tokens.getAccessToken()).build()).await();
 System.out.println(principal.getSubject());
 ```
+
+A service that should not call Pyrite on each request verifies the access token on its own instead, as a JWT of type
+`at+jwt` with the public key of `keys/access`, the issuer of the options, and its `exp`. Its `sub` is the subject.
+
+## Refresh the tokens
+
+An access token lasts 5 minutes. Before it expires, trade the refresh token for new tokens, and keep both:
+
+```java
+tokens = authentication.refreshSession(RefreshSessionRequest.newBuilder()
+    .setRefreshToken(tokens.getRefreshToken()).build()).await();
+```
+
+Each refresh token works once. Keep only the newest one: a refresh token that comes back after its trade ends the
+session. Each refresh also extends the idle lifetime of the session.
 
 ## Verify
 
@@ -192,12 +212,13 @@ user:anne
 ```
 
 `principal.getSession()` is the session that the sign-in issued, and `principal.getExpireTime()` its expiry, 30 days
-after the sign-in by default. A token that is wrong, of a session that ended, or of one that went unused for its idle
-lifetime fails with `UNAUTHENTICATED`. See [Troubleshooting accounts](troubleshooting-accounts.md).
+after the sign-in by default. A refresh gives a new access token and a new refresh token of the same session. A token
+that is wrong or expired, of a session that ended, or of one that went unrefreshed for its idle lifetime fails with
+`UNAUTHENTICATED`. See [Troubleshooting accounts](troubleshooting-accounts.md).
 
 ## Related
 
-- [About accounts and flows](about-accounts-and-flows.md)
+- [About accounts and exchanges](about-accounts-and-exchanges.md)
 - [Add a second factor](add-a-second-factor.md)
 - [Add a passkey](add-a-passkey.md)
 - [Options](../deployment/options.md)

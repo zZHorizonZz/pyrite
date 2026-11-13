@@ -1,11 +1,11 @@
 package dev.horizon.pyrite.conformance.condition;
 
-import dev.horizon.pyrite.FlowContext;
+import dev.horizon.pyrite.ExchangeContext;
 import dev.horizon.pyrite.Pyrite;
 import io.vertx.core.Handler;
 
 /**
- * A moment of flows that interceptors run at.
+ * A moment of exchanges that interceptors run at.
  */
 public enum Moment {
   START,
@@ -13,21 +13,21 @@ public enum Moment {
   END,
   FAILURE;
 
-  void add(Pyrite pyrite, Handler<FlowContext> interceptor) {
+  void add(Pyrite pyrite, Handler<ExchangeContext> interceptor) {
     switch (this) {
-      case START -> pyrite.addFlowStartInterceptor(interceptor);
+      case START -> pyrite.addExchangeStartInterceptor(interceptor);
       case STAGE_END -> pyrite.addStageEndInterceptor(interceptor);
-      case END -> pyrite.addFlowEndInterceptor(interceptor);
-      case FAILURE -> pyrite.addFlowFailureInterceptor(interceptor);
+      case END -> pyrite.addExchangeEndInterceptor(interceptor);
+      case FAILURE -> pyrite.addExchangeFailureInterceptor(interceptor);
     }
   }
 
-  void remove(Pyrite pyrite, Handler<FlowContext> interceptor) {
+  void remove(Pyrite pyrite, Handler<ExchangeContext> interceptor) {
     switch (this) {
-      case START -> pyrite.removeFlowStartInterceptor(interceptor);
+      case START -> pyrite.removeExchangeStartInterceptor(interceptor);
       case STAGE_END -> pyrite.removeStageEndInterceptor(interceptor);
-      case END -> pyrite.removeFlowEndInterceptor(interceptor);
-      case FAILURE -> pyrite.removeFlowFailureInterceptor(interceptor);
+      case END -> pyrite.removeExchangeEndInterceptor(interceptor);
+      case FAILURE -> pyrite.removeExchangeFailureInterceptor(interceptor);
     }
   }
 }

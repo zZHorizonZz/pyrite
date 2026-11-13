@@ -377,21 +377,43 @@ identifier_kinds {
   normalize: "value.trim().lowerAscii()"
 }
 
-flows { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
-flows { name: "sign-in-with-two-factors" input: IDENTIFIER stages { factors: 2 } completes: ISSUE_SESSION }
-flows { name: "verify" input: SUBJECT_IDENTIFIER stages { identifier: true } completes: MARK_VERIFIED }
-flows {
+exchanges { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
+exchanges { name: "sign-in-with-two-factors" input: IDENTIFIER stages { factors: 2 } completes: ISSUE_SESSION }
+exchanges { name: "verify" input: SUBJECT_IDENTIFIER stages { identifier: true } completes: MARK_VERIFIED }
+exchanges {
   name: "recover"
   input: IDENTIFIER
   stages { identifier: true }
   stages { enrol: PASSWORD }
   completes: [ACTIVATE_FACTOR, END_SESSIONS]
 }
-flows { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
-flows { name: "enrol-totp" input: SUBJECT stages { enrol: TOTP } completes: ACTIVATE_FACTOR }
-flows { name: "enrol-recovery-codes" input: SUBJECT stages { enrol: RECOVERY_CODES } completes: ACTIVATE_FACTOR }
-flows { name: "enrol-passkey" input: SUBJECT stages { enrol: PASSKEY } completes: ACTIVATE_FACTOR }
-flows {
+exchanges { name: "enrol-password" input: SUBJECT stages { enrol: PASSWORD } completes: ACTIVATE_FACTOR }
+exchanges { name: "enrol-totp" input: SUBJECT stages { enrol: TOTP } completes: ACTIVATE_FACTOR }
+exchanges { name: "enrol-recovery-codes" input: SUBJECT stages { enrol: RECOVERY_CODES } completes: ACTIVATE_FACTOR }
+exchanges { name: "enrol-passkey" input: SUBJECT stages { enrol: PASSKEY } completes: ACTIVATE_FACTOR }
+exchanges { name: "sign-in-at-provider" input: NONE stages { factors: 1 } completes: ISSUE_SESSION }
+exchanges {
+  name: "sign-up-at-provider"
+  input: NONE
+  stages { factors: 1 }
+  completes: [CREATE_ACCOUNT, ISSUE_SESSION]
+}
+exchanges { name: "link-provider" input: SUBJECT stages { enrol: PROVIDER } completes: ACTIVATE_FACTOR }
+exchanges {
+  name: "sign-in-at-provider-by-email"
+  input: NONE
+  stages { factors: 1 }
+  completes: ISSUE_SESSION
+  email_match: SIGN_IN
+}
+exchanges {
+  name: "confirm-at-provider-by-email"
+  input: NONE
+  stages { factors: 1 }
+  completes: ISSUE_SESSION
+  email_match: CONFIRM
+}
+exchanges {
   name: "sign-in-with-passkey"
   input: IDENTIFIER
   stages { factors: 1 phishing_resistant: true }

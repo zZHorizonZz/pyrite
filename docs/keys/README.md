@@ -27,5 +27,5 @@ The errors of keys are in [Troubleshooting keys](troubleshooting-keys.md).
 ## Related
 
 - [Pyrite's types](../declarations/pyrite-types.md)
-- [Accounts](../accounts/README.md), whose session tokens and factor secrets use two keys
+- [Accounts](../accounts/README.md), whose refresh tokens, access tokens and factor secrets use three keys
 - [Status codes](../deployment/status-codes.md)

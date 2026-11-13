@@ -22,8 +22,9 @@ Use Pyrite when your application has resources that people share, and each call 
 - **Hierarchies:** organizations hold projects, and access granted on an organization reaches its projects.
 - **Sharing:** owners grant relations to people, to groups and to everyone, with conditions such as an expiry time.
 - **Roles that users define:** administrators create roles and bind them to people at runtime.
-- **Accounts:** people sign in with passwords, passkeys, TOTP codes, one-time codes and recovery codes, and keep
-  their sessions.
+- **Accounts:** people sign in with passwords, passkeys, TOTP codes, one-time codes, recovery codes and providers
+  such as Google or GitHub, and keep
+  their sessions with short-lived access tokens and refresh tokens that work once.
 - **Keys:** services encrypt data and sign tokens with keys whose versions rotate.
 
 Pyrite trusts the subject that each request names. Put it behind the code that verifies a credential, such as a
@@ -40,12 +41,12 @@ gateway or a verticle that authenticates the session. Do not serve it to clients
   [About subjects and permissions](docs/access/about-subjects-and-permissions.md).
 - **Keys.** Encryption, MAC and signing keys, whose versions rotate on a schedule. For more information, refer to
   [About keys and versions](docs/keys/about-keys-and-versions.md).
-- **Accounts and flows.** Sign-in, verification, recovery and enrolment, as flows that your declaration defines.
+- **Accounts and exchanges.** Sign-in, verification, recovery and enrolment, as exchanges that your declaration defines.
   People sign in with the kinds of identifiers that you declare, such as an email address or an employee id. For more
-  information, refer to [About accounts and flows](docs/accounts/about-accounts-and-flows.md).
-- **Handlers.** Your code runs at the moments of a flow, can stop it or replace its steps, sends the codes, and
+  information, refer to [About accounts and exchanges](docs/accounts/about-accounts-and-exchanges.md).
+- **Handlers.** Your code runs at the moments of an exchange, can stop it or replace its steps, sends the codes, and
   hears of the accounts and sessions that Pyrite creates and ends. For more information, refer to
-  [Intercept flows](docs/accounts/intercept-flows.md).
+  [Intercept exchanges](docs/accounts/intercept-exchanges.md).
 - **Your database.** PostgreSQL, MariaDB, SQL Server or SQLite. The JAR contains the migrations of Pyrite's tables,
   whose foreign keys, defaults and triggers keep the rows consistent, and the database is the clock of every time
   that Pyrite stores. For more information, refer to [Create the tables](docs/deployment/create-the-tables.md).
@@ -55,12 +56,12 @@ gateway or a verticle that authenticates the session. Do not serve it to clients
 Pyrite serves four gRPC services. `Pyrite.pyrite` makes them on one database, and `bind` adds all four to a Vert.x
 gRPC server or event bus server; each method below gives one, to add alone.
 
-| Service                                   | Method                    | Does                                                                         |
-| ----------------------------------------- | ------------------------- | ---------------------------------------------------------------------------- |
-| `pyrite.schema.v1.Schema`                 | `pyrite.schema()`         | Writes and reads the declaration                                             |
-| `pyrite.access.v1.Access`                 | `pyrite.access()`         | Makes resources known, grants and revokes relations, checks and lists        |
-| `pyrite.crypto.v1.Cryptography`           | `pyrite.cryptography()`   | Creates and rotates keys, and encrypts, decrypts, signs and verifies         |
-| `pyrite.authentication.v1.Authentication` | `pyrite.authentication()` | Keeps accounts, and runs sign-in, verification, recovery and enrolment flows |
+| Service                                   | Method                    | Does                                                                             |
+| ----------------------------------------- | ------------------------- | -------------------------------------------------------------------------------- |
+| `pyrite.schema.v1.Schema`                 | `pyrite.schema()`         | Writes and reads the declaration                                                 |
+| `pyrite.access.v1.Access`                 | `pyrite.access()`         | Makes resources known, grants and revokes relations, checks and lists            |
+| `pyrite.crypto.v1.Cryptography`           | `pyrite.cryptography()`   | Creates and rotates keys, and encrypts, decrypts, signs and verifies             |
+| `pyrite.authentication.v1.Authentication` | `pyrite.authentication()` | Keeps accounts, and runs sign-in, verification, recovery and enrolment exchanges |
 
 ## Get started
 
@@ -91,12 +92,12 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`. The JAR contains cel-j
   [About subjects and permissions](docs/access/about-subjects-and-permissions.md),
   [Purge deleted resources](docs/access/purge-deleted-resources.md),
   [Troubleshooting access](docs/access/troubleshooting-access.md)
-- **Accounts:** [About accounts and flows](docs/accounts/about-accounts-and-flows.md),
-  [Sign in with a password](docs/accounts/sign-in-with-a-password.md),
-  [Add a second factor](docs/accounts/add-a-second-factor.md), [Add a passkey](docs/accounts/add-a-passkey.md),
-  [Verify an email address](docs/accounts/verify-an-email-address.md),
-  [Recover an account](docs/accounts/recover-an-account.md), [Intercept flows](docs/accounts/intercept-flows.md),
-  [Troubleshooting accounts](docs/accounts/troubleshooting-accounts.md)
+- **Accounts:** [About accounts and exchanges](docs/accounts/about-accounts-and-exchanges.md), [Sign in with a
+  password](docs/accounts/sign-in-with-a-password.md), [Add a second factor](docs/accounts/add-a-second-factor.md), [Add
+  a passkey](docs/accounts/add-a-passkey.md), [Verify an email address](docs/accounts/verify-an-email-address.md),
+  [Recover an account](docs/accounts/recover-an-account.md), [Intercept
+  exchanges](docs/accounts/intercept-exchanges.md), [Troubleshooting
+  accounts](docs/accounts/troubleshooting-accounts.md)
 - **Keys:** [About keys and versions](docs/keys/about-keys-and-versions.md), [Encrypt data](docs/keys/encrypt-data.md),
   [Sign and verify tokens](docs/keys/sign-and-verify-tokens.md), [Rotate a key](docs/keys/rotate-a-key.md),
   [Troubleshooting keys](docs/keys/troubleshooting-keys.md)
@@ -108,12 +109,12 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`. The JAR contains cel-j
 ## Run the tests
 
 Most of Pyrite's tests are conformance modules: scenarios that call Pyrite's services as a client would, each step
-tied to a requirement of Pyrite's contract. The plans of modules cover sessions, flows, codes, passwords, second
+tied to a requirement of Pyrite's contract. The plans of modules cover sessions, exchanges, codes, passwords, second
 factors, passkeys, handlers, access, declarations and keys. One plan checks Pyrite's checks and lists against plain
 OpenFGA on the same grants.
 
 Each module runs in every variant: on PostgreSQL, MariaDB and SQL Server in Docker through Testcontainers and on
-SQLite in process, one database at a time; with the codes of flows in their responses or taken by an interceptor;
+SQLite in process, one database at a time; with the codes of exchanges in their responses or taken by an interceptor;
 and over the event bus or gRPC over HTTP. A failure names the module, its variant, each step, and the requirement
 that broke.
 

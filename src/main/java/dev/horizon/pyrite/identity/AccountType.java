@@ -5,6 +5,7 @@ import dev.horizon.cinder.Database;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.access.OpenFga;
 import dev.horizon.pyrite.authentication.v1.Principal;
+import dev.horizon.pyrite.authentication.v1.TokenSet;
 import dev.horizon.pyrite.declaration.ResourceType;
 import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.resource.Resource;
@@ -19,7 +20,7 @@ import io.vertx.grpc.common.GrpcStatus;
 
 /**
  * The declared type {@code pyrite.dev/Account}: it creates accounts as resources that own themselves, finds them,
- * deletes them with what is under them, and authenticates their session tokens. A declaration without the type has
+ * deletes them with what is under them, and authenticates their access tokens. A declaration without the type has
  * none.
  */
 public final class AccountType {
@@ -100,7 +101,7 @@ public final class AccountType {
 
   /**
    * Deletes an account, with every grant on it and to it, and tells the handler of deleted accounts. The database
-   * deletes its identifiers, credentials, sessions and flows with it, so its sessions end without the handler of
+   * deletes its identifiers, credentials, sessions and exchanges with it, so its sessions end without the handler of
    * ended sessions.
    *
    * @return a future that completes once the account is deleted
@@ -119,10 +120,10 @@ public final class AccountType {
   }
 
   /**
-   * Authenticates a session token, and gives the account of its session. A failure to read the account, other than
+   * Authenticates an access token, and gives the account of its session. A failure to read the account, other than
    * its absence, fails as it is, so that a fault of the database never looks like a session that ended.
    *
-   * @param token the token, the id of the session, a dot and its secret
+   * @param token the access token, a JWT that the access token key signed
    * @return the principal, with the subject, the account, the session and its expiry, or a failure with
    * {@code UNAUTHENTICATED}
    */
@@ -134,6 +135,17 @@ public final class AccountType {
                 : failure))
         .map(account -> Principal.newBuilder().setSubject(account.subject()).setAccount(account.name())
             .setSession(session.name()).setExpireTime(session.message().getExpireTime()).build()));
+  }
+
+  /**
+   * Trades a refresh token for new tokens of its session.
+   *
+   * @param token the refresh token, as the last tokens gave it
+   * @return the new tokens, or a failure with {@code UNAUTHENTICATED}; a token that a refresh traded before ends its
+   * session
+   */
+  public Future<TokenSet> refresh(String token) {
+    return sessions.refresh(token);
   }
 
   /**

@@ -6,8 +6,8 @@ import dev.horizon.pyrite.conformance.check.CheckPlan;
 import dev.horizon.pyrite.conformance.code.CodePlan;
 import dev.horizon.pyrite.conformance.declaration.DeclarationPlan;
 import dev.horizon.pyrite.conformance.encryption.EncryptionPlan;
+import dev.horizon.pyrite.conformance.exchange.ExchangePlan;
 import dev.horizon.pyrite.conformance.factor.FactorPlan;
-import dev.horizon.pyrite.conformance.flow.FlowPlan;
 import dev.horizon.pyrite.conformance.grant.GrantPlan;
 import dev.horizon.pyrite.conformance.handler.HandlerPlan;
 import dev.horizon.pyrite.conformance.identifier.IdentifierPlan;
@@ -15,6 +15,7 @@ import dev.horizon.pyrite.conformance.list.ListPlan;
 import dev.horizon.pyrite.conformance.object.ObjectPlan;
 import dev.horizon.pyrite.conformance.passkey.PasskeyPlan;
 import dev.horizon.pyrite.conformance.password.PasswordPlan;
+import dev.horizon.pyrite.conformance.provider.ProviderPlan;
 import dev.horizon.pyrite.conformance.rotation.RotationPlan;
 import dev.horizon.pyrite.conformance.session.SessionPlan;
 import dev.horizon.pyrite.conformance.signing.SigningPlan;
@@ -36,10 +37,10 @@ import org.junit.jupiter.api.TestInstance;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConformanceTest {
 
-  private static final List<Plan> PLANS = List.of(new SessionPlan(), new FlowPlan(), new CodePlan(),
+  private static final List<Plan> PLANS = List.of(new SessionPlan(), new ExchangePlan(), new CodePlan(),
       new PasswordPlan(), new IdentifierPlan(), new FactorPlan(), new PasskeyPlan(), new HandlerPlan(), new ObjectPlan(),
       new GrantPlan(), new CheckPlan(), new ListPlan(), new AgreementPlan(), new DeclarationPlan(),
-      new EncryptionPlan(), new RotationPlan(), new SigningPlan());
+      new EncryptionPlan(), new RotationPlan(), new SigningPlan(), new ProviderPlan());
 
   private TestDatabase current;
   private RunningDatabase running;

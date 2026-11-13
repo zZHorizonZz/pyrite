@@ -10,7 +10,7 @@ option java_multiple_files = true;
 option java_outer_classname = "AuthenticationProto";
 option java_package = "dev.horizon.pyrite.authentication.v1";
 
-// Accounts and their identifiers, and sign-in, verification, recovery and enrolment, as flows that the declaration
+// Accounts and their identifiers, and sign-in, verification, recovery and enrolment, as exchanges that the declaration
 // defines, with the credentials that they issue. An account is the resource pyrite.dev/Account: reading it and its
 // identifiers needs viewer on it, and changing them needs admin.
 service Authentication {
@@ -24,12 +24,19 @@ service Authentication {
   // Deletes an account, its identifiers, factors and sessions, and every grant on it and to it.
   rpc DeleteAccount(DeleteAccountRequest) returns (google.protobuf.Empty);
 
-  // Adds an identifier to an account, unverified. A flow that marks it verified proves it. An identifier that
+  // Adds an identifier to an account, unverified. An exchange that marks it verified proves it. An identifier that
   // another account has already fails with ALREADY_EXISTS.
   rpc AddIdentifier(AddIdentifierRequest) returns (Identifier);
 
   // Lists the identifiers of an account.
   rpc ListIdentifiers(ListIdentifiersRequest) returns (ListIdentifiersResponse);
+
+  // Lists the active factors of an account.
+  rpc ListFactors(ListFactorsRequest) returns (ListFactorsResponse);
+
+  // Removes a factor of an account, such as a lost passkey, or a linked provider account, which can then be linked
+  // again. The account keeps a factor that signs in on its own: a password, a passkey or a linked provider account.
+  rpc DeleteFactor(DeleteFactorRequest) returns (google.protobuf.Empty);
 
   // Gives a session of an account.
   rpc GetSession(GetSessionRequest) returns (Session);
@@ -41,28 +48,32 @@ service Authentication {
   // was never finished. Call it now and then.
   rpc Purge(PurgeRequest) returns (PurgeResponse);
 
-  // Starts a flow of a definition. It gives the challenges that the flow takes first; a flow that needs none is
-  // done at once.
-  rpc StartFlow(StartFlowRequest) returns (Flow);
+  // Starts an exchange of a definition. It gives the challenges that the exchange takes first; an exchange that needs
+  // none is done at once.
+  rpc StartExchange(StartExchangeRequest) returns (Exchange);
 
-  // Answers a challenge of a flow. It gives the next challenges, or the result once the flow is done. A wrong answer
-  // fails, and counts against the flow's answers.
-  rpc ContinueFlow(ContinueFlowRequest) returns (Flow);
+  // Answers a challenge of an exchange. It gives the next challenges, or the result once the exchange is done. A wrong
+  // answer fails, and counts against the exchange's answers.
+  rpc ContinueExchange(ContinueExchangeRequest) returns (Exchange);
 
-  // Gives the principal of a credential, such as a session token.
+  // Gives the principal of a credential, such as an access token. The session of the token must not have ended.
   rpc Authenticate(AuthenticateRequest) returns (Principal);
+
+  // Trades a refresh token for a new access token and a new refresh token, and extends the idle lifetime of the
+  // session. A refresh token works once: one that comes back after its trade ends its session.
+  rpc RefreshSession(RefreshSessionRequest) returns (TokenSet);
 }
 
-message StartFlowRequest {
-  // The account that starts it, for a flow whose input is SUBJECT or SUBJECT_IDENTIFIER; empty otherwise.
+message StartExchangeRequest {
+  // The account that starts it, for an exchange whose input is SUBJECT or SUBJECT_IDENTIFIER; empty otherwise.
   string subject = 1;
 
-  // The name of the flow definition, such as sign-in.
+  // The name of the exchange definition, such as sign-in.
   string definition = 2;
 
   reserved 3;
 
-  // The identifier, as the person typed it, for a flow whose input is IDENTIFIER or SUBJECT_IDENTIFIER.
+  // The identifier, as the person typed it, for an exchange whose input is IDENTIFIER or SUBJECT_IDENTIFIER.
   string identifier = 4;
 
   // The identifier's kind, such as email. Leave it empty to take the first kind of the declaration whose match the
@@ -70,8 +81,8 @@ message StartFlowRequest {
   string identifier_kind = 5;
 }
 
-message Flow {
-  // The name, such as flows/0b0d....
+message Exchange {
+  // The name, such as exchanges/0b0d....
   string name = 1;
 
   string definition = 2;
@@ -81,14 +92,18 @@ message Flow {
 
   google.protobuf.Timestamp expire_time = 4;
 
-  // The answers that the flow takes next; empty once it is done.
+  // The answers that the exchange takes next; empty once it is done.
   repeated Challenge challenges = 5;
 
   // The codes that the caller sends.
   repeated Delivery deliveries = 6;
 
-  // What the flow did, once it is done.
+  // What the exchange did, once it is done.
   Result result = 7;
+
+  // The provider account that the exchange links to its account when it ends, such as one whose verified email an
+  // account holds; the application can tell the person that the next answer links it.
+  ProviderAccount provider_account = 8;
 }
 
 message Challenge {
@@ -122,28 +137,28 @@ message Result {
   reserved 1;
   reserved "resources";
 
-  // The account of the flow, such as accounts/anne.
+  // The account of the exchange, such as accounts/anne.
   string account = 3;
 
-  // The identifiers that the flow verified.
+  // The identifiers that the exchange verified.
   repeated Identifier identifiers = 4;
 
-  // The factors that the flow activated.
+  // The factors that the exchange activated.
   repeated Factor factors = 5;
 
-  // The sessions that the flow issued.
+  // The sessions that the exchange issued.
   repeated Session sessions = 6;
 
 
-  // The credentials that are shown once, such as a SessionToken or RecoveryCodes.
+  // The credentials that are shown once, such as a TokenSet or RecoveryCodes.
   repeated google.protobuf.Any issued = 2;
 }
 
-message ContinueFlowRequest {
-  // The flow's name.
-  string flow = 1;
+message ContinueExchangeRequest {
+  // The exchange's name.
+  string exchange = 1;
 
-  // The flow's revision that the answer answers.
+  // The exchange's revision that the answer answers.
   int64 revision = 2;
 
   // An id that the caller chooses, so that a retry gives the first result.
@@ -155,7 +170,7 @@ message ContinueFlowRequest {
 
 message AuthenticateRequest {
   oneof credential {
-    string session_token = 1;
+    string access_token = 1;
   }
 }
 
@@ -166,7 +181,7 @@ message Principal {
   // The account, such as accounts/anne.
   string account = 2;
 
-  // The session, for a session token.
+  // The session, for an access token.
   string session = 3;
 
   google.protobuf.Timestamp expire_time = 4;
@@ -217,13 +232,63 @@ message CodeSent {
   string kind = 4;
 }
 
-message SessionToken {
-  string token = 1;
-
+// The tokens of a session, which Pyrite gives out once: a short-lived access token, which a caller sends with each
+// call, and a refresh token, which it trades for new tokens before the access token expires.
+message TokenSet {
   // The session's name, such as sessions/....
-  string session = 2;
+  string session = 1;
 
-  google.protobuf.Timestamp expire_time = 3;
+  // A JWT of type at+jwt, which the access token key of the options signs.
+  string access_token = 2;
+
+  google.protobuf.Timestamp access_token_expire_time = 3;
+
+  // An opaque token, which works once, until the session ends.
+  string refresh_token = 4;
+}
+
+// The answer of a sign-in at a provider: what the provider gave to the callback of the application.
+message ProviderAnswer {
+  // The name of the provider in the options, such as google.
+  string provider = 1;
+
+  // The code of the callback.
+  string code = 2;
+
+  // The state of the callback.
+  string state = 3;
+}
+
+// The parameters of the challenge of a sign-in at a provider: where to send the person, per provider.
+message ProviderRedirects {
+  repeated ProviderRedirect redirects = 1;
+}
+
+message ProviderRedirect {
+  // The name of the provider in the options, such as google.
+  string provider = 1;
+
+  // The authorization URL, with the state, the PKCE challenge and, for OpenID Connect, the nonce of the stage.
+  string authorization_url = 2;
+}
+
+// An account at a provider, as a sign-in at the provider proves it.
+message ProviderAccount {
+  // The name of the provider in the options, such as google.
+  string provider = 1;
+
+  // The id of the account at the provider: the sub of OpenID Connect, or the id of its user info.
+  string id = 2;
+
+  string email = 3;
+
+  // Whether the provider says that it verified the email.
+  bool email_verified = 4;
+}
+
+message RefreshSessionRequest {
+  // The refresh token, as the last TokenSet gave it.
+  string refresh_token = 1;
 }
 
 message RecoveryCodes {
@@ -274,12 +339,16 @@ message Factor {
 
   Kind kind = 3;
 
+  // The name of the provider in the options, such as google, for a factor of the kind PROVIDER.
+  string provider = 4;
+
   enum Kind {
     KIND_UNSPECIFIED = 0;
     PASSWORD = 1;
     TOTP = 2;
     PASSKEY = 3;
     RECOVERY_CODES = 4;
+    PROVIDER = 5;
   }
 }
 
@@ -343,6 +412,24 @@ message ListIdentifiersRequest {
 
 message ListIdentifiersResponse {
   repeated Identifier identifiers = 1;
+}
+
+message ListFactorsRequest {
+  string subject = 1;
+
+  // The account's name.
+  string account = 2;
+}
+
+message ListFactorsResponse {
+  repeated Factor factors = 1;
+}
+
+message DeleteFactorRequest {
+  string subject = 1;
+
+  // The factor's name, such as factors/0b0d....
+  string name = 2;
 }
 
 message GetSessionRequest {

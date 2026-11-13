@@ -1,9 +1,9 @@
 package dev.horizon.pyrite.identity;
 
-import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.resource.Resource;
+import dev.horizon.pyrite.resource.Subject;
 import dev.horizon.pyrite.schema.authentication.v1.Tables;
-import dev.horizon.pyrite.session.NewSession;
+import dev.horizon.pyrite.session.Session;
 import dev.horizon.pyrite.storage.DatabaseTime;
 import io.vertx.core.Future;
 import java.util.List;
@@ -33,7 +33,7 @@ public final class Account {
    * @return the subject, such as {@code user:anne} for {@code accounts/anne}
    */
   public String subject() {
-    return TypeSystem.USER + ":" + name().substring(name().indexOf('/') + 1);
+    return Subject.account(name()).toString();
   }
 
   /**
@@ -59,16 +59,16 @@ public final class Account {
    *
    * @return every credential, the pending and the removed ones too; {@link Credential#isActive()} tells which count
    */
-  public Future<List<Credential>> credentials() {
+  public Future<List<Credential<?>>> credentials() {
     return type.credentials().credentials(name());
   }
 
   /**
-   * Issues a session of the account.
+   * Issues a session of the account, without tokens; {@link Session#issueTokens()} gives them.
    *
-   * @return the session, with the token that Pyrite gives out once
+   * @return the session
    */
-  public Future<NewSession> issueSession() {
+  public Future<Session> issueSession() {
     return type.sessions().issue(name());
   }
 

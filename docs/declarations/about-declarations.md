@@ -2,7 +2,7 @@
 
 A declaration tells Pyrite which types of resources your application has, where they sit, and who may do what on
 them. It also declares the conditions that grants can carry, the kinds of identifiers that accounts have, and the
-flows of the authentication service. It is a `pyrite.schema.v1.Declaration` message, which you can write in Java, in
+exchanges of the authentication service. It is a `pyrite.schema.v1.Declaration` message, which you can write in Java, in
 JSON or in protobuf text format.
 
 ```textproto
@@ -43,15 +43,15 @@ members of the organization view it.
 A type is one kind of resource, such as an organization or a project. Your application keeps the resources
 themselves, in its own tables. The type tells Pyrite where they sit and who may do what on them:
 
-| Part         | Field         | Example                                |
-| ------------ | ------------- | -------------------------------------- |
-| Name         | `name`        | `acme.dev/Project`                     |
-| Name segment | `plural`      | `projects`, as in `projects/ledger`    |
-| Parents      | `parents`     | `acme.dev/Organization`                |
-| Relations    | `definition`  | `owner`, `viewer`                      |
-| Checks       | `permissions` | `create: "admin"`, `grant: "owner"`    |
-| Grants       | `grantable`   | `owner`, `viewer`                      |
-| Creator      | `creator`     | `owner`                                |
+| Part         | Field         | Example                             |
+| ------------ | ------------- | ----------------------------------- |
+| Name         | `name`        | `acme.dev/Project`                  |
+| Name segment | `plural`      | `projects`, as in `projects/ledger` |
+| Parents      | `parents`     | `acme.dev/Organization`             |
+| Relations    | `definition`  | `owner`, `viewer`                   |
+| Checks       | `permissions` | `create: "admin"`, `grant: "owner"` |
+| Grants       | `grantable`   | `owner`, `viewer`                   |
+| Creator      | `creator`     | `owner`                             |
 
 The `definition` is an OpenFGA type definition, `openfga.v1.TypeDefinition` from Spectrum's protos. Its `type` is the
 singular name of the type, such as `project`, and OpenFGA names the resources of the type by it, such as
@@ -80,14 +80,14 @@ organization reaches every project under it. See [About resources](../access/abo
 
 A type's `permissions` name the two relations that Pyrite checks on the subject of a call:
 
-| Permission | Checked on   | By                                                                                     |
-| ---------- | ------------ | -------------------------------------------------------------------------------------- |
-| `create`   | The parent   | `CreateObject`, and `CreateKey` for `pyrite.dev/Key`                                   |
+| Permission | Checked on   | By                                                                                                                            |
+| ---------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `create`   | The parent   | `CreateObject`, and `CreateKey` for `pyrite.dev/Key`                                                                          |
 | `grant`    | The resource | `DeleteObject`, `CreateGrant`, `DeleteGrant`, `ListGrants`, `ListSubjects`, `ListChanges`, and a `Check` of another principal |
 
-A type without parents has no `create` permission: any subject makes its resources known. Every other relation is
-yours to check. Your application asks `Check` whether a subject has a relation, such as `can_edit`, before it reads
-or changes a resource in its own tables. See [About subjects and permissions](../access/about-subjects-and-permissions.md).
+A type without parents has no `create` permission: any subject makes its resources known. Every other relation is yours
+to check. Your application asks `Check` whether a subject has a relation, such as `can_edit`, before it reads or changes
+a resource in its own tables. See [About subjects and permissions](../access/about-subjects-and-permissions.md).
 
 `grantable` lists the relations that the access service grants and revokes. `creator` is the relation that Pyrite
 grants the subject that makes a resource known, so that someone can grant on the new resource.
@@ -103,7 +103,7 @@ The singular name `user` belongs to `pyrite.dev/Account`, so `user:anne` is the 
 declaration without `pyrite.dev/Account` still gives OpenFGA a type `user`, without relations, for the subjects of
 calls. See [Pyrite's types](pyrite-types.md).
 
-## Identifier kinds and flows
+## Identifier kinds and exchanges
 
 An identifier kind is one kind of thing that a person signs in with, such as an email address or a username. Pyrite
 has no kinds of its own. You declare each with a name and two CEL expressions over the string `value`:
@@ -122,9 +122,9 @@ identifier_kinds {
 code to it. A value without a named kind takes the first kind, in the order of the declaration, whose `match` it
 meets.
 
-A flow definition names what a flow of the authentication service starts from, the stages that it has to prove, and
-what it does when it ends, such as issuing a session. A declaration with flows declares `pyrite.dev/Account`. See
-[About accounts and flows](../accounts/about-accounts-and-flows.md).
+An exchange definition names what an exchange of the authentication service starts from, the stages that it has to
+prove, and what it does when it ends, such as issuing a session. A declaration with exchanges declares
+`pyrite.dev/Account`. See [About accounts and exchanges](../accounts/about-accounts-and-exchanges.md).
 
 ## The latest declaration
 

@@ -25,7 +25,7 @@ import dev.horizon.pyrite.database.RunningDatabase;
 import dev.horizon.pyrite.schema.v1.SchemaGrpcClient;
 import dev.horizon.pyrite.schema.v1.WriteDeclarationRequest;
 import dev.horizon.pyrite.storage.DeclarationBackend;
-import dev.horizon.pyrite.storage.FlowBackend;
+import dev.horizon.pyrite.storage.ExchangeBackend;
 import dev.horizon.pyrite.storage.KeyBackend;
 import dev.horizon.pyrite.storage.SessionBackend;
 import dev.horizon.spectrum.OpenFgaService;
@@ -66,6 +66,7 @@ public final class PyriteFixture implements AutoCloseable {
   public final CryptographyGrpcClient cryptography;
   public final AuthenticationGrpcClient authentication;
   public final Pyrite service;
+  public final FakeProvider provider;
 
   private final Database rows;
   private final EventBusGrpcServer server;
@@ -93,8 +94,14 @@ public final class PyriteFixture implements AutoCloseable {
     Aead root = KeysetHandle.generateNew(PredefinedAeadParameters.AES256_GCM)
         .getPrimitive(RegistryConfiguration.get(), Aead.class);
     rows = Database.builder(database.pool(), driver).extension(new ProtobufExtension()).build();
+    provider = FakeProvider.start(vertx);
     options = new PyriteOptions().setKeyOptions(new KeyOptions().setRoot(root))
         .setAuthenticationOptions(new AuthenticationOptions().setMacKey("keys/sessions").setEncryptionKey("keys/factors")
+            .setAccessTokenKey("keys/access")
+            .addProvider(new ProviderOptions().setName("oidc").setAuth(provider.openIdConnect(vertx))
+                .setRedirectUri("https://acme.dev/callback/oidc").addScope("openid").addScope("email"))
+            .addProvider(new ProviderOptions().setName("oauth").setAuth(provider.oauth(vertx))
+                .setRedirectUri("https://acme.dev/callback/oauth"))
             .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme")
                 .addOrigin("https://acme.dev"))
             .setIssuer("Acme").setMaxAnswers(3).setArgon2Options(new Argon2Options().setMemory(1024).setIterations(1)
@@ -124,18 +131,18 @@ public final class PyriteFixture implements AutoCloseable {
   }
 
   /**
-   * Makes a session, a flow or a key older, as if the time went on: it moves the times of its row back. The database
-   * is Pyrite's clock, so a test changes the rows, not the time.
+   * Makes a session, an exchange or a key older, as if the time went on: it moves the times of its row back. The
+   * database is Pyrite's clock, so a test changes the rows, not the time.
    *
-   * @param name the name of the session, flow or key
+   * @param name the name of the session, exchange or key
    * @param by how much older
    */
   public void older(String name, Duration by) throws Exception {
     if (name.startsWith("sessions/")) {
       older(new SessionBackend(rows), eq("name", name), by, "create_time", "expire_time", "idle_expire_time");
-    } else if (name.startsWith("flows/")) {
-      older(new FlowBackend(rows), eq("id", name.substring("flows/".length())), by, "expire_time",
-          "code_expire_time");
+    } else if (name.startsWith("exchanges/")) {
+      older(new ExchangeBackend(rows), eq("id", name.substring("exchanges/".length())), by, "expire_time",
+          "nonce_expire_time");
     } else if (name.startsWith("keys/")) {
       older(new KeyBackend(rows), eq("name", name), by, "create_time", "next_rotation_time");
     } else {
@@ -181,5 +188,6 @@ public final class PyriteFixture implements AutoCloseable {
     }
     client.close().await(TIMEOUT);
     server.close().await(TIMEOUT);
+    provider.close();
   }
 }

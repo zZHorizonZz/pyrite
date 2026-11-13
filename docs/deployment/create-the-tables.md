@@ -51,7 +51,7 @@ With an OpenFGA server in place of Spectrum, skip this step: the server keeps it
 
 ## Verify
 
-The database has the nine tables `pyrite_account`, `pyrite_declaration`, `pyrite_factor`, `pyrite_flow`,
+The database has the nine tables `pyrite_account`, `pyrite_declaration`, `pyrite_factor`, `pyrite_exchange`,
 `pyrite_identifier`, `pyrite_key`, `pyrite_key_version`, `pyrite_node` and `pyrite_session`, all empty, and
 `pyrite_schema_history` lists each migration as a success. Without the tables, every call of Pyrite fails with
 `INTERNAL`. See [Troubleshooting deployment](troubleshooting-deployment.md#internal-error).

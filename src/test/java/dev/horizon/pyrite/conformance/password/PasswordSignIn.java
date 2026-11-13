@@ -10,7 +10,7 @@ import dev.horizon.pyrite.conformance.condition.Authenticate;
 import dev.horizon.pyrite.conformance.condition.ExpectChallenge;
 import dev.horizon.pyrite.conformance.condition.ExpectPrincipal;
 import dev.horizon.pyrite.conformance.condition.ExpectSessionIssue;
-import dev.horizon.pyrite.conformance.condition.StartFlow;
+import dev.horizon.pyrite.conformance.condition.StartExchange;
 import java.time.Duration;
 
 @Summary("The right password issues a session of the account.")
@@ -19,7 +19,7 @@ final class PasswordSignIn extends AccountModule {
   @Override
   protected void run() {
     prepareAnne();
-    call(new StartFlow("", "sign-in", EMAIL));
+    call(new StartExchange("", "sign-in", EMAIL));
     callAndContinueOnFailure(new ExpectChallenge("pyrite.authentication.v1.PasswordAnswer", true),
         Requirement.PASSWORD_SIGN_IN);
     callAndStopOnFailure(new AnswerPassword(PASSWORD), Requirement.PASSWORD_SIGN_IN);

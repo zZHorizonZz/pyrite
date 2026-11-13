@@ -92,8 +92,8 @@ public final class IdentifierType {
   }
 
   /**
-   * Finds the identifier of a value, as a flow that starts from one does. A value of no kind is no failure when the
-   * request names no kind, so that a sign-in tells nothing of what Pyrite accepts.
+   * Finds the identifier of a value, as an exchange that starts from one does. A value of no kind is no failure when
+   * the request names no kind, so that a sign-in tells nothing of what Pyrite accepts.
    *
    * @param kind the declared kind, or empty for the kind that the value is of
    * @param value the value, as the person typed it

@@ -1,15 +1,21 @@
 package dev.horizon.pyrite.identity;
 
+import com.google.protobuf.Message;
 import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
+import java.util.Set;
 
 /**
- * A credential of an account, a factor under it: a password, a TOTP secret, a passkey or a set of recovery codes. A
- * flow enrols it as pending, and activates it when the flow ends; a pending credential that no flow activates is
- * purged after the lifetime of flows.
+ * A credential of an account, a factor under it: a password, a TOTP secret, a passkey, a set of recovery codes, or a
+ * linked account at a provider. Each
+ * kind verifies the answer that proves it, and tells what a right answer proves. An exchange enrols a credential as
+ * pending, and activates it when the exchange ends; a pending credential that no exchange activates is purged after the
+ * lifetime of exchanges.
+ *
+ * @param <A> the message of the answer that proves the credential, such as {@code PasswordAnswer}
  */
-public abstract sealed class Credential
-    permits PasswordCredential, TotpCredential, PasskeyCredential, RecoveryCodeCredential {
+public abstract sealed class Credential<A extends Message>
+    permits PasswordCredential, TotpCredential, PasskeyCredential, RecoveryCodeCredential, ProviderCredential {
 
   private final CredentialType type;
   private final Tables.Factor row;
@@ -28,7 +34,7 @@ public abstract sealed class Credential
   }
 
   /**
-   * Tells whether the credential counts in a sign-in: a flow activated it, and it is not removed.
+   * Tells whether the credential counts in a sign-in: an exchange activated it, and it is not removed.
    *
    * @return whether it is active
    */
@@ -42,13 +48,13 @@ public abstract sealed class Credential
    *
    * @return the active credential, or a failure with {@code ABORTED} when another change came first
    */
-  public Future<Credential> activate() {
+  public Future<Credential<A>> activate() {
     if (!replacesActive()) {
       return change(row.toBuilder().setState(Tables.Factor.State.ACTIVE).clearPurgeTime());
     }
     return type.credentials(account()).compose(credentials -> {
       Future<Void> removing = Future.succeededFuture();
-      for (Credential credential : credentials) {
+      for (Credential<?> credential : credentials) {
         if (credential.row.getKind() == row.getKind() && credential.isActive()) {
           removing = removing.compose(ignored -> credential.remove());
         }
@@ -68,19 +74,38 @@ public abstract sealed class Credential
   }
 
   /**
-   * Gives the credential as the result of a flow names it, without its secret.
+   * Gives the credential as the result of an exchange names it, without its secret.
    *
    * @return the factor, with its name, its account and its kind
    */
   public dev.horizon.pyrite.authentication.v1.Factor message() {
     return dev.horizon.pyrite.authentication.v1.Factor.newBuilder().setName(name()).setAccount(account())
-        .setKind(dev.horizon.pyrite.authentication.v1.Factor.Kind.valueOf(row.getKind().name())).build();
+        .setKind(dev.horizon.pyrite.authentication.v1.Factor.Kind.valueOf(row.getKind().name()))
+        .setProvider(row.getKind() == Tables.Factor.Kind.PROVIDER ? row.getCredentialId().substring(0, row
+            .getCredentialId().indexOf(':')) : "")
+        .build();
   }
 
   /**
    * Tells whether an account has one active credential of this kind, which a new one replaces when it is activated.
    */
+  /**
+   * Verifies an answer. A credential that is used up by a right answer, such as a recovery code or a TOTP time step,
+   * keeps that it was used.
+   *
+   * @param answer the answer, as the person gave it
+   * @param nonce the nonce of the stage of the exchange, which a passkey answer signs
+   * @return what the answer proves, or nothing for a wrong answer
+   */
+  public abstract Future<Set<Proof>> verify(A answer, byte[] nonce);
+
   abstract boolean replacesActive();
+
+  /**
+   * Tells whether the credential signs in on its own, as a password, a passkey or a linked provider account do; a TOTP
+   * secret and recovery codes are second factors.
+   */
+  abstract boolean signsInAlone();
 
   CredentialType type() {
     return type;
@@ -90,7 +115,8 @@ public abstract sealed class Credential
     return row;
   }
 
-  Future<Credential> change(Tables.Factor.Builder changed) {
-    return type.save(this, changed);
+  @SuppressWarnings("unchecked")
+  Future<Credential<A>> change(Tables.Factor.Builder changed) {
+    return type.save(this, changed).map(saved -> (Credential<A>) saved);
   }
 }

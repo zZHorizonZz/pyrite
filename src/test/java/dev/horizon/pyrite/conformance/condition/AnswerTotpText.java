@@ -5,7 +5,7 @@ import dev.horizon.pyrite.conformance.Condition;
 import dev.horizon.pyrite.conformance.Environment;
 
 /**
- * Answers the last flow with a TOTP code as it is written.
+ * Answers the last exchange with a TOTP code as it is written.
  */
 public record AnswerTotpText(String code) implements Condition {
 
