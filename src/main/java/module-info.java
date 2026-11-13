@@ -9,6 +9,7 @@ module dev.horizon.pyrite {
   requires transitive io.vertx.grpc.client;
   requires transitive io.vertx.grpc.common;
   requires transitive io.vertx.sql.client;
+  requires transitive io.vertx.auth.oauth2;
   requires transitive com.google.protobuf;
   requires transitive com.google.crypto.tink;
   requires transitive dev.horizon.cinder;
@@ -23,10 +24,6 @@ module dev.horizon.pyrite {
   requires com.google.common;
 
   exports dev.horizon.pyrite;
-  exports dev.horizon.pyrite.schema;
-  exports dev.horizon.pyrite.access;
-  exports dev.horizon.pyrite.crypto;
-  exports dev.horizon.pyrite.authentication;
   exports dev.horizon.pyrite.schema.v1;
   exports dev.horizon.pyrite.access.v1;
   exports dev.horizon.pyrite.crypto.v1;

@@ -8,13 +8,15 @@ option java_multiple_files = false;
 option java_outer_classname = "Tables";
 option java_package = "dev.horizon.pyrite.schema.declaration.v1";
 
-// A declaration that pyrite.schema.v1.Schema wrote, with the OpenFGA store and model that it wrote for it. The latest
-// is the one that every service reads.
+// A declaration that pyrite.schema.v1.Schema wrote, with the store of grants and the model that it wrote for it. The
+// latest is the one that every service reads. Each declaration is written on the one that was the latest, and no two
+// on the same one, so that of two Pyrites that write at once, one writes again on the declaration of the other.
 message Declaration {
   option (leadseal.v1.table) = {
     name: "pyrite_declaration"
     index: [
-      { fields: ["create_time"] }
+      { fields: ["create_time"] },
+      { fields: ["previous_id"] unique: true }
     ]
   };
 
@@ -29,7 +31,10 @@ message Declaration {
   // The authorization model that the declaration wrote to the store.
   string model_id = 4 [(leadseal.v1.column).text = { length: 26 }];
 
-  string create_time = 5 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 5 [(leadseal.v1.column).timestamp = { default_now: true }];
+
+  // The id of the declaration that was the latest when this one was written; empty for the first.
+  string previous_id = 6 [(leadseal.v1.column).text = { length: 36 }];
 }
 
 // A resource that Pyrite knows: its type and the resource it is under. The application keeps the resource itself;
@@ -38,7 +43,8 @@ message Node {
   option (leadseal.v1.table) = {
     name: "pyrite_node"
     index: [
-      { fields: ["parent"] }
+      { fields: ["parent"] },
+      { fields: ["type"] }
     ]
   };
 
@@ -59,7 +65,17 @@ message Node {
   string type = 2 [(leadseal.v1.column).text = { length: 255 }];
 
   // The name of the resource it is under; unset for a resource at the top.
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.declaration.v1.Node" field: "name" on_delete: ACTION_RESTRICT }
+  }];
 
-  string create_time = 4 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 4 [(leadseal.v1.column).timestamp = { default_now: true }];
 }

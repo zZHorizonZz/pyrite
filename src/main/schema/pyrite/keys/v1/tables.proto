@@ -18,38 +18,55 @@ message Key {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
-  string name = 2 [(leadseal.v1.column).text = {
-    length: 255
-    collation: [
-      { key: "postgresql" value: "C" },
-      { key: "mariadb" value: "utf8mb4_bin" },
-      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
-    ]
+  string name = 2 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.declaration.v1.Node" field: "name" on_delete: ACTION_CASCADE }
   }];
 
   optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
 
-  // ENCRYPTION, MAC or SIGNING.
-  string purpose = 11 [(leadseal.v1.column).text = { length: 16 }];
+  enum Purpose {
+    PURPOSE_UNSPECIFIED = 0;
+    ENCRYPTION = 1;
+    MAC = 2;
+    SIGNING = 3;
+  }
 
-  // AES256_GCM, HMAC_SHA256, RS256, ES256 or EDDSA.
-  string algorithm = 12 [(leadseal.v1.column).text = { length: 16 }];
+  enum Algorithm {
+    ALGORITHM_UNSPECIFIED = 0;
+    AES256_GCM = 1;
+    HMAC_SHA256 = 2;
+    RS256 = 3;
+    ES256 = 4;
+    EDDSA = 5;
+  }
+
+  Purpose purpose = 11;
+
+  Algorithm algorithm = 12;
 
   // How often the key gets a new primary version, in seconds; 0 for never.
   int64 rotation_period = 13;
@@ -67,11 +84,11 @@ message KeyVersion {
     name: "pyrite_key_version"
     index: [
       { fields: ["name"] unique: true },
-      { fields: ["parent"] }
+      { fields: ["parent", "number"] unique: true }
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -82,17 +99,27 @@ message KeyVersion {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.keys.v1.Key" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
@@ -101,10 +128,15 @@ message KeyVersion {
   // 1 for the first version of the key, and one more for each after it.
   int64 number = 11;
 
-  // ENABLED or DISABLED.
-  string state = 12 [(leadseal.v1.column).text = { length: 16 }];
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+  }
 
-  string algorithm = 13 [(leadseal.v1.column).text = { length: 16 }];
+  State state = 12;
+
+  Key.Algorithm algorithm = 13;
 
   // The public key of a signing version, as a JWK; empty for the others.
   optional string public_key = 14 [(leadseal.v1.column).json = {}];

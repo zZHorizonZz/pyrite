@@ -17,35 +17,43 @@ message Account {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
-  string name = 2 [(leadseal.v1.column).text = {
-    length: 255
-    collation: [
-      { key: "postgresql" value: "C" },
-      { key: "mariadb" value: "utf8mb4_bin" },
-      { key: "sqlserver" value: "Latin1_General_100_BIN2" }
-    ]
+  string name = 2 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.declaration.v1.Node" field: "name" on_delete: ACTION_CASCADE }
   }];
 
   optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
 
-  // HUMAN or SERVICE.
-  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    HUMAN = 1;
+    SERVICE = 2;
+  }
+
+  Kind kind = 11;
 }
 
 // An identifier of an account: the resource pyrite.dev/Identifier, under its account.
@@ -55,11 +63,12 @@ message Identifier {
     index: [
       { fields: ["name"] unique: true },
       { fields: ["parent"] },
-      { fields: ["kind", "value"] unique: true }
+      { fields: ["kind", "value"] },
+      { fields: ["claim"] unique: true }
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -70,17 +79,27 @@ message Identifier {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
@@ -103,6 +122,11 @@ message Identifier {
 
   // Whether the account prefers it among its identifiers; the caller sets it.
   bool primary = 14;
+
+  // The kind and the value, as email:anne@acme.dev, once the identifier is verified, so that no two verified
+  // identifiers hold one value; the identifier's own name while it is not verified, so that any account can add a value
+  // without learning or blocking whether another holds it.
+  string claim = 15 [(leadseal.v1.column).text = { length: 340 }];
 }
 
 // A factor of an account: the resource pyrite.dev/Factor, under its account.
@@ -116,7 +140,7 @@ message Factor {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -127,32 +151,58 @@ message Factor {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
 
-  // PASSWORD, TOTP, PASSKEY or RECOVERY_CODES.
-  string kind = 11 [(leadseal.v1.column).text = { length: 16 }];
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    PASSWORD = 1;
+    TOTP = 2;
+    PASSKEY = 3;
+    RECOVERY_CODES = 4;
+    PROVIDER = 5;
+  }
+
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    PENDING = 1;
+    ACTIVE = 2;
+  }
+
+  Kind kind = 11;
 
   // PENDING while it is enrolled, then ACTIVE.
-  string state = 12 [(leadseal.v1.column).text = { length: 16 }];
+  State state = 12;
 
-  // The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, or the recovery codes' MACs.
+  // The password's Argon2id hash, the TOTP secret encrypted, the passkey's credential, the recovery codes' MACs, or the
+  // provider account as its sign-in proved it.
   bytes secret = 13;
 
-  // A passkey's credential id; empty for the others.
+  // A passkey's credential id, or the provider and the id of a provider account, as google:1093...; empty for the
+  // others.
   string credential_id = 14 [(leadseal.v1.column).text = { length: 255 }];
 
   // A passkey's signature counter, or the last TOTP step that signed in.
@@ -172,7 +222,7 @@ message Session {
     ]
   };
 
-  string uid = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+  string uid = 1 [(leadseal.v1.column) = { primary_key: true uuid: { default_random: true } }];
 
   string name = 2 [(leadseal.v1.column).text = {
     length: 255
@@ -183,47 +233,129 @@ message Session {
     ]
   }];
 
-  optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
+  optional string parent = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
   optional string display_name = 4 [(leadseal.v1.column).text = { length: 255 }];
 
-  string labels = 5 [(leadseal.v1.column).json = {}];
+  string labels = 5 [(leadseal.v1.column).json = { default_value: "{}" }];
 
-  int64 revision = 6;
+  int64 revision = 6 [(leadseal.v1.column) = { integer: { default_value: 1 } rewrite: "old.revision + 1" }];
 
-  string create_time = 7 [(leadseal.v1.column).timestamp = {}];
+  string create_time = 7 [(leadseal.v1.column).timestamp = { default_now: true }];
 
-  string update_time = 8 [(leadseal.v1.column).timestamp = {}];
+  string update_time = 8 [(leadseal.v1.column) = { timestamp: { default_now: true } rewrite: "now()" }];
 
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
 
-  // The MAC of the token's secret.
-  bytes token_mac = 11;
+  reserved 11;
+  reserved "token_mac";
 
   string expire_time = 12 [(leadseal.v1.column).timestamp = {}];
 
   string idle_expire_time = 13 [(leadseal.v1.column).timestamp = {}];
 }
 
-// A flow in progress. It is not a resource: only the Authentication service reads and writes it.
-message Flow {
-  option (leadseal.v1.table) = { name: "pyrite_flow" };
+// The account at a provider that a factor of the kind PROVIDER links. The provider and the id are unique together, so
+// that no account at a provider is linked to two accounts. It goes with its factor.
+message ProviderLink {
+  option (leadseal.v1.table) = {
+    name: "pyrite_provider_link"
+    index: [{ fields: ["provider", "account_id"] unique: true }]
+  };
+
+  // The factor.
+  string factor = 1 [(leadseal.v1.column) = {
+    primary_key: true
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Factor" field: "name" on_delete: ACTION_CASCADE }
+  }];
+
+  // The name of the provider in the options, such as google.
+  string provider = 2 [(leadseal.v1.column).text = { length: 63 }];
+
+  // The id of the account at the provider.
+  string account_id = 3 [(leadseal.v1.column).text = { length: 255 }];
+}
+
+// A refresh token of a session. A refresh trades it for the next, so a token works once; one that comes back after its
+// trade ends its session. It goes with its session.
+message RefreshToken {
+  option (leadseal.v1.table) = {
+    name: "pyrite_refresh_token"
+    index: [{ fields: ["session"] }]
+  };
+
+  // The id of the token, before the dot in the token.
+  string id = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
+
+  // The session.
+  string session = 2 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Session" field: "name" on_delete: ACTION_CASCADE }
+  }];
+
+  // The MAC of the token's secret, which the MAC key of the options signs.
+  bytes mac = 3;
+
+  string create_time = 4 [(leadseal.v1.column).timestamp = { default_now: true }];
+
+  // When a refresh traded the token for the next; unset while it works.
+  optional string use_time = 5 [(leadseal.v1.column).timestamp = {}];
+}
+
+// An exchange in progress. It is not a resource: only the Authentication service reads and writes it.
+message Exchange {
+  option (leadseal.v1.table) = { name: "pyrite_exchange" };
 
   string id = 1 [(leadseal.v1.column) = { primary_key: true text: { length: 36 } }];
 
   string definition = 2 [(leadseal.v1.column).text = { length: 63 }];
 
-  // The account; unset for a flow that names no account that exists.
-  optional string account = 3 [(leadseal.v1.column).text = { length: 255 }];
+  // The account; unset for an exchange that names no account that exists.
+  optional string account = 3 [(leadseal.v1.column) = {
+    text: {
+      length: 255
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.authentication.v1.Account" field: "name" on_delete: ACTION_CASCADE }
+  }];
 
-  // The identifier that the flow started with, if any.
+  // The identifier that the exchange started with, if any.
   optional string identifier = 4 [(leadseal.v1.column).text = { length: 255 }];
 
   int64 revision = 5;
 
-  // The stage of the definition that the flow is in.
+  // The stage of the definition that the exchange is in.
   int32 stage = 6;
 
   // What the answers of the stage have proven, as JSON.
@@ -233,22 +365,27 @@ message Flow {
 
   string expire_time = 9 [(leadseal.v1.column).timestamp = {}];
 
-  // The MAC of the code that was sent, and when it stops working.
-  optional bytes code_mac = 10;
+  // The random nonce of the stage, which a passkey answer signs, and when it, and what the verifiers keep with it, stop
+  // working.
+  optional bytes nonce = 10;
 
-  optional string code_expire_time = 11 [(leadseal.v1.column).timestamp = {}];
+  optional string nonce_expire_time = 11 [(leadseal.v1.column).timestamp = {}];
 
-  // The challenge of a passkey ceremony.
-  optional bytes challenge = 12;
+  // What the verifiers keep for the stage, such as the MAC of the code that was sent, as JSON by the name of the
+  // answer.
+  string state = 12 [(leadseal.v1.column).json = {}];
 
-  // The factor that the flow enrolls, if any.
+  // The factor that the exchange enrolls, if any.
   optional string factor = 13 [(leadseal.v1.column).text = { length: 255 }];
 
-  // The id of the last answer's request, and the flow that it returned.
+  // The id of the last answer's request, and the exchange that it returned.
   optional string request_id = 14 [(leadseal.v1.column).text = { length: 64 }];
 
   optional bytes response = 15;
 
-  // Whether the flow is done; a done flow takes no answers.
+  // Whether the exchange is done; a done exchange takes no answers.
   bool done = 16;
+
+  // The account at a provider that the exchange creates an account for, as a ProviderAccount.
+  optional bytes provider_account = 17;
 }

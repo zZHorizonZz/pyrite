@@ -29,13 +29,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-final class Oracle {
+public final class Oracle {
 
   private final OpenFGAServiceGrpcClient openFga;
   private final String store;
   private final Map<String, String> singulars = new HashMap<>();
 
-  Oracle(OpenFGAServiceGrpcClient openFga, Declaration declaration) throws Exception {
+  public Oracle(OpenFGAServiceGrpcClient openFga, Declaration declaration) throws Exception {
     this.openFga = openFga;
     this.store = openFga.createStore(CreateStoreRequest.newBuilder().setName("oracle").build()).await(TIMEOUT)
         .getId();
@@ -63,12 +63,12 @@ final class Oracle {
     openFga.writeAuthorizationModel(model.build()).await(TIMEOUT);
   }
 
-  String object(String name) {
+  public String object(String name) {
     int slash = name.indexOf('/');
     return singulars.get(name.substring(0, slash)) + ":" + name.substring(slash + 1);
   }
 
-  void write(String name, String relation, String grantee, String condition, Struct context) throws Exception {
+  public void write(String name, String relation, String grantee, String condition, Struct context) throws Exception {
     TupleKey.Builder tuple = TupleKey.newBuilder().setObject(object(name)).setRelation(relation).setUser(grantee);
     if (!condition.isEmpty()) {
       tuple.setCondition(RelationshipCondition.newBuilder().setName(condition).setContext(context));
@@ -77,19 +77,19 @@ final class Oracle {
         .addTupleKeys(tuple)).build()).await(TIMEOUT);
   }
 
-  void parent(String name, String parent) throws Exception {
+  public void parent(String name, String parent) throws Exception {
     openFga.write(WriteRequest.newBuilder().setStoreId(store).setWrites(WriteRequestWrites.newBuilder()
         .addTupleKeys(TupleKey.newBuilder().setObject(object(name)).setRelation("parent").setUser(object(parent))))
         .build()).await(TIMEOUT);
   }
 
-  boolean check(String principal, String name, String relation, Struct context) throws Exception {
+  public boolean check(String principal, String name, String relation, Struct context) throws Exception {
     return openFga.check(CheckRequest.newBuilder().setStoreId(store).setTupleKey(CheckRequestTupleKey.newBuilder()
         .setUser(principal).setRelation(relation).setObject(object(name))).setContext(context).build())
         .await(TIMEOUT).getAllowed();
   }
 
-  Set<String> users(String name, String relation, Struct context) throws Exception {
+  public Set<String> users(String name, String relation, Struct context) throws Exception {
     String object = object(name);
     int colon = object.indexOf(':');
     Set<String> users = new TreeSet<>();

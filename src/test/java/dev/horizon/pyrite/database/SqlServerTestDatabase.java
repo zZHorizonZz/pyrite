@@ -39,6 +39,11 @@ public final class SqlServerTestDatabase implements TestDatabase {
   }
 
   @Override
+  public void stop() {
+    CONTAINER.stop();
+  }
+
+  @Override
   public String migrations() {
     return "sqlserver";
   }

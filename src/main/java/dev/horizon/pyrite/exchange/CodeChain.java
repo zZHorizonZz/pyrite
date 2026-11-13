@@ -1,0 +1,40 @@
+package dev.horizon.pyrite.exchange;
+
+import dev.horizon.pyrite.CodeContext;
+import dev.horizon.pyrite.authentication.v1.Delivery;
+import io.vertx.core.Handler;
+import java.util.List;
+
+/**
+ * A run of the interceptors that deliver a one-time code.
+ */
+final class CodeChain extends Chain<CodeContext> {
+
+  private final Delivery delivery;
+
+  CodeChain(List<Handler<CodeContext>> interceptors, Delivery delivery) {
+    super(interceptors);
+    this.delivery = delivery;
+  }
+
+  @Override
+  CodeContext context(Turn turn) {
+    return new CodeContext() {
+
+      @Override
+      public Delivery delivery() {
+        return delivery;
+      }
+
+      @Override
+      public void next() {
+        turn.next();
+      }
+
+      @Override
+      public void fail(Throwable cause) {
+        turn.fail(cause);
+      }
+    };
+  }
+}
