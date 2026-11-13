@@ -3,8 +3,10 @@ package dev.horizon.pyrite.storage;
 import static dev.horizon.basepoint.expression.Expression.now;
 import static dev.horizon.basepoint.filter.Filter.and;
 import static dev.horizon.basepoint.filter.Filter.eq;
+import static dev.horizon.basepoint.filter.Filter.isNotNull;
 import static dev.horizon.basepoint.filter.Filter.isNull;
 import static dev.horizon.basepoint.filter.Filter.lte;
+import static dev.horizon.basepoint.filter.Filter.or;
 
 import dev.horizon.basepoint.LockMode;
 import dev.horizon.cinder.Database;
@@ -44,11 +46,13 @@ public record FactorBackend(Database database) implements ResourceBackend<Tables
   }
 
   /**
-   * Deletes the rows of factors whose purge time passed.
+   * Deletes the rows of factors that were removed, and of pending factors whose purge time passed. A removed factor goes
+   * by its delete time being set, not by comparing its purge time with the clock: a database that keeps a time to fewer
+   * digits than its clock gives can store a time just after the clock of the next statement.
    *
    * @return the number of rows
    */
   public Future<Long> purge() {
-    return execute(delete().where(lte("purge_time", now())));
+    return execute(delete().where(or(isNotNull("delete_time"), lte("purge_time", now()))));
   }
 }

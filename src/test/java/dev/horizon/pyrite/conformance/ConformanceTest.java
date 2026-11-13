@@ -55,8 +55,17 @@ class ConformanceTest {
     return TestDatabase.selected().stream().map(database -> DynamicContainer.dynamicContainer(database.name(),
         PLANS.stream().map(plan -> DynamicContainer.dynamicContainer(plan.name(), Variant.on(database).stream()
             .map(variant -> DynamicContainer.dynamicContainer(variant.toString(), plan.modules().stream()
-                .map(module -> module.get()).filter(module -> module.appliesTo(variant))
+                .map(module -> module.get()).filter(module -> module.appliesTo(variant) && selected(module))
                 .map(module -> DynamicTest.dynamicTest(module.summary(), () -> run(module, variant)))))))));
+  }
+
+  /**
+   * Tells whether a module runs: every module, or those that the property {@code pyrite.test.module} names by the
+   * simple names of their classes, separated by commas.
+   */
+  private static boolean selected(ConformanceModule module) {
+    String names = System.getProperty("pyrite.test.module", "");
+    return names.isBlank() || List.of(names.split(",")).contains(module.getClass().getSimpleName());
   }
 
   private void run(ConformanceModule module, Variant variant) throws Exception {

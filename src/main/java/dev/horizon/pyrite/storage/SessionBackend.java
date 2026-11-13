@@ -5,6 +5,7 @@ import static dev.horizon.basepoint.expression.Expression.now;
 import static dev.horizon.basepoint.filter.Filter.and;
 import static dev.horizon.basepoint.filter.Filter.eq;
 import static dev.horizon.basepoint.filter.Filter.gt;
+import static dev.horizon.basepoint.filter.Filter.isNotNull;
 import static dev.horizon.basepoint.filter.Filter.isNull;
 import static dev.horizon.basepoint.filter.Filter.lt;
 import static dev.horizon.basepoint.filter.Filter.lte;
@@ -65,12 +66,14 @@ public record SessionBackend(Database database) implements ResourceBackend<Table
   }
 
   /**
-   * Deletes the rows of sessions that ended or expired.
+   * Deletes the rows of sessions that ended or expired. An ended session goes by its delete time being set, not by
+   * comparing its purge time with the clock: a database that keeps a time to fewer digits than its clock gives can
+   * store a time just after the clock of the next statement.
    *
    * @return the number of rows
    */
   public Future<Long> purge() {
-    return execute(delete().where(or(lte("purge_time", now()), lte("expire_time", now()))));
+    return execute(delete().where(or(isNotNull("delete_time"), lte("expire_time", now()))));
   }
 
   private static Filter live() {
