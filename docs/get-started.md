@@ -33,7 +33,7 @@ on the project.
      <dependency>
        <groupId>dev.horizon</groupId>
        <artifactId>pyrite</artifactId>
-       <version>0.3.2-SNAPSHOT</version>
+       <version>0.4.0</version>
      </dependency>
    </dependencies>
    ```

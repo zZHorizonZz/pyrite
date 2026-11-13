@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/zZHorizonZz/pyrite/compare/v0.3.1...v0.4.0) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* let the database keep every time and rule, keep data in the protobuf messages and behaviour in services, give sessions access and refresh tokens, and sign people in at providers. ([#39](https://github.com/zZHorizonZz/pyrite/issues/39))
+
+### Features
+
+* let the database keep every time and rule, keep data in the protobuf messages and behaviour in services, give sessions access and refresh tokens, and sign people in at providers. ([#39](https://github.com/zZHorizonZz/pyrite/issues/39)) ([54cbf81](https://github.com/zZHorizonZz/pyrite/commit/54cbf81bf08740ed12ecdf791919ae4b67fea306))
+
 ## [0.3.1](https://github.com/zZHorizonZz/pyrite/compare/v0.3.0...v0.3.1) (2026-10-28)
 
 
