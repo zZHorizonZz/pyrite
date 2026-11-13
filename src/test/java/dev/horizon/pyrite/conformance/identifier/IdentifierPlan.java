@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * The plan of identifiers and accounts: their formats, owners, and uniqueness.
+ * The plan of identifiers and accounts: their formats, owners, and uniqueness, and who lists factors and deletes
+ * accounts.
  */
 public final class IdentifierPlan implements Plan {
 
@@ -19,6 +20,6 @@ public final class IdentifierPlan implements Plan {
   public List<Supplier<ConformanceModule>> modules() {
     return List.<Supplier<ConformanceModule>> of(IdentifierNormalization::new, IdentifierMatch::new, IdentifierKind::new,
         IdentifierWithoutKind::new, IdentifierOwner::new, IdentifierUniqueness::new, IdentifierList::new, AccountKind::new,
-        AccountId::new, AccountOwner::new);
+        AccountId::new, AccountOwner::new, AccountDeletePermission::new, FactorList::new);
   }
 }

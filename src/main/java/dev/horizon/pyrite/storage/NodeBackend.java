@@ -30,4 +30,14 @@ public record NodeBackend(Database database) implements Backend<Tables.Node, Str
   public Future<Boolean> occupied(String parent) {
     return exists(query().where(eq("parent", parent)));
   }
+
+  /**
+   * Tells whether resources of a type are known.
+   *
+   * @param type the name of the type, such as {@code acme.dev/Project}
+   * @return whether a row has the type
+   */
+  public Future<Boolean> holds(String type) {
+    return exists(query().where(eq("type", type)));
+  }
 }

@@ -18,6 +18,7 @@ public final class DeclarationPlan implements Plan {
   @Override
   public List<Supplier<ConformanceModule>> modules() {
     return List.<Supplier<ConformanceModule>> of(LatestDeclaration::new, EarlierDeclaration::new, DeclarationRefusal::new,
-        DeclarationWithoutAccount::new, UnknownDeclaration::new, NoDeclaration::new);
+        DeclarationWithoutAccount::new, UnknownDeclaration::new, NoDeclaration::new, ResourceReach::new,
+        FirstDeclarationsAtOnce::new);
   }
 }

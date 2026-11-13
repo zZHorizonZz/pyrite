@@ -22,6 +22,8 @@ import java.util.regex.Pattern;
  */
 public final class ResourceTree {
 
+  private static final System.Logger LOGGER = System.getLogger(ResourceTree.class.getName());
+
   private static final Pattern ID = Pattern.compile("[a-z]([a-z0-9-]{0,61}[a-z0-9])?");
 
   private final TypeSystem types;
@@ -66,7 +68,7 @@ public final class ResourceTree {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The id of " + name + " does not"
           + " match " + ID.pattern() + "."));
     }
-    Resource created = new Resource(this, type, name);
+    Resource resource = new Resource(this, type, name);
     return place(type, parent)
         .compose(above -> above.isEmpty() ? Future.succeededFuture(above)
             : above.get().require(creator, type.permissions().getCreate(), context).map(above))
@@ -79,13 +81,33 @@ public final class ResourceTree {
           above.ifPresent(found -> node.setParent(found.name()));
           return nodes.insert(node.build()).map(above);
         }))
-        .compose(above -> above.isEmpty() ? Future.succeededFuture()
-            : openFga.write(TupleKey.newBuilder().setUser(above.get().object().toString())
-                .setRelation(TypeSystem.PARENT).setObject(created.object().toString()).build()))
-        .compose(ignored -> type.creator().isEmpty() ? Future.succeededFuture()
-            : openFga.write(TupleKey.newBuilder().setUser(creator.toString()).setRelation(type.creator())
-                .setObject(created.object().toString()).build()))
-        .map(created);
+        .compose(above -> link(resource, type, above, creator).recover(failure -> undo(resource, failure)))
+        .map(resource);
+  }
+
+  /**
+   * Writes the tuples of a new resource: its parent, and its creator in the relation that the type gives creators.
+   */
+  private Future<Void> link(Resource resource, ResourceType type, Optional<Resource> above, Subject creator) {
+    Future<Void> parent = above.isEmpty() ? Future.succeededFuture()
+        : openFga.write(TupleKey.newBuilder().setUser(above.get().object().toString()).setRelation(TypeSystem.PARENT)
+            .setObject(resource.object().toString()).build());
+    return parent.compose(ignored -> type.creator().isEmpty() ? Future.succeededFuture()
+        : openFga.write(TupleKey.newBuilder().setUser(creator.toString()).setRelation(type.creator())
+            .setObject(resource.object().toString()).build()));
+  }
+
+  /**
+   * Undoes a resource whose tuples failed: its tuples go, and then its node, so that the name can be made again. A
+   * failure of the undoing is logged, and the call fails with the first failure.
+   */
+  private <T> Future<T> undo(Resource resource, Throwable failure) {
+    return resource.forget().compose(ignored -> nodes.deleteById(resource.name())).transform(undone -> {
+      if (undone.failed()) {
+        LOGGER.log(System.Logger.Level.ERROR, "The half-made resource " + resource.name() + " stays", undone.cause());
+      }
+      return Future.failedFuture(failure);
+    });
   }
 
   /**

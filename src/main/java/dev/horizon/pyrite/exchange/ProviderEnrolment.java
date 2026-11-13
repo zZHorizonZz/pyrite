@@ -1,10 +1,7 @@
 package dev.horizon.pyrite.exchange;
 
-import com.google.protobuf.Any;
-import dev.horizon.pyrite.authentication.v1.Challenge;
-import dev.horizon.pyrite.authentication.v1.Delivery;
 import dev.horizon.pyrite.authentication.v1.ProviderAnswer;
-import dev.horizon.pyrite.identity.CredentialType;
+import dev.horizon.pyrite.identity.FactorService;
 import dev.horizon.pyrite.schema.v1.Stage;
 import io.vertx.core.Future;
 import java.util.Optional;
@@ -13,19 +10,10 @@ import java.util.Optional;
  * The link of an account at a provider to the account of the exchange: a sign-in at the provider enrols it as a
  * pending factor. A provider account that an account links already fails the answer with {@code ALREADY_EXISTS}.
  */
-final class ProviderEnrolment implements Enrolling<ProviderAnswer> {
+final class ProviderEnrolment extends ProviderChallenge implements Enrolling<ProviderAnswer> {
 
-  private final ProviderSet providers;
-  private final CredentialType credentials;
-
-  ProviderEnrolment(ProviderSet providers, CredentialType credentials) {
-    this.providers = providers;
-    this.credentials = credentials;
-  }
-
-  @Override
-  public ProviderAnswer prototype() {
-    return ProviderAnswer.getDefaultInstance();
+  ProviderEnrolment(ProviderSet providers, FactorService factors) {
+    super(providers, factors);
   }
 
   @Override
@@ -39,24 +27,12 @@ final class ProviderEnrolment implements Enrolling<ProviderAnswer> {
   }
 
   @Override
-  public Future<Optional<Delivery>> prepare(Exchange exchange) {
-    providers.prepare(exchange, this);
-    return Future.succeededFuture(Optional.empty());
-  }
-
-  @Override
-  public Future<Challenge> challenge(Exchange exchange) {
-    return Future.succeededFuture(Challenge.newBuilder().setMethod(name())
-        .setParameters(Any.pack(providers.redirects(exchange, this))).build());
-  }
-
-  @Override
-  public Future<Optional<Evidence>> verify(Exchange exchange, ProviderAnswer answer) {
+  public Future<Optional<Evidence>> verify(ExchangeRecord exchange, ProviderAnswer answer) {
     return providers.trade(exchange, this, answer).compose(account -> account.isEmpty()
         ? Future.succeededFuture(Optional.empty())
         : exchange.claimant().requireAccount()
-            .compose(owner -> credentials.enrolProvider(owner.name(), account.get())).map(credential -> {
-              exchange.enrol(credential);
+            .compose(owner -> factors.enrolProvider(owner.getName(), account.get())).map(factor -> {
+              exchange.enrol(factor);
               return Optional.of(Evidence.ENROLMENT);
             }));
   }

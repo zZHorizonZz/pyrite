@@ -4,7 +4,7 @@ import com.google.protobuf.Message;
 import dev.horizon.pyrite.schema.v1.Stage;
 
 /**
- * A verifier that adds a credential to the account of the exchange: a right answer enrols it as pending, and the
+ * A verifier that adds a factor to the account of the exchange: a right answer enrols it as pending, and the
  * exchange activates it when it ends.
  *
  * @param <A> the message of the answer

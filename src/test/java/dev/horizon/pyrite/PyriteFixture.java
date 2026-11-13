@@ -42,6 +42,8 @@ import io.vertx.grpc.eventbus.EventBusGrpcServer;
 import io.vertx.grpc.server.GrpcServer;
 import io.vertx.grpc.server.GrpcServerOptions;
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
 public final class PyriteFixture implements AutoCloseable {
@@ -68,11 +70,9 @@ public final class PyriteFixture implements AutoCloseable {
   public final Pyrite service;
   public final FakeProvider provider;
 
+  /** The servers and clients that the fixture opened, the last one first. */
+  private final Deque<AutoCloseable> opened = new ArrayDeque<>();
   private final Database rows;
-  private final EventBusGrpcServer server;
-  private final EventBusGrpcClient client;
-  private final HttpServer http;
-  private final GrpcClient httpClient;
 
   public PyriteFixture(RunningDatabase database) throws Exception {
     this(database, Transport.EVENT_BUS);
@@ -83,51 +83,64 @@ public final class PyriteFixture implements AutoCloseable {
    */
   public PyriteFixture(RunningDatabase database, Transport transport) throws Exception {
     this.database = database;
-    database.empty();
-    vertx = database.vertx();
-    Driver driver = database.driver();
-    server = EventBusGrpcServer.server(vertx).await(TIMEOUT);
-    client = EventBusGrpcClient.client(vertx).await(TIMEOUT);
-    server.addService(OpenFgaService.create(vertx, database.pool(), driver));
-    openFga = OpenFGAServiceGrpcClient.create(client);
-    AeadConfig.register();
-    Aead root = KeysetHandle.generateNew(PredefinedAeadParameters.AES256_GCM)
-        .getPrimitive(RegistryConfiguration.get(), Aead.class);
-    rows = Database.builder(database.pool(), driver).extension(new ProtobufExtension()).build();
-    provider = FakeProvider.start(vertx);
-    options = new PyriteOptions().setKeyOptions(new KeyOptions().setRoot(root))
-        .setAuthenticationOptions(new AuthenticationOptions().setMacKey("keys/sessions").setEncryptionKey("keys/factors")
-            .setAccessTokenKey("keys/access")
-            .addProvider(new ProviderOptions().setName("oidc").setAuth(provider.openIdConnect(vertx))
-                .setRedirectUri("https://acme.dev/callback/oidc").addScope("openid").addScope("email"))
-            .addProvider(new ProviderOptions().setName("oauth").setAuth(provider.oauth(vertx))
-                .setRedirectUri("https://acme.dev/callback/oauth"))
-            .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme")
-                .addOrigin("https://acme.dev"))
-            .setIssuer("Acme").setMaxAnswers(3).setArgon2Options(new Argon2Options().setMemory(1024).setIterations(1)
-                .setParallelism(1)));
-    Pyrite pyrite = Pyrite.pyrite(vertx, database.pool(), driver, openFga, options);
-    if (transport == Transport.HTTP) {
-      GrpcServer grpc = GrpcServer.server(vertx, new GrpcServerOptions().setMaxMessageSize(MAX_MESSAGE_BYTES));
-      service = pyrite.bind(grpc);
-      http = vertx.createHttpServer().requestHandler(grpc).listen(0, "localhost").await(TIMEOUT);
-      httpClient = GrpcClient.client(vertx, new GrpcClientOptions().setMaxMessageSize(MAX_MESSAGE_BYTES));
-      SocketAddress address = SocketAddress.inetSocketAddress(http.actualPort(), "localhost");
-      schema = SchemaGrpcClient.create(httpClient, address);
-      access = AccessGrpcClient.create(httpClient, address);
-      cryptography = CryptographyGrpcClient.create(httpClient, address);
-      authentication = AuthenticationGrpcClient.create(httpClient, address);
-    } else {
-      service = pyrite.bind(server);
-      http = null;
-      httpClient = null;
-      schema = SchemaGrpcClient.create(client);
-      access = AccessGrpcClient.create(client);
-      cryptography = CryptographyGrpcClient.create(client);
-      authentication = AuthenticationGrpcClient.create(client);
+    try {
+      database.empty();
+      vertx = database.vertx();
+      Driver driver = database.driver();
+      EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await(TIMEOUT);
+      opened.push(() -> server.close().await(TIMEOUT));
+      EventBusGrpcClient client = EventBusGrpcClient.client(vertx).await(TIMEOUT);
+      opened.push(() -> client.close().await(TIMEOUT));
+      server.addService(OpenFgaService.create(vertx, database.pool(), driver));
+      openFga = OpenFGAServiceGrpcClient.create(client);
+      AeadConfig.register();
+      Aead root = KeysetHandle.generateNew(PredefinedAeadParameters.AES256_GCM)
+          .getPrimitive(RegistryConfiguration.get(), Aead.class);
+      rows = Database.builder(database.pool(), driver).extension(new ProtobufExtension()).build();
+      provider = FakeProvider.start(vertx);
+      opened.push(provider::close);
+      options = new PyriteOptions().setKeyOptions(new KeyOptions().setRoot(root))
+          .setAuthenticationOptions(new AuthenticationOptions().setMacKey("keys/sessions")
+              .setEncryptionKey("keys/factors").setAccessTokenKey("keys/access")
+              .addProvider(new ProviderOptions().setName("oidc").setAuth(provider.openIdConnect(vertx))
+                  .setRedirectUri("https://acme.dev/callback/oidc").addScope("openid").addScope("email"))
+              .addProvider(new ProviderOptions().setName("oauth").setAuth(provider.oauth(vertx))
+                  .setRedirectUri("https://acme.dev/callback/oauth"))
+              .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme")
+                  .addOrigin("https://acme.dev"))
+              .setIssuer("Acme").setMaxAnswers(3).setArgon2Options(new Argon2Options().setMemory(1024)
+                  .setIterations(1).setParallelism(1)));
+      Pyrite pyrite = Pyrite.pyrite(vertx, database.pool(), driver, openFga, options);
+      if (transport == Transport.HTTP) {
+        GrpcServer grpc = GrpcServer.server(vertx, new GrpcServerOptions().setMaxMessageSize(MAX_MESSAGE_BYTES));
+        service = pyrite.bind(grpc);
+        HttpServer http = vertx.createHttpServer().requestHandler(grpc).listen(0, "localhost").await(TIMEOUT);
+        opened.push(() -> http.close().await(TIMEOUT));
+        GrpcClient httpClient = GrpcClient.client(vertx,
+            new GrpcClientOptions().setMaxMessageSize(MAX_MESSAGE_BYTES));
+        opened.push(() -> httpClient.close().await(TIMEOUT));
+        SocketAddress address = SocketAddress.inetSocketAddress(http.actualPort(), "localhost");
+        schema = SchemaGrpcClient.create(httpClient, address);
+        access = AccessGrpcClient.create(httpClient, address);
+        cryptography = CryptographyGrpcClient.create(httpClient, address);
+        authentication = AuthenticationGrpcClient.create(httpClient, address);
+      } else {
+        service = pyrite.bind(server);
+        schema = SchemaGrpcClient.create(client);
+        access = AccessGrpcClient.create(client);
+        cryptography = CryptographyGrpcClient.create(client);
+        authentication = AuthenticationGrpcClient.create(client);
+      }
+      schema.writeDeclaration(WriteDeclarationRequest.newBuilder().setDeclaration(Acme.declaration()).build())
+          .await(TIMEOUT);
+    } catch (Throwable failure) {
+      try {
+        close();
+      } catch (Exception closing) {
+        failure.addSuppressed(closing);
+      }
+      throw failure;
     }
-    schema.writeDeclaration(WriteDeclarationRequest.newBuilder().setDeclaration(Acme.declaration()).build())
-        .await(TIMEOUT);
   }
 
   /**
@@ -180,14 +193,27 @@ public final class PyriteFixture implements AutoCloseable {
     return status[0];
   }
 
+  /**
+   * Closes every server and client that the fixture opened, the last one first, even when one of them fails to close.
+   *
+   * @throws Exception the first failure to close, with the later ones suppressed
+   */
   @Override
   public void close() throws Exception {
-    if (http != null) {
-      httpClient.close().await(TIMEOUT);
-      http.close().await(TIMEOUT);
+    Exception failure = null;
+    while (!opened.isEmpty()) {
+      try {
+        opened.pop().close();
+      } catch (Exception closing) {
+        if (failure == null) {
+          failure = closing;
+        } else {
+          failure.addSuppressed(closing);
+        }
+      }
     }
-    client.close().await(TIMEOUT);
-    server.close().await(TIMEOUT);
-    provider.close();
+    if (failure != null) {
+      throw failure;
+    }
   }
 }

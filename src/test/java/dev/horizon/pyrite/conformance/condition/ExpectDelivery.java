@@ -2,7 +2,6 @@ package dev.horizon.pyrite.conformance.condition;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.horizon.pyrite.authentication.v1.CodeSent;
 import dev.horizon.pyrite.authentication.v1.Delivery;
 import dev.horizon.pyrite.authentication.v1.Exchange;
 import dev.horizon.pyrite.conformance.CodeDelivery;
@@ -25,8 +24,6 @@ public record ExpectDelivery(String to, String kind) implements Condition {
     assertThat(delivery.getIdentifier()).as("identifier").startsWith("identifiers/");
     assertThat(delivery.getCode()).as("code").matches("[0-9]{6}");
     Exchange exchange = environment.get(Value.EXCHANGE);
-    assertThat(exchange.getChallenges(0).getParameters().unpack(CodeSent.class).getIdentifier()).as("the challenge")
-        .isEqualTo(delivery.getIdentifier());
     if (environment.variant().delivery() == CodeDelivery.INTERCEPTOR) {
       assertThat(exchange.getDeliveriesList()).as("the codes in the response").isEmpty();
     }

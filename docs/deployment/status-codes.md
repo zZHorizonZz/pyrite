@@ -52,10 +52,12 @@ Each call can also fail with `INVALID_ARGUMENT` and `INTERNAL`.
 | `DeleteAccount`                 | `NOT_FOUND`, `PERMISSION_DENIED`                                                                                         |
 | `AddIdentifier`                 | `NOT_FOUND`, `PERMISSION_DENIED`, `ALREADY_EXISTS`                                                                       |
 | `GetSession`, `EndSession`      | `NOT_FOUND`, `PERMISSION_DENIED`                                                                                         |
-| `Purge`                         | None                                                                                                                     |
 | `StartExchange`                 | `NOT_FOUND` for the subject's account or identifier, `FAILED_PRECONDITION`                                               |
 | `ContinueExchange`              | `NOT_FOUND`, `PERMISSION_DENIED`, `FAILED_PRECONDITION`, `ABORTED`, `RESOURCE_EXHAUSTED`                                 |
 | `Authenticate`                  | `UNAUTHENTICATED`                                                                                                        |
+| `RefreshSession`                | `UNAUTHENTICATED` for a wrong refresh token, an ended session, or a token used before, which ends its session            |
+| `ListFactors`                   | `NOT_FOUND`, `PERMISSION_DENIED`                                                                                         |
+| `DeleteFactor`                  | `NOT_FOUND`, also for a removed factor, `PERMISSION_DENIED`, `FAILED_PRECONDITION` for the last that signs in alone      |
 
 Before the first declaration is written, `ReadDeclaration` fails with `NOT_FOUND`, and every call of the other
 services fails with `FAILED_PRECONDITION`. A call of the cryptography service fails with `FAILED_PRECONDITION` when

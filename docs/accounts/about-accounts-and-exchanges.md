@@ -145,7 +145,7 @@ codes replaces the active one of its kind; passkeys add up.
 `StartExchange` and `ContinueExchange` give the exchange with its `challenges`: the answers that it takes next. Each
 challenge names its answer message in `method`, such as `pyrite.authentication.v1.PasswordAnswer`. Some carry
 `parameters`: `TotpProvisioning` with the `otpauth` URI of a TOTP enrolment, `PasskeyOptions` with the WebAuthn options
-of a passkey, and `CodeSent` with the identifier that a code went to.
+of a passkey, and `ProviderRedirects` with the authorization URL of each provider.
 
 `ContinueExchange` answers one challenge per call:
 
@@ -178,17 +178,18 @@ Pyrite sends no messages. Your application picks how to send each code by its `k
 a text message for `phone`, and the person answers with a `CodeAnswer`. A code interceptor can send the codes
 instead, so that no response carries one. See [Intercept exchanges](intercept-exchanges.md).
 
-The code challenge carries `CodeSent` parameters: the `identifier` that the code went to, and its `kind`. Pyrite does
-not mask the value. Your application has it in the delivery, and shows the person where the code went in the form
-that it chooses, such as `a***@acme.dev`.
+The code challenge carries no parameters, so that it is the same whether the identifier exists or not. The delivery
+names the `identifier` that the code goes to, its `kind` and its value; your application shows the person where the
+code went in the form that it chooses, such as `a***@acme.dev`.
 
 ## Unknown identifiers
 
 An exchange that starts from an identifier that no account has does not fail. Neither does an exchange that starts from
 a value of no declared kind, when the request names no kind. Such an exchange takes the same answers as an exchange of a
 real account, none of them right, and runs out of answers the same way. A password answer takes as long, because Pyrite
-hashes a password that no account has. The exchange has no deliveries, and its code challenge has no `CodeSent`
-parameters. Show the person the same page either way, so that your application does not tell whether an account exists.
+hashes a password that no account has. The exchange has no deliveries, and its code challenge is the same, and as slow,
+because Pyrite signs a code all the same. Show the person the same page either way, so that your application does not
+tell whether an account exists.
 
 ## Sessions
 
@@ -220,9 +221,9 @@ A session ends at the first of these, on the clock of the database:
 - A refresh token that comes back after its trade.
 - The deletion of its account.
 
-`Purge` deletes the rows of sessions that were ended or passed their `expire_time`, with the factors that were
-replaced and those whose enrolment was never finished. A session that idled out keeps its row until its
-`expire_time`. See [Purge deleted resources](../access/purge-deleted-resources.md).
+`Pyrite.purge()` deletes the rows of sessions that were ended or passed their `expire_time`, with the factors that were
+replaced, those whose enrolment was never finished, and the exchanges that expired. A session that idled out keeps its
+row until its `expire_time`. See [Purge deleted resources](../access/purge-deleted-resources.md).
 
 ## Secrets
 

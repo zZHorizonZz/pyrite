@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The rows of credentials. The database's clock decides when a removed credential, or one that was enrolled and not
+ * The rows of factors. The database's clock decides when a removed factor, or one that was enrolled and not
  * activated, is purged.
  */
 public record FactorBackend(Database database) implements ResourceBackend<Tables.Factor> {
@@ -25,7 +25,7 @@ public record FactorBackend(Database database) implements ResourceBackend<Tables
   }
 
   /**
-   * Removes a credential, if it is still at a revision; its row stays until a purge.
+   * Removes a factor, if it is still at a revision; its row stays until a purge.
    */
   public Future<Tables.Factor> remove(Tables.Factor factor) {
     return update(factor, Map.of("delete_time", now(), "purge_time", now()), factor.getUid(), factor.getRevision(),
@@ -44,7 +44,7 @@ public record FactorBackend(Database database) implements ResourceBackend<Tables
   }
 
   /**
-   * Deletes the rows of credentials whose purge time passed.
+   * Deletes the rows of factors whose purge time passed.
    *
    * @return the number of rows
    */

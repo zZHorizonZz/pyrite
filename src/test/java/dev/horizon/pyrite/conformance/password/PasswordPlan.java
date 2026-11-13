@@ -19,6 +19,6 @@ public final class PasswordPlan implements Plan {
   public List<Supplier<ConformanceModule>> modules() {
     return List.<Supplier<ConformanceModule>> of(PasswordSignIn::new, AddressNormalization::new, WrongPassword::new,
         PasswordStorageFailure::new, WrongPasswordRetry::new, PasswordGuessing::new, UnknownAddress::new,
-        PasswordOfOtherAccount::new, PasswordLength::new, PasswordReplacement::new);
+        PasswordOfOtherAccount::new, PasswordLength::new, PasswordReplacement::new, WrongAnswersAtOnce::new);
   }
 }

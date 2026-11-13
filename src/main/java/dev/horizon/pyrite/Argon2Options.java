@@ -9,7 +9,8 @@ package dev.horizon.pyrite;
  * }</pre>
  *
  * <p>
- * A higher cost makes each guess of a stolen hash slower, and each sign-in with a password too.
+ * A higher cost makes each guess of a stolen hash slower, and each sign-in with a password too. Argon2 needs at least
+ * 8 KiB of memory per lane, so to lower the memory below that of the lanes before, set the lanes first.
  */
 public class Argon2Options {
 
@@ -19,6 +20,8 @@ public class Argon2Options {
   public static final int DEFAULT_ITERATIONS = 3;
   /** The lanes: 4. */
   public static final int DEFAULT_PARALLELISM = 4;
+
+  private static final int MIN_MEMORY_PER_LANE = 8;
 
   private int memory;
   private int iterations;
@@ -51,12 +54,15 @@ public class Argon2Options {
   /**
    * Sets the memory of a hash.
    *
-   * @param memory the memory in KiB, at least 1; 65536 by default
+   * @param memory the memory in KiB, at least 8 per lane; 65536 by default
    * @return these options
-   * @throws IllegalArgumentException if the memory is below 1
+   * @throws IllegalArgumentException if the memory is below 8 KiB per lane of these options
    */
   public Argon2Options setMemory(int memory) {
-    this.memory = atLeastOne(memory, "memory");
+    if (memory < (long) MIN_MEMORY_PER_LANE * parallelism) {
+      throw new IllegalArgumentException("The memory is at least " + MIN_MEMORY_PER_LANE + " KiB per lane.");
+    }
+    this.memory = memory;
     return this;
   }
 
@@ -83,12 +89,16 @@ public class Argon2Options {
   /**
    * Sets the lanes of the memory of a hash.
    *
-   * @param parallelism the number of lanes, at least 1; 4 by default
+   * @param parallelism the number of lanes, at least 1, with at least 8 KiB of memory each; 4 by default
    * @return these options
-   * @throws IllegalArgumentException if the number is below 1
+   * @throws IllegalArgumentException if the number is below 1, or the memory of these options is below 8 KiB per lane
    */
   public Argon2Options setParallelism(int parallelism) {
-    this.parallelism = atLeastOne(parallelism, "parallelism");
+    atLeastOne(parallelism, "parallelism");
+    if (memory < (long) MIN_MEMORY_PER_LANE * parallelism) {
+      throw new IllegalArgumentException("The memory is at least " + MIN_MEMORY_PER_LANE + " KiB per lane.");
+    }
+    this.parallelism = parallelism;
     return this;
   }
 

@@ -15,6 +15,11 @@ breaks, with the message in the rule's row. In the messages, `<type>` is the nam
 `ReadDeclaration` fails with `NOT_FOUND` before the first declaration, and for an `id` that no declaration has.
 Neither method takes a subject.
 
+Each declaration is stored on the one that was the latest when it was written, and the first one creates the store of
+grants that every later one uses. Of two Pyrites that write a declaration at once, the second one to store it writes it
+again on the other's. `WriteDeclaration` fails with `ABORTED` when other declarations are stored at the same time at
+each of its three attempts.
+
 ## Declaration
 
 | Field              | Type                                      | Description                                                   |
@@ -83,8 +88,8 @@ identifier_kinds {
 }
 ```
 
-A value is of a kind when it meets `match`, and its normalized value meets `match` too. A value whose `match` fails to
-evaluate is of no kind. A value without a named kind takes the first kind whose `match` it meets.
+A value is of a kind when it meets `match`, and its normalized value meets `match` too. A value whose `match` or
+`normalize` fails to evaluate is of no kind. A value without a named kind takes the first kind whose `match` it meets.
 
 ## ExchangeDefinition
 
@@ -122,18 +127,19 @@ evaluate is of no kind. A value without a named kind takes the first kind whose 
 
 ## Rules of types
 
-| Rule                                                                                                         | Message                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| A type has a `name`.                                                                                         | `A type has no name.`                                                                                     |
-| No two types have the same name.                                                                             | `The type <type> is declared twice.`                                                                      |
-| A name that starts with `pyrite.dev/` is `pyrite.dev/Key` or `pyrite.dev/Account`.                           | `The type <type> is Pyrite's; a declaration does not declare it.`                                         |
-| `pyrite.dev/Key` and `pyrite.dev/Account` leave `plural` empty.                                              | `The type <type> is Pyrite's own, which names its resources itself; its declaration leaves plural empty.` |
-| The singular name, `definition.type`, matches `[a-z][a-z0-9_]{0,49}`.                                        | `The type <type> has the singular name <singular>, which does not match [a-z][a-z0-9_]{0,49}.`            |
-| No two types have the same singular name.                                                                    | `The type <type> has the singular name <singular>, which another type has.`                               |
-| Only `pyrite.dev/Account` has the singular name `user`.                                                      | `The type <type> has the singular name user, which is Pyrite's accounts'.`                                |
-| `plural` matches `[a-z][a-zA-Z0-9]{0,62}`.                                                                   | `The type <type> has the plural name <plural>, which does not match [a-z][a-zA-Z0-9]{0,62}.`              |
-| No two types have the same plural. `pyrite.dev/Key` takes `keys`, and `pyrite.dev/Account` takes `accounts`. | `The type <type> has the plural name <plural>, which another type has.`                                   |
-| Each parent is a declared type.                                                                              | `The type <type> has the parent type <parent>, which is not declared.`                                    |
+| Rule                                                                                                         | Message                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A type has a `name`.                                                                                         | `A type has no name.`                                                                                                                              |
+| No two types have the same name.                                                                             | `The type <type> is declared twice.`                                                                                                               |
+| A name that starts with `pyrite.dev/` is `pyrite.dev/Key` or `pyrite.dev/Account`.                           | `The type <type> is Pyrite's; a declaration does not declare it.`                                                                                  |
+| `pyrite.dev/Key` and `pyrite.dev/Account` leave `plural` empty.                                              | `The type <type> is Pyrite's own, which names its resources itself; its declaration leaves plural empty.`                                          |
+| The singular name, `definition.type`, matches `[a-z][a-z0-9_]{0,49}`.                                        | `The type <type> has the singular name <singular>, which does not match [a-z][a-z0-9_]{0,49}.`                                                     |
+| No two types have the same singular name.                                                                    | `The type <type> has the singular name <singular>, which another type has.`                                                                        |
+| Only `pyrite.dev/Account` has the singular name `user`.                                                      | `The type <type> has the singular name user, which is Pyrite's accounts'.`                                                                         |
+| `pyrite.dev/Account` has the singular name `user`.                                                           | `The type pyrite.dev/Account has the singular name <singular>, but its singular name is user: subjects of calls, such as user:anne, are accounts.` |
+| `plural` matches `[a-z][a-zA-Z0-9]{0,62}`.                                                                   | `The type <type> has the plural name <plural>, which does not match [a-z][a-zA-Z0-9]{0,62}.`                                                       |
+| No two types have the same plural. `pyrite.dev/Key` takes `keys`, and `pyrite.dev/Account` takes `accounts`. | `The type <type> has the plural name <plural>, which another type has.`                                                                            |
+| Each parent is a declared type.                                                                              | `The type <type> has the parent type <parent>, which is not declared.`                                                                             |
 
 ## Rules of relations
 
@@ -210,6 +216,20 @@ declaration:
 | A declaration with `pyrite.dev/Account` needs `macKey`, `encryptionKey`, `issuer`, and the `id` and `name` of `relyingPartyOptions` in the authentication options. | `The declaration has accounts, which need the type pyrite.dev/Key and the options of authentication; these lack <options>.` |
 
 For the options, see [Options](../deployment/options.md).
+
+## Rules of changes
+
+A resource that Pyrite knows finds its type by the plural of its name, its object in the store of grants by the
+singular name of the type, and the resource that it is under among the parents of the type. These rules compare the
+declaration with the latest one, and fail `WriteDeclaration` with `FAILED_PRECONDITION` while the table `pyrite_node`
+has resources of the type:
+
+| Rule                                                           | Message                                                                                                                                                                             |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A declaration keeps each type whose resources Pyrite knows.    | `The declaration drops the type <type>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.`                                                      |
+| It keeps the `plural` of such a type.                          | `The declaration changes the plural of the type <type> from <plural> to <plural>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.`            |
+| It keeps the singular name, `definition.type`, of such a type. | `The declaration changes the singular name of the type <type> from <singular> to <singular>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.` |
+| It keeps the `parents` of such a type; their order may change. | `The declaration changes the parents of the type <type> from [<parents>] to [<parents>], but Pyrite knows resources of the type; forget them first, or keep the type as it is.`     |
 
 ## Related
 

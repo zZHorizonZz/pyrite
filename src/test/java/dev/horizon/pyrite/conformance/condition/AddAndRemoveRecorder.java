@@ -15,10 +15,10 @@ public record AddAndRemoveRecorder(Moment moment) implements Condition {
 
   @Override
   public void evaluate(Environment environment) {
-    List<ExchangeContext> seen = new CopyOnWriteArrayList<>();
-    environment.put(Value.INTERCEPTIONS, seen);
+    List<ExchangeContext> contexts = new CopyOnWriteArrayList<>();
+    environment.put(Value.INTERCEPTIONS, contexts);
     Handler<ExchangeContext> recorder = context -> {
-      seen.add(context);
+      contexts.add(context);
       context.next();
     };
     moment.add(environment.pyrite().service, recorder);

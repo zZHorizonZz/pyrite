@@ -3,10 +3,11 @@ package dev.horizon.pyrite.exchange;
 import dev.horizon.pyrite.CodeContext;
 import dev.horizon.pyrite.ExchangeContext;
 import dev.horizon.pyrite.authentication.v1.Delivery;
-import dev.horizon.pyrite.identity.Account;
+import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -29,7 +30,7 @@ public final class ExchangeInterceptor {
   private final List<Handler<CodeContext>> code = new CopyOnWriteArrayList<>();
 
   public void addStart(Handler<ExchangeContext> interceptor) {
-    start.add(interceptor);
+    start.add(Objects.requireNonNull(interceptor, "interceptor"));
   }
 
   public void removeStart(Handler<ExchangeContext> interceptor) {
@@ -37,7 +38,7 @@ public final class ExchangeInterceptor {
   }
 
   public void addStageEnd(Handler<ExchangeContext> interceptor) {
-    stageEnd.add(interceptor);
+    stageEnd.add(Objects.requireNonNull(interceptor, "interceptor"));
   }
 
   public void removeStageEnd(Handler<ExchangeContext> interceptor) {
@@ -45,7 +46,7 @@ public final class ExchangeInterceptor {
   }
 
   public void addEnd(Handler<ExchangeContext> interceptor) {
-    end.add(interceptor);
+    end.add(Objects.requireNonNull(interceptor, "interceptor"));
   }
 
   public void removeEnd(Handler<ExchangeContext> interceptor) {
@@ -53,7 +54,7 @@ public final class ExchangeInterceptor {
   }
 
   public void addFailure(Handler<ExchangeContext> interceptor) {
-    failure.add(interceptor);
+    failure.add(Objects.requireNonNull(interceptor, "interceptor"));
   }
 
   public void removeFailure(Handler<ExchangeContext> interceptor) {
@@ -61,26 +62,26 @@ public final class ExchangeInterceptor {
   }
 
   public void addCode(Handler<CodeContext> interceptor) {
-    code.add(interceptor);
+    code.add(Objects.requireNonNull(interceptor, "interceptor"));
   }
 
   public void removeCode(Handler<CodeContext> interceptor) {
     code.remove(interceptor);
   }
 
-  Future<Void> start(Exchange exchange, Optional<Account> account) {
+  Future<Void> start(ExchangeRecord exchange, Optional<Tables.Account> account) {
     return new ExchangeChain(start, exchange, account).run();
   }
 
-  Future<Void> stageEnd(Exchange exchange, Optional<Account> account) {
+  Future<Void> stageEnd(ExchangeRecord exchange, Optional<Tables.Account> account) {
     return new ExchangeChain(stageEnd, exchange, account).run();
   }
 
-  Future<Void> end(Exchange exchange, Optional<Account> account) {
+  Future<Void> end(ExchangeRecord exchange, Optional<Tables.Account> account) {
     return new ExchangeChain(end, exchange, account).run();
   }
 
-  Future<Void> failure(Exchange exchange, Optional<Account> account) {
+  Future<Void> failure(ExchangeRecord exchange, Optional<Tables.Account> account) {
     return new ExchangeChain(failure, exchange, account).run();
   }
 

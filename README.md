@@ -44,8 +44,8 @@ gateway or a verticle that authenticates the session. Do not serve it to clients
 - **Accounts and exchanges.** Sign-in, verification, recovery and enrolment, as exchanges that your declaration defines.
   People sign in with the kinds of identifiers that you declare, such as an email address or an employee id. For more
   information, refer to [About accounts and exchanges](docs/accounts/about-accounts-and-exchanges.md).
-- **Handlers.** Your code runs at the moments of an exchange, can stop it or replace its steps, sends the codes, and
-  hears of the accounts and sessions that Pyrite creates and ends. For more information, refer to
+- **Handlers.** Your code runs at the moments of an exchange, can stop it, sends the codes, and hears of the accounts
+  and sessions that Pyrite creates and ends. For more information, refer to
   [Intercept exchanges](docs/accounts/intercept-exchanges.md).
 - **Your database.** PostgreSQL, MariaDB, SQL Server or SQLite. The JAR contains the migrations of Pyrite's tables,
   whose foreign keys, defaults and triggers keep the rows consistent, and the database is the clock of every time
@@ -108,10 +108,10 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`. The JAR contains cel-j
 
 ## Run the tests
 
-Most of Pyrite's tests are conformance modules: scenarios that call Pyrite's services as a client would, each step
-tied to a requirement of Pyrite's contract. The plans of modules cover sessions, exchanges, codes, passwords, second
-factors, passkeys, handlers, access, declarations and keys. One plan checks Pyrite's checks and lists against plain
-OpenFGA on the same grants.
+Most of Pyrite's tests are conformance modules: scenarios that call Pyrite's services as a client would, each step tied
+to a requirement of Pyrite's contract. The plans of modules cover sessions, exchanges, codes, passwords, identifiers and
+accounts, second factors, passkeys, providers, handlers, access, declarations and keys. One plan checks Pyrite's checks
+and lists against plain OpenFGA on the same grants.
 
 Each module runs in every variant: on PostgreSQL, MariaDB and SQL Server in Docker through Testcontainers and on
 SQLite in process, one database at a time; with the codes of exchanges in their responses or taken by an interceptor;

@@ -9,12 +9,12 @@ import java.util.Set;
 
 /**
  * What the answers of an exchange proved so far, which the exchange stores as JSON: the factors, whether a code proved
- * the identifier, whether a credential was enrolled, and whether a phishing-resistant answer gave a factor. Two answers
+ * the identifier, whether a factor was enrolled, and whether a phishing-resistant answer gave a factor. Two answers
  * that prove the same factor count once.
  *
  * @param factors the factors that the answers proved
  * @param identifier whether a code proved that the caller receives messages at the identifier
- * @param enrolment whether an answer enrolled a credential
+ * @param enrolment whether an answer enrolled a factor
  * @param phishingResistant whether a passkey gave one of the factors, or was enrolled
  */
 record Evidence(Set<Proof> factors, boolean identifier, boolean enrolment, boolean phishingResistant) {
@@ -47,7 +47,7 @@ record Evidence(Set<Proof> factors, boolean identifier, boolean enrolment, boole
   }
 
   /**
-   * Tells whether the evidence meets a stage: an enrolment once the credential is enrolled, and any other stage once
+   * Tells whether the evidence meets a stage: an enrolment once the factor is enrolled, and any other stage once
    * it holds the factors, the phishing resistance and the proof of the identifier that the stage asks for.
    */
   boolean meets(Stage stage) {

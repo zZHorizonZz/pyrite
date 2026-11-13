@@ -176,17 +176,35 @@ ALREADY_EXISTS: The resource keys/payments is known already.
 
 **Verify:** `CreateKey` returns the key with its first version.
 
-## The rotation period is negative
+## The rotation period is shorter than a minute
 
 ```text
-INVALID_ARGUMENT: The rotation period is negative.
+INVALID_ARGUMENT: The rotation period is shorter than a minute; it is zero for a key that does not rotate on its own.
 ```
 
-**Cause:** `CreateKey` or `UpdateKey` names a negative `rotation_period`.
+**Cause:** `CreateKey` or `UpdateKey` names a `rotation_period` out of its range: a period is a whole number of
+seconds, from a minute to 50 years, or zero. The other periods fail the same way, with
+`The rotation period is negative.`, `The rotation period is not a whole number of seconds.`, or
+`The rotation period is longer than 50 years.`
 
-**Fix:** Name a positive period, or zero for a key that rotates only on request.
+**Fix:** Name whole seconds from 60 to 3,155,760,000 in `seconds`, with `nanos` at zero, or zero for a key that rotates
+only on request.
 
-**Verify:** The call returns the key, with its `next_rotation_time` set for a positive period.
+**Verify:** The call returns the key, with its `next_rotation_time` set for a period other than zero.
+
+## The key ... changed while it rotated; rotate it again
+
+```text
+ABORTED: The key keys/payments changed while it rotated; rotate it again.
+```
+
+**Cause:** Another change of the key came before `RotateKey` made its new version the primary one, such as another
+rotation at the same time, or an `UpdateKey`. The rotation deleted its new version again.
+
+**Fix:** Read the key with `GetKey`. If another rotation gave it a new `primary_version`, there is nothing to do;
+otherwise, rotate it again.
+
+**Verify:** `GetKey` names a new `primary_version`, and `ListKeyVersions` lists it.
 
 ## A version is ENABLED or DISABLED
 

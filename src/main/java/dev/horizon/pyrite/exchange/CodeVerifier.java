@@ -1,14 +1,10 @@
 package dev.horizon.pyrite.exchange;
 
-import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import dev.horizon.pyrite.AuthenticationOptions;
-import dev.horizon.pyrite.authentication.v1.Challenge;
 import dev.horizon.pyrite.authentication.v1.CodeAnswer;
-import dev.horizon.pyrite.authentication.v1.CodeSent;
 import dev.horizon.pyrite.authentication.v1.Delivery;
-import dev.horizon.pyrite.key.KeyType;
-import dev.horizon.pyrite.key.SigningKey;
+import dev.horizon.pyrite.key.KeyService;
 import io.vertx.core.Future;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -18,17 +14,19 @@ import java.util.Optional;
  * The code of six digits that an exchange sends to its identifier, which proves that the caller receives messages
  * there. The exchange keeps a MAC of the code, bound to the exchange, and the code lasts as long as the nonce of the
  * stage. Only an identifier whose kind receives codes, and that is verified or is the input of the exchange with its
- * account, gets one; any other exchange makes no code, and every answer is wrong.
+ * account, gets one; any other exchange makes no code, and every answer is wrong. The challenge is the same either
+ * way, and Pyrite signs a code either way, so that neither the response nor its time tells whether the identifier
+ * exists; the delivery names the identifier.
  */
 final class CodeVerifier implements Verifier<CodeAnswer> {
 
   private static final int BOUND = 1_000_000;
   private static final SecureRandom RANDOM = new SecureRandom();
 
-  private final KeyType keys;
+  private final KeyService keys;
   private final AuthenticationOptions options;
 
-  CodeVerifier(KeyType keys, AuthenticationOptions options) {
+  CodeVerifier(KeyService keys, AuthenticationOptions options) {
     this.keys = keys;
     this.options = options;
   }
@@ -44,36 +42,28 @@ final class CodeVerifier implements Verifier<CodeAnswer> {
   }
 
   @Override
-  public Future<Optional<Delivery>> prepare(Exchange exchange) {
+  public Future<Optional<Delivery>> prepare(ExchangeRecord exchange) {
     return exchange.claimant().recipient().compose(identifier -> {
-      if (identifier.isEmpty()) {
-        return Future.succeededFuture(Optional.empty());
-      }
       String code = String.format("%06d", RANDOM.nextInt(BOUND));
-      return macKey().compose(key -> key.sign(data(exchange, code))).map(mac -> {
+      return keys.sign(options.getMacKey(), data(exchange, code)).map(mac -> {
+        if (identifier.isEmpty()) {
+          return Optional.<Delivery> empty();
+        }
         exchange.keep(this, mac.getSignature());
-        return Optional.of(Delivery.newBuilder().setKind(identifier.get().kind())
-            .setIdentifier(identifier.get().name()).setTo(identifier.get().value()).setCode(code).build());
+        return Optional.of(Delivery.newBuilder().setKind(identifier.get().getKind())
+            .setIdentifier(identifier.get().getName()).setTo(identifier.get().getValue()).setCode(code).build());
       });
     });
   }
 
   @Override
-  public Future<Challenge> challenge(Exchange exchange) {
-    Challenge.Builder challenge = Challenge.newBuilder().setMethod(name());
-    return exchange.claimant().recipient().map(identifier -> identifier.map(found -> challenge.setParameters(Any.pack(
-        CodeSent.newBuilder().setIdentifier(found.name()).setKind(found.kind()).build())).build())
-        .orElse(challenge.build()));
-  }
-
-  @Override
-  public Future<Optional<Evidence>> verify(Exchange exchange, CodeAnswer answer) {
+  public Future<Optional<Evidence>> verify(ExchangeRecord exchange, CodeAnswer answer) {
     Optional<ByteString> mac = exchange.nonce().flatMap(nonce -> exchange.state(this));
     if (mac.isEmpty()) {
       return Future.succeededFuture(Optional.empty());
     }
     String code = answer.getCode().strip();
-    return macKey().compose(key -> key.verify(data(exchange, code), mac.get().toByteArray(), "")).map(verdict -> {
+    return keys.verify(options.getMacKey(), data(exchange, code), mac.get().toByteArray(), "").map(verdict -> {
       if (!verdict.hasVerified()) {
         return Optional.empty();
       }
@@ -82,11 +72,7 @@ final class CodeVerifier implements Verifier<CodeAnswer> {
     });
   }
 
-  private Future<SigningKey> macKey() {
-    return keys.signing(options.getMacKey());
-  }
-
-  private static byte[] data(Exchange exchange, String code) {
+  private static byte[] data(ExchangeRecord exchange, String code) {
     return ("code\0" + exchange.id() + ":" + code).getBytes(StandardCharsets.UTF_8);
   }
 }

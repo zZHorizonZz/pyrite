@@ -12,14 +12,14 @@ import dev.horizon.pyrite.schema.v1.ReadDeclarationRequest;
  * Reads the latest declaration, and checks that it is the last one written, or, when nothing was to change it, the
  * last one read.
  */
-public record ExpectLatestDeclaration(boolean written) implements Condition {
+public record ExpectLatestDeclaration(boolean changed) implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
     String latest = environment.pyrite().schema.readDeclaration(ReadDeclarationRequest.getDefaultInstance())
         .await(TIMEOUT).getId();
     String before = environment.get(Value.DECLARATION).getId();
-    if (written) {
+    if (changed) {
       assertThat(latest).isEqualTo(environment.get(Value.DECLARATION_ID)).isNotEqualTo(before);
     } else {
       assertThat(latest).isEqualTo(before);

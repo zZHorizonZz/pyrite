@@ -1,6 +1,7 @@
 package dev.horizon.pyrite.key;
 
 import com.google.protobuf.Empty;
+import com.google.protobuf.Struct;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.crypto.v1.CreateKeyRequest;
 import dev.horizon.pyrite.crypto.v1.CryptographyGrpcService;
@@ -21,10 +22,10 @@ import dev.horizon.pyrite.crypto.v1.VerifyRequest;
 import dev.horizon.pyrite.crypto.v1.VerifyResponse;
 import dev.horizon.pyrite.deployment.Deployment;
 import dev.horizon.pyrite.resource.Subject;
+import dev.horizon.pyrite.schema.keys.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
 import java.time.Duration;
-import java.util.Arrays;
 
 /**
  * The service {@code pyrite.crypto.v1.Cryptography}: keys and their versions, and encrypting, decrypting, signing and
@@ -46,96 +47,101 @@ public final class CryptographyEndpoint extends CryptographyGrpcService {
 
   @Override
   public Future<dev.horizon.pyrite.crypto.v1.Key> createKey(CreateKeyRequest request) {
-    return deployment.schema().compose(schema -> {
-      Algorithm algorithm = Arrays.stream(Algorithm.values())
-          .filter(known -> known.name().equals(request.getAlgorithm().name())).findFirst()
-          .orElseThrow(() -> new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names no algorithm, one"
-              + " of " + Arrays.toString(Algorithm.values()) + "."));
-      return schema.keys().create(Subject.parse(request.getSubject()), request.getKeyId(), request.getParent(),
-          algorithm, duration(request.getRotationPeriod()), request.getContext());
-    }).map(Key::message).recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> schema.keys().create(Subject.parse(request.getSubject()),
+        request.getKeyId(), request.getParent(), request.getAlgorithm(), duration(request.getRotationPeriod()),
+        request.getContext()))
+        .map(KeyService::message).recover(PyriteException::fail);
   }
 
   @Override
   public Future<dev.horizon.pyrite.crypto.v1.Key> getKey(GetKeyRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().key(request.getName()))
-        .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "viewer", request.getContext())
-            .map(key))
-        .map(Key::message).recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.key(request.getName())
+          .compose(key -> require(keys, key, request.getSubject(), "viewer", request.getContext()));
+    }).map(KeyService::message).recover(PyriteException::fail);
   }
 
   @Override
   public Future<dev.horizon.pyrite.crypto.v1.Key> updateKey(UpdateKeyRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().key(request.getName()))
-        .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "admin", request.getContext())
-            .map(key))
-        .compose(key -> key.update(duration(request.getRotationPeriod()), request.getRevision()))
-        .map(Key::message).recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.key(request.getName())
+          .compose(key -> require(keys, key, request.getSubject(), "admin", request.getContext()))
+          .compose(key -> keys.update(key.getName(), duration(request.getRotationPeriod()), request.getRevision()));
+    }).map(KeyService::message).recover(PyriteException::fail);
   }
 
   @Override
   public Future<dev.horizon.pyrite.crypto.v1.Key> rotateKey(RotateKeyRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().key(request.getName()))
-        .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "admin", request.getContext())
-            .map(key))
-        .compose(Key::rotate).map(Key::message).recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.key(request.getName())
+          .compose(key -> require(keys, key, request.getSubject(), "admin", request.getContext()))
+          .compose(key -> keys.rotate(key.getName()));
+    }).map(KeyService::message).recover(PyriteException::fail);
   }
 
   @Override
   public Future<ListKeyVersionsResponse> listKeyVersions(ListKeyVersionsRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().key(request.getKey()))
-        .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "viewer", request.getContext())
-            .map(key))
-        .compose(Key::versions)
-        .map(versions -> ListKeyVersionsResponse.newBuilder()
-            .addAllVersions(versions.stream().map(KeyVersion::message).toList()).build())
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.key(request.getKey())
+          .compose(key -> require(keys, key, request.getSubject(), "viewer", request.getContext()))
+          .compose(key -> keys.versions(key.getName()));
+    }).map(versions -> ListKeyVersionsResponse.newBuilder()
+        .addAllVersions(versions.stream().map(KeyService::message).toList()).build())
         .recover(PyriteException::fail);
   }
 
   @Override
   public Future<dev.horizon.pyrite.crypto.v1.KeyVersion> updateKeyVersion(UpdateKeyVersionRequest request) {
     return deployment.schema().compose(schema -> {
-      boolean enabled = switch (request.getState()) {
+      boolean enable = switch (request.getState()) {
         case ENABLED -> true;
         case DISABLED -> false;
         case STATE_UNSPECIFIED, UNRECOGNIZED -> throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "A version"
             + " is ENABLED or DISABLED.");
       };
-      return schema.keys().version(request.getName())
-          .compose(version -> version.key()
-              .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "admin",
-                  request.getContext()))
-              .compose(allowed -> version.update(enabled, request.getRevision())));
-    }).map(KeyVersion::message).recover(PyriteException::fail);
+      KeyService keys = schema.keys();
+      return keys.version(request.getName())
+          .compose(version -> keys.key(version.getParent())
+              .compose(key -> require(keys, key, request.getSubject(), "admin", request.getContext()))
+              .compose(permission -> keys.updateVersion(version, enable, request.getRevision())));
+    }).map(KeyService::message).recover(PyriteException::fail);
   }
 
   @Override
   public Future<Empty> deleteKeyVersion(DeleteKeyVersionRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().version(request.getName()))
-        .compose(version -> version.key()
-            .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "admin",
-                request.getContext()))
-            .compose(allowed -> version.delete()))
-        .map(Empty.getDefaultInstance()).recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.version(request.getName())
+          .compose(version -> keys.key(version.getParent())
+              .compose(key -> require(keys, key, request.getSubject(), "admin", request.getContext()))
+              .compose(permission -> keys.deleteVersion(version)));
+    }).map(Empty.getDefaultInstance()).recover(PyriteException::fail);
   }
 
   @Override
   public Future<EncryptResponse> encrypt(EncryptRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().encryption(request.getKey()))
-        .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "encrypter",
-            request.getContext()).map(key))
-        .compose(key -> key.encrypt(request.getPlaintext().toByteArray(), request.getAssociatedData().toByteArray()))
-        .recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.encryption(request.getKey())
+          .compose(key -> require(keys, key, request.getSubject(), "encrypter", request.getContext()))
+          .compose(key -> keys.encrypt(key.getName(), request.getPlaintext().toByteArray(),
+              request.getAssociatedData().toByteArray()));
+    }).recover(PyriteException::fail);
   }
 
   @Override
   public Future<DecryptResponse> decrypt(DecryptRequest request) {
-    return deployment.schema().compose(schema -> schema.keys().encryption(request.getKey()))
-        .compose(key -> key.resource().require(Subject.parse(request.getSubject()), "decrypter",
-            request.getContext()).map(key))
-        .compose(key -> key.decrypt(request.getCiphertext().toByteArray(),
-            request.getAssociatedData().toByteArray()))
-        .recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      KeyService keys = schema.keys();
+      return keys.encryption(request.getKey())
+          .compose(key -> require(keys, key, request.getSubject(), "decrypter", request.getContext()))
+          .compose(key -> keys.decrypt(key.getName(), request.getCiphertext().toByteArray(),
+              request.getAssociatedData().toByteArray()));
+    }).recover(PyriteException::fail);
   }
 
   @Override
@@ -144,12 +150,12 @@ public final class CryptographyEndpoint extends CryptographyGrpcService {
       if (request.getPayloadCase() == SignRequest.PayloadCase.PAYLOAD_NOT_SET) {
         throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names neither data nor claims to sign.");
       }
-      return schema.keys().signing(request.getKey());
-    }).compose(key -> key.resource().require(Subject.parse(request.getSubject()), "signer", request.getContext())
-        .map(key))
-        .compose(key -> request.hasClaims() ? key.jwt(request.getType(), request.getClaims())
-            : key.sign(request.getData().toByteArray()))
-        .recover(PyriteException::fail);
+      KeyService keys = schema.keys();
+      return keys.signing(request.getKey())
+          .compose(key -> require(keys, key, request.getSubject(), "signer", request.getContext()))
+          .compose(key -> request.hasClaims() ? keys.signJwt(key.getName(), request.getType(), request.getClaims())
+              : keys.sign(key.getName(), request.getData().toByteArray()));
+    }).recover(PyriteException::fail);
   }
 
   @Override
@@ -159,14 +165,25 @@ public final class CryptographyEndpoint extends CryptographyGrpcService {
         throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names neither a signature nor a token"
             + " to verify.");
       }
-      return schema.keys().signing(request.getKey());
-    }).compose(key -> key.resource().require(Subject.parse(request.getSubject()), "verifier", request.getContext())
-        .map(key))
-        .compose(key -> request.hasDetached()
-            ? key.verify(request.getDetached().getData().toByteArray(),
-                request.getDetached().getSignature().toByteArray(), request.getDetached().getKeyVersion())
-            : key.verify(request.getToken(), request.getExpected()))
-        .recover(PyriteException::fail);
+      KeyService keys = schema.keys();
+      return keys.signing(request.getKey())
+          .compose(key -> require(keys, key, request.getSubject(), "verifier", request.getContext()))
+          .compose(key -> request.hasDetached()
+              ? keys.verify(key.getName(), request.getDetached().getData().toByteArray(),
+                  request.getDetached().getSignature().toByteArray(), request.getDetached().getKeyVersion())
+              : keys.verifyJwt(key.getName(), request.getToken(), request.getExpected()));
+    }).recover(PyriteException::fail);
+  }
+
+  /**
+   * Gives a key, if the subject of a request has a relation on it.
+   *
+   * @return the key, or a failure with {@code INVALID_ARGUMENT} for a subject of no form, and with
+   * {@code PERMISSION_DENIED} without the relation
+   */
+  private static Future<Tables.Key> require(KeyService keys, Tables.Key key, String subject, String relation,
+      Struct context) {
+    return keys.resource(key.getName()).require(Subject.parse(subject), relation, context).map(key);
   }
 
   private static Duration duration(com.google.protobuf.Duration duration) {

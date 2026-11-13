@@ -14,10 +14,10 @@ public record AddRecorder(Moment moment) implements Condition {
 
   @Override
   public void evaluate(Environment environment) {
-    List<ExchangeContext> seen = new CopyOnWriteArrayList<>();
-    environment.put(Value.INTERCEPTIONS, seen);
+    List<ExchangeContext> contexts = new CopyOnWriteArrayList<>();
+    environment.put(Value.INTERCEPTIONS, contexts);
     moment.add(environment.pyrite().service, context -> {
-      seen.add(context);
+      contexts.add(context);
       context.next();
     });
   }

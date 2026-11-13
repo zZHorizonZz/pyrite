@@ -48,9 +48,9 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
     matches(SINGULAR, type.getDefinition().getType(), where + " has the singular name ");
     matches(PLURAL, type.getPlural(), where + " has the plural name ");
     Map<String, RelationMetadata> metadata = type.getDefinition().getMetadata().getRelationsMap();
-    for (String described : metadata.keySet()) {
-      if (!type.getDefinition().getRelationsMap().containsKey(described)) {
-        throw new IllegalArgumentException(where + " has metadata for " + described + ", which is not a relation.");
+    for (String relation : metadata.keySet()) {
+      if (!type.getDefinition().getRelationsMap().containsKey(relation)) {
+        throw new IllegalArgumentException(where + " has metadata for " + relation + ", which is not a relation.");
       }
     }
     Map<String, Definition> relations = new LinkedHashMap<>();
@@ -121,7 +121,7 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
 
   /**
    * Checks the rules that the type keeps with the other types of its declaration: that what it names is declared,
-   * and that its permissions and grants name relations that take what they need.
+   * that its permissions and grants name relations that take what they need, and the relations of Pyrite's own types.
    *
    * @param types the types of the declaration
    * @throws IllegalArgumentException when the type breaks a rule
@@ -206,35 +206,35 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
       }
 
       @Override
-      public Void computed(String named) {
-        if (!relations.containsKey(named)) {
-          throw new IllegalArgumentException(where + " names " + named + ", which is not a relation of the type.");
+      public Void computed(String name) {
+        if (!relations.containsKey(name)) {
+          throw new IllegalArgumentException(where + " names " + name + ", which is not a relation of the type.");
         }
         return null;
       }
 
       @Override
-      public Void tupleToUserset(String tupleset, String computed) {
+      public Void tupleToUserset(String tupleset, String name) {
         List<Optional<ResourceType>> targets;
         if (tupleset.equals(TypeSystem.PARENT)) {
           if (parents().isEmpty()) {
-            throw new IllegalArgumentException(where + " reads " + computed + " from parent, but the type has no"
+            throw new IllegalArgumentException(where + " reads " + name + " from parent, but the type has no"
                 + " parents.");
           }
           targets = types.parents(ResourceType.this).stream().map(Optional::of).toList();
         } else {
           Definition through = relations.get(tupleset);
           if (through == null || through.direct().isEmpty()) {
-            throw new IllegalArgumentException(where + " reads " + computed + " from " + tupleset + ", which is not"
+            throw new IllegalArgumentException(where + " reads " + name + " from " + tupleset + ", which is not"
                 + " a relation of the type with direct types.");
           }
           targets = through.direct().stream().map(reference -> types.singular(reference.getType())).toList();
         }
         for (Optional<ResourceType> target : targets) {
-          if (target.isEmpty() || !target.get().relations().containsKey(computed)) {
-            throw new IllegalArgumentException(where + " reads " + computed + " from " + tupleset + ", but "
-                + target.map(found -> "the type " + found.name()).orElse("the type user") + " has no relation "
-                + computed + ".");
+          if (target.isEmpty() || !target.get().relations().containsKey(name)) {
+            throw new IllegalArgumentException(where + " reads " + name + " from " + tupleset + ", but "
+                + target.map(other -> "the type " + other.name()).orElse("the type user") + " has no relation "
+                + name + ".");
           }
         }
         return null;
@@ -323,8 +323,8 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
         && reference.getCondition().isEmpty());
   }
 
-  private void requireRelations(List<String> required) {
-    for (String relation : required) {
+  private void requireRelations(List<String> names) {
+    for (String relation : names) {
       if (!relations.containsKey(relation)) {
         throw new IllegalArgumentException("The type " + name() + " lacks the relation " + relation + ", which"
             + " Pyrite checks.");

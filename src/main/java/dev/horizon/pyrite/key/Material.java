@@ -58,10 +58,10 @@ sealed interface Material permits Material.Aes, Material.Signing {
         Cipher cipher = Cipher.getInstance(CIPHER);
         cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, nonce));
         cipher.updateAAD(associatedData);
-        byte[] sealed = cipher.doFinal(plaintext);
-        return ByteBuffer.allocate(NONCE_BYTES + sealed.length).put(nonce).put(sealed).array();
-      } catch (GeneralSecurityException refused) {
-        throw new IllegalStateException("AES-GCM did not encrypt", refused);
+        byte[] body = cipher.doFinal(plaintext);
+        return ByteBuffer.allocate(NONCE_BYTES + body.length).put(nonce).put(body).array();
+      } catch (GeneralSecurityException failure) {
+        throw new IllegalStateException("AES-GCM did not encrypt", failure);
       }
     }
 
@@ -111,8 +111,8 @@ sealed interface Material permits Material.Aes, Material.Signing {
         Mac mac = Mac.getInstance(ALGORITHM);
         mac.init(new SecretKeySpec(key, ALGORITHM));
         return mac.doFinal(data);
-      } catch (GeneralSecurityException refused) {
-        throw new IllegalStateException("HMAC-SHA256 did not run", refused);
+      } catch (GeneralSecurityException failure) {
+        throw new IllegalStateException("HMAC-SHA256 did not run", failure);
       }
     }
   }

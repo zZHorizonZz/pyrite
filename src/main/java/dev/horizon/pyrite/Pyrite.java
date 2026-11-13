@@ -7,16 +7,17 @@ import dev.horizon.pyrite.authentication.v1.Session;
 import dev.horizon.pyrite.declaration.SchemaEndpoint;
 import dev.horizon.pyrite.deployment.Deployment;
 import dev.horizon.pyrite.exchange.ExchangeInterceptor;
-import dev.horizon.pyrite.identity.AccountObserver;
 import dev.horizon.pyrite.identity.AuthenticationEndpoint;
 import dev.horizon.pyrite.key.CryptographyEndpoint;
-import dev.horizon.pyrite.session.SessionObserver;
+import dev.horizon.pyrite.observer.LifecycleObserver;
 import dev.horizon.spectrum.openfga.v1.OpenFGAServiceGrpcClient;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.grpc.server.Service;
 import io.vertx.grpc.server.ServiceContainer;
 import io.vertx.sqlclient.Pool;
+import java.util.Objects;
 
 /**
  * Pyrite in an application: its four gRPC services, schema, access, cryptography and authentication, over Pyrite's
@@ -27,7 +28,8 @@ import io.vertx.sqlclient.Pool;
  * RelyingPartyOptions relyingParty = new RelyingPartyOptions().setId("acme.dev").setName("Acme")
  *     .addOrigin("https://acme.dev");
  * AuthenticationOptions authentication = new AuthenticationOptions().setMacKey("keys/sessions")
- *     .setEncryptionKey("keys/factors").setIssuer("Acme").setRelyingPartyOptions(relyingParty);
+ *     .setEncryptionKey("keys/factors").setAccessTokenKey("keys/access").setIssuer("Acme")
+ *     .setRelyingPartyOptions(relyingParty);
  * PyriteOptions options = new PyriteOptions().setKeyOptions(new KeyOptions().setRoot(root))
  *     .setAuthenticationOptions(authentication);
  *
@@ -47,16 +49,19 @@ import io.vertx.sqlclient.Pool;
 public final class Pyrite {
 
   private final ExchangeInterceptor interceptor = new ExchangeInterceptor();
-  private final AccountObserver accountObserver = new AccountObserver();
-  private final SessionObserver sessionObserver = new SessionObserver();
+  private final LifecycleObserver<dev.horizon.pyrite.authentication.v1.Account> accountObserver = new LifecycleObserver<>(
+      "accounts");
+  private final LifecycleObserver<dev.horizon.pyrite.authentication.v1.Session> sessionObserver = new LifecycleObserver<>(
+      "sessions");
   private final Service access;
   private final Service authentication;
   private final Service cryptography;
   private final Service schema;
+  private final Deployment deployment;
 
   private Pyrite(Vertx vertx, Pool pool, Driver driver, OpenFGAServiceGrpcClient openFga,
       PyriteOptions options) {
-    Deployment deployment = new Deployment(vertx, pool, driver, openFga, options, interceptor, accountObserver,
+    this.deployment = new Deployment(vertx, pool, driver, openFga, options, interceptor, accountObserver,
         sessionObserver);
     this.access = new AccessEndpoint(deployment);
     this.authentication = new AuthenticationEndpoint(deployment);
@@ -92,6 +97,19 @@ public final class Pyrite {
   public static Pyrite pyrite(Vertx vertx, Pool pool, Driver driver, OpenFGAServiceGrpcClient openFga,
       PyriteOptions options) {
     return new Pyrite(vertx, pool, driver, openFga, new PyriteOptions(options));
+  }
+
+  /**
+   * Deletes the rows that no call needs any more: the sessions that ended or passed their lifetime, with their refresh
+   * tokens; the factors that were removed or replaced, or whose enrolment no exchange finished; and the exchanges that
+   * expired, with the responses that they keep. Run it now and then, such as from a timer. It is no call of the
+   * services, so no client can make it.
+   *
+   * @return the number of rows, or a failure when the declaration has no accounts
+   */
+  public Future<Long> purge() {
+    return deployment.schema().compose(schema -> schema.factors().purge().compose(factors -> schema.sessions().purge()
+        .compose(sessions -> schema.exchanges().purge().map(exchanges -> factors + sessions + exchanges))));
   }
 
   /**
@@ -152,9 +170,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite addExchangeStartInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.addStart(interceptor);
+    this.interceptor.addStart(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -163,9 +182,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite removeExchangeStartInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.removeStart(interceptor);
+    this.interceptor.removeStart(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -175,9 +195,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite addStageEndInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.addStageEnd(interceptor);
+    this.interceptor.addStageEnd(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -186,9 +207,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite removeStageEndInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.removeStageEnd(interceptor);
+    this.interceptor.removeStageEnd(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -199,9 +221,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite addExchangeEndInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.addEnd(interceptor);
+    this.interceptor.addEnd(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -210,9 +233,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite removeExchangeEndInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.removeEnd(interceptor);
+    this.interceptor.removeEnd(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -222,9 +246,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, which calls {@code next()} or {@code fail(cause)} on the context
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite addExchangeFailureInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.addFailure(interceptor);
+    this.interceptor.addFailure(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -233,9 +258,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite removeExchangeFailureInterceptor(Handler<ExchangeContext> interceptor) {
-    this.interceptor.removeFailure(interceptor);
+    this.interceptor.removeFailure(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -246,9 +272,10 @@ public final class Pyrite {
    * @param interceptor the interceptor, which calls {@code next()}, or {@code fail(cause)} on the context to stop the
    * exchange, such as when it cannot send the code
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite addCodeInterceptor(Handler<CodeContext> interceptor) {
-    this.interceptor.addCode(interceptor);
+    this.interceptor.addCode(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -257,9 +284,10 @@ public final class Pyrite {
    *
    * @param interceptor the interceptor, as it was added
    * @return this Pyrite
+   * @throws NullPointerException if the interceptor is {@code null}
    */
   public Pyrite removeCodeInterceptor(Handler<CodeContext> interceptor) {
-    this.interceptor.removeCode(interceptor);
+    this.interceptor.removeCode(Objects.requireNonNull(interceptor, "interceptor"));
     return this;
   }
 
@@ -267,11 +295,12 @@ public final class Pyrite {
    * Sets the handler of the accounts that Pyrite creates, which hears of each after the fact. A handler that throws
    * changes nothing of what happened.
    *
-   * @param handler the handler, or {@code null} for none
+   * @param handler the handler, in place of the one before
    * @return this Pyrite
+   * @throws NullPointerException if the handler is {@code null}
    */
   public Pyrite accountCreateHandler(Handler<Account> handler) {
-    accountObserver.createHandler(handler);
+    accountObserver.beginHandler(Objects.requireNonNull(handler, "handler"));
     return this;
   }
 
@@ -279,11 +308,12 @@ public final class Pyrite {
    * Sets the handler of the accounts that Pyrite deletes, through the authentication service or as objects of the
    * access service, which hears of each after the fact. A handler that throws changes nothing of what happened.
    *
-   * @param handler the handler, or {@code null} for none
+   * @param handler the handler, in place of the one before
    * @return this Pyrite
+   * @throws NullPointerException if the handler is {@code null}
    */
   public Pyrite accountDeleteHandler(Handler<Account> handler) {
-    accountObserver.deleteHandler(handler);
+    accountObserver.endHandler(Objects.requireNonNull(handler, "handler"));
     return this;
   }
 
@@ -291,11 +321,12 @@ public final class Pyrite {
    * Sets the handler of the sessions that Pyrite issues, which hears of each after the fact. A handler that throws
    * changes nothing of what happened.
    *
-   * @param handler the handler, or {@code null} for none
+   * @param handler the handler, in place of the one before
    * @return this Pyrite
+   * @throws NullPointerException if the handler is {@code null}
    */
   public Pyrite sessionIssueHandler(Handler<Session> handler) {
-    sessionObserver.issueHandler(handler);
+    sessionObserver.beginHandler(Objects.requireNonNull(handler, "handler"));
     return this;
   }
 
@@ -303,11 +334,12 @@ public final class Pyrite {
    * Sets the handler of the sessions that Pyrite ends, which hears of each after the fact. A session that expires, or
    * whose account is deleted, ends without it. A handler that throws changes nothing of what happened.
    *
-   * @param handler the handler, or {@code null} for none
+   * @param handler the handler, in place of the one before
    * @return this Pyrite
+   * @throws NullPointerException if the handler is {@code null}
    */
   public Pyrite sessionEndHandler(Handler<Session> handler) {
-    sessionObserver.endHandler(handler);
+    sessionObserver.endHandler(Objects.requireNonNull(handler, "handler"));
     return this;
   }
 }

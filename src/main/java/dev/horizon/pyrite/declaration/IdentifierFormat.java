@@ -21,12 +21,13 @@ import java.util.regex.Pattern;
  *
  * <pre>{@code
  * IdentifierFormat email = IdentifierFormat.of(kind);
- * Optional<String> stored = email.normalize(" Anne@Acme.dev "); // anne@acme.dev
+ * Optional<String> value = email.normalize(" Anne@Acme.dev "); // anne@acme.dev
  * }</pre>
  *
  * <p>
  * The expressions take the string {@code value}, with CEL's standard macros and its strings extension, and a
- * comprehension runs at most 1000 iterations. A value whose {@code match} fails to evaluate is of no kind.
+ * comprehension runs at most 1000 iterations. A value whose {@code match} or {@code normalize} fails to evaluate is of
+ * no kind.
  *
  * @param kind the kind, as the declaration declares it
  * @param match the program of {@code match}, which gives a {@code bool}
@@ -80,21 +81,28 @@ public record IdentifierFormat(IdentifierKind kind, CelRuntime.Program match, Op
    * Gives the value that Pyrite stores for a value of the kind.
    *
    * @param value the value as given, such as {@code Anne@Acme.dev}
-   * @return the value as {@code normalize} gives it, such as {@code anne@acme.dev}, or empty when the value, or what
-   * {@code normalize} gives, does not meet {@code match}
+   * @return the value as {@code normalize} gives it, such as {@code anne@acme.dev}, or the value as given for a kind
+   * without {@code normalize}; empty when the value, or what {@code normalize} gives, does not meet {@code match}, and
+   * when {@code normalize} fails to evaluate
    */
   public Optional<String> normalize(String value) {
     if (!matches(value)) {
       return Optional.empty();
     }
-    String normalized = normalize.map(program -> (String) evaluate(program, value)).orElse(value);
-    return matches(normalized) ? Optional.of(normalized) : Optional.empty();
+    if (normalize.isEmpty()) {
+      return Optional.of(value);
+    }
+    return evaluate(normalize.get(), value) instanceof String form && matches(form) ? Optional.of(form)
+        : Optional.empty();
   }
 
+  /**
+   * Gives what a program gives for a value, or {@code null} when it fails to evaluate.
+   */
   private Object evaluate(CelRuntime.Program program, String value) {
     try {
       return program.eval(Map.of("value", value));
-    } catch (CelEvaluationException failed) {
+    } catch (CelEvaluationException failure) {
       return null;
     }
   }

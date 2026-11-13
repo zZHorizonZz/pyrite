@@ -10,24 +10,24 @@ import java.security.GeneralSecurityException;
  * its version, so it opens only as that version's.
  *
  * <p>
- * The root key is the Tink {@link Aead} of the key options. A version opens only with the root key that sealed it, so
+ * The root key is the {@link Aead} of the key options. A version opens only with the root key that sealed it, so
  * every Pyrite on one database has the same root key.
  */
-public final class RootKey {
+final class RootKey {
 
   private static final byte[] CONTEXT = "pyrite\0".getBytes(StandardCharsets.UTF_8);
 
   private final Aead aead;
 
-  public RootKey(Aead aead) {
+  RootKey(Aead aead) {
     this.aead = aead;
   }
 
   byte[] seal(KeyVersionName version, byte[] secret) {
     try {
-      return aead.encrypt(secret, bound(version));
-    } catch (GeneralSecurityException refused) {
-      throw new IllegalStateException("The root key did not seal the version " + version, refused);
+      return aead.encrypt(secret, associatedData(version));
+    } catch (GeneralSecurityException failure) {
+      throw new IllegalStateException("The root key did not seal the version " + version, failure);
     }
   }
 
@@ -37,15 +37,18 @@ public final class RootKey {
    * @return the secret
    * @throws IllegalStateException when this root key did not seal it, or sealed it for another version
    */
-  byte[] unseal(KeyVersionName version, byte[] sealed) {
+  byte[] unseal(KeyVersionName version, byte[] ciphertext) {
     try {
-      return aead.decrypt(sealed, bound(version));
+      return aead.decrypt(ciphertext, associatedData(version));
     } catch (GeneralSecurityException unreadable) {
       throw new IllegalStateException("The root key does not open the version " + version, unreadable);
     }
   }
 
-  private static byte[] bound(KeyVersionName version) {
+  /**
+   * Gives the data that binds a sealed secret to its version.
+   */
+  private static byte[] associatedData(KeyVersionName version) {
     byte[] name = version.name().getBytes(StandardCharsets.UTF_8);
     return ByteBuffer.allocate(CONTEXT.length + name.length).put(CONTEXT).put(name).array();
   }

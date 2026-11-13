@@ -15,9 +15,9 @@ import io.vertx.core.Future;
  *
  * <p>
  * A declaration that breaks a rule fails {@code WriteDeclaration} with {@code INVALID_ARGUMENT}, and one that the
- * options of Pyrite cannot serve with {@code FAILED_PRECONDITION}. {@code ReadDeclaration} fails with
- * {@code NOT_FOUND} for an id that no declaration has, and before the first declaration. Neither method takes a
- * subject.
+ * options of Pyrite cannot serve, or that changes a type whose resources Pyrite knows, with
+ * {@code FAILED_PRECONDITION}. {@code ReadDeclaration} fails with {@code NOT_FOUND} for an id that no declaration has,
+ * and before the first declaration. Neither method takes a subject.
  */
 public final class SchemaEndpoint extends SchemaGrpcService {
 

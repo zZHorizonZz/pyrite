@@ -78,18 +78,18 @@ these relations:
 `CreateKey` takes the `key_id`, the `parent`, the `algorithm` and the `rotation_period`, and gives the creator the
 type's `creator` relation. It gives a `Key`:
 
-| Field                | Type                        | Description                                                           |
-| -------------------- | --------------------------- | --------------------------------------------------------------------- |
-| `name`               | `string`                    | The name, such as `keys/payments`                                     |
-| `parent`             | `string`                    | The resource it is under; empty for a key at the top                  |
-| `purpose`            | `Key.Purpose`               | `ENCRYPTION`, `MAC` or `SIGNING`, which the algorithm decides         |
-| `algorithm`          | `Algorithm`                 | The algorithm; see the table below                                    |
-| `rotation_period`    | `google.protobuf.Duration`  | How often the key rotates on its own; zero for never                  |
-| `next_rotation_time` | `google.protobuf.Timestamp` | When the key rotates next; unset when it does not rotate on its own   |
-| `primary_version`    | `string`                    | The version that encrypts and signs, such as `keyVersions/payments-1` |
-| `revision`           | `int64`                     | The revision that `UpdateKey` names                                   |
-| `create_time`        | `google.protobuf.Timestamp` | When the key was created                                              |
-| `update_time`        | `google.protobuf.Timestamp` | When the key last changed                                             |
+| Field                | Type                        | Description                                                                                     |
+| -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `name`               | `string`                    | The name, such as `keys/payments`                                                               |
+| `parent`             | `string`                    | The resource it is under; empty for a key at the top                                            |
+| `purpose`            | `Key.Purpose`               | `ENCRYPTION`, `MAC` or `SIGNING`, which the algorithm decides                                   |
+| `algorithm`          | `Algorithm`                 | The algorithm; see the table below                                                              |
+| `rotation_period`    | `google.protobuf.Duration`  | How often the key rotates on its own: whole seconds, from a minute to 50 years; zero for never |
+| `next_rotation_time` | `google.protobuf.Timestamp` | When the key rotates next; unset when it does not rotate on its own                             |
+| `primary_version`    | `string`                    | The version that encrypts and signs, such as `keyVersions/payments-1`                           |
+| `revision`           | `int64`                     | The revision that `UpdateKey` names                                                             |
+| `create_time`        | `google.protobuf.Timestamp` | When the key was created                                                                        |
+| `update_time`        | `google.protobuf.Timestamp` | When the key last changed                                                                       |
 
 `UpdateKey` changes only `rotation_period`.
 
@@ -201,8 +201,8 @@ Factors come only from exchanges that enrol them, in the `factors` of the result
 
 ### Session
 
-Sessions come only from exchanges, in the `sessions` of the result. `EndSession` ends one, and `Purge` deletes it once
-it has ended.
+Sessions come only from exchanges, in the `sessions` of the result. `EndSession` ends one, and `Pyrite.purge()` deletes
+it once it has ended.
 
 | Field         | Type                        | Description                                    |
 | ------------- | --------------------------- | ---------------------------------------------- |

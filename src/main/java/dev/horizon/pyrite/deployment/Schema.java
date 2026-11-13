@@ -8,23 +8,21 @@ import dev.horizon.pyrite.access.OpenFga;
 import dev.horizon.pyrite.declaration.ResourceType;
 import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.exchange.ExchangeInterceptor;
-import dev.horizon.pyrite.exchange.ExchangeType;
-import dev.horizon.pyrite.identity.AccountObserver;
-import dev.horizon.pyrite.identity.AccountType;
-import dev.horizon.pyrite.identity.CredentialType;
-import dev.horizon.pyrite.identity.IdentifierType;
-import dev.horizon.pyrite.key.KeyType;
-import dev.horizon.pyrite.key.RootKey;
+import dev.horizon.pyrite.exchange.ExchangeService;
+import dev.horizon.pyrite.identity.AccountService;
+import dev.horizon.pyrite.identity.FactorService;
+import dev.horizon.pyrite.identity.IdentifierService;
+import dev.horizon.pyrite.key.KeyService;
+import dev.horizon.pyrite.observer.LifecycleObserver;
 import dev.horizon.pyrite.resource.ResourceTree;
-import dev.horizon.pyrite.session.SessionObserver;
-import dev.horizon.pyrite.session.SessionType;
+import dev.horizon.pyrite.session.SessionService;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.grpc.common.GrpcStatus;
 import java.util.Optional;
 
 /**
- * A declaration bound to its database and its OpenFGA store: its types, the tree of the resources that Pyrite knows,
+ * A declaration bound to its database and its store of grants: its types, the tree of the resources that Pyrite knows,
  * and Pyrite's own keys, accounts and exchanges.
  *
  * <p>
@@ -36,27 +34,30 @@ public final class Schema {
   private final TypeSystem types;
   private final ResourceTree resources;
   private final PyriteOptions options;
-  private final Optional<KeyType> keys;
-  private final Optional<AccountType> accounts;
-  private final Optional<ExchangeType> exchanges;
+  private final Optional<KeyService> keys;
+  private final Optional<AccountService> accounts;
+  private final Optional<IdentifierService> identifiers;
+  private final Optional<FactorService> factors;
+  private final Optional<SessionService> sessions;
+  private final Optional<ExchangeService> exchanges;
 
   Schema(TypeSystem types, Database database, OpenFga openFga, Vertx vertx, PyriteOptions options,
-      ExchangeInterceptor interceptor, AccountObserver accountObserver, SessionObserver sessionObserver) {
+      ExchangeInterceptor interceptor, LifecycleObserver<dev.horizon.pyrite.authentication.v1.Account> accountObserver,
+      LifecycleObserver<dev.horizon.pyrite.authentication.v1.Session> sessionObserver) {
     this.types = types;
     this.resources = new ResourceTree(types, openFga, database);
     this.options = options;
-    this.keys = types.type(TypeSystem.KEY).map(declared -> new KeyType(resources, declared, database, vertx,
-        options.getKeyOptions(), new RootKey(Optional.ofNullable(options.getKeyOptions().getRoot()).orElseThrow(
-            () -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has keys, whose material a"
-                + " root key seals, but the options name no root key.")))));
-    this.accounts = types.type(TypeSystem.ACCOUNT).map(declared -> {
-      AuthenticationOptions authentication = options.getAuthenticationOptions();
-      return new AccountType(resources, declared, openFga, database, new IdentifierType(database, types),
-          new CredentialType(database, vertx, authentication, keys()),
-          new SessionType(database, authentication, keys(), sessionObserver), accountObserver);
-    });
-    this.exchanges = accounts.map(accountType -> new ExchangeType(database, types,
-        options.getAuthenticationOptions(), accountType, keys(), interceptor));
+    this.keys = types.type(TypeSystem.KEY).map(type -> new KeyService(resources, type, database, vertx,
+        options.getKeyOptions()));
+    AuthenticationOptions authentication = options.getAuthenticationOptions();
+    this.accounts = types.type(TypeSystem.ACCOUNT).map(type -> new AccountService(resources, type, openFga, database,
+        accountObserver));
+    this.identifiers = accounts.map(ignored -> new IdentifierService(database, types));
+    this.factors = accounts.map(ignored -> new FactorService(database, vertx, authentication, keys()));
+    this.sessions = accounts.map(service -> new SessionService(database, authentication, keys(), service,
+        sessionObserver));
+    this.exchanges = accounts.map(service -> new ExchangeService(database, types, authentication, service,
+        identifiers.get(), factors.get(), sessions.get(), keys(), interceptor));
   }
 
   public TypeSystem types() {
@@ -89,10 +90,9 @@ public final class Schema {
   /**
    * Gives the keys of the declaration.
    *
-   * @return the type {@code pyrite.dev/Key}
    * @throws PyriteException with {@code FAILED_PRECONDITION} when the declaration has no {@code pyrite.dev/Key}
    */
-  public KeyType keys() {
+  public KeyService keys() {
     return keys.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
         + " keys; declare the type " + TypeSystem.KEY + "."));
   }
@@ -100,23 +100,38 @@ public final class Schema {
   /**
    * Gives the accounts of the declaration.
    *
-   * @return the type {@code pyrite.dev/Account}
    * @throws PyriteException with {@code FAILED_PRECONDITION} when the declaration has no {@code pyrite.dev/Account}
    */
-  public AccountType accounts() {
-    return accounts.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
-        + " accounts; declare the type " + TypeSystem.ACCOUNT + "."));
+  public AccountService accounts() {
+    return withAccounts(accounts);
   }
 
   /**
-   * Gives the exchanges of the declaration.
-   *
-   * @return the exchanges
-   * @throws PyriteException with {@code FAILED_PRECONDITION} when the declaration has no {@code pyrite.dev/Account}
+   * Gives the identifiers of the accounts, which a declaration with accounts has.
    */
-  public ExchangeType exchanges() {
-    return exchanges.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
-        + " accounts, so it has no exchanges."));
+  public IdentifierService identifiers() {
+    return withAccounts(identifiers);
+  }
+
+  /**
+   * Gives the factors of the accounts, which a declaration with accounts has.
+   */
+  public FactorService factors() {
+    return withAccounts(factors);
+  }
+
+  /**
+   * Gives the sessions of the accounts, which a declaration with accounts has.
+   */
+  public SessionService sessions() {
+    return withAccounts(sessions);
+  }
+
+  /**
+   * Gives the exchanges of the accounts, which a declaration with accounts has.
+   */
+  public ExchangeService exchanges() {
+    return withAccounts(exchanges);
   }
 
   /**
@@ -132,5 +147,10 @@ public final class Schema {
       return accounts.get().delete(name);
     }
     return resources.forget(name);
+  }
+
+  private static <T> T withAccounts(Optional<T> service) {
+    return service.orElseThrow(() -> new PyriteException(GrpcStatus.FAILED_PRECONDITION, "The declaration has no"
+        + " accounts; declare the type " + TypeSystem.ACCOUNT + "."));
   }
 }

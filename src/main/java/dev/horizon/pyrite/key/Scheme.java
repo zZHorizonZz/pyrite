@@ -59,7 +59,7 @@ enum Scheme {
       }
       return generator.generateKeyPair();
     } catch (GeneralSecurityException missing) {
-      throw new IllegalStateException("The JDK cannot generate " + keyAlgorithm + " keys", missing);
+      throw new IllegalStateException("No security provider generates " + keyAlgorithm + " keys", missing);
     }
   }
 
@@ -85,17 +85,17 @@ enum Scheme {
       signature.initSign(key);
       signature.update(data);
       return signature.sign();
-    } catch (GeneralSecurityException refused) {
-      throw new IllegalStateException("The key did not sign with " + signatureAlgorithm, refused);
+    } catch (GeneralSecurityException failure) {
+      throw new IllegalStateException("The key did not sign with " + signatureAlgorithm, failure);
     }
   }
 
-  public boolean verifies(PublicKey key, byte[] data, byte[] signed) {
+  public boolean verifies(PublicKey key, byte[] data, byte[] signature) {
     try {
-      Signature signature = Signature.getInstance(signatureAlgorithm);
-      signature.initVerify(key);
-      signature.update(data);
-      return signature.verify(signed);
+      Signature verifier = Signature.getInstance(signatureAlgorithm);
+      verifier.initVerify(key);
+      verifier.update(data);
+      return verifier.verify(signature);
     } catch (GeneralSecurityException unverifiable) {
       return false;
     }
@@ -108,8 +108,8 @@ enum Scheme {
       case ES256 -> new ECKey.Builder(Curve.P_256, (ECPublicKey) key).keyID(id).algorithm(jose)
           .keyUse(KeyUse.SIGNATURE).build().toJSONObject();
       case EDDSA -> {
-        byte[] encoded = key.getEncoded();
-        byte[] x = Arrays.copyOfRange(encoded, encoded.length - ED25519_BYTES, encoded.length);
+        byte[] info = key.getEncoded();
+        byte[] x = Arrays.copyOfRange(info, info.length - ED25519_BYTES, info.length);
         yield new OctetKeyPair.Builder(Curve.Ed25519, Base64URL.encode(x)).keyID(id).algorithm(jose)
             .keyUse(KeyUse.SIGNATURE).build().toJSONObject();
       }

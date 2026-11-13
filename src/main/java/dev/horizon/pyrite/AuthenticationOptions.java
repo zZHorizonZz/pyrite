@@ -7,13 +7,14 @@ import java.util.Objects;
 
 /**
  * The options of accounts, sessions and exchanges. A declaration with {@code pyrite.dev/Account} needs the three keys,
- * the issuer, and the id and name of the relying party.
+ * the issuer, and the id, the name and at least one origin of the relying party.
  *
  * <pre>{@code
  * AuthenticationOptions authentication = new AuthenticationOptions().setMacKey("keys/sessions")
  *     .setEncryptionKey("keys/factors").setAccessTokenKey("keys/access").setIssuer("Acme")
  *     .setSessionLifetime(Duration.ofDays(14))
- *     .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme"));
+ *     .setRelyingPartyOptions(new RelyingPartyOptions().setId("acme.dev").setName("Acme")
+ *         .addOrigin("https://acme.dev"));
  * }</pre>
  *
  * <p>
@@ -69,7 +70,7 @@ public class AuthenticationOptions {
   }
 
   /**
-   * Creates a copy of options, with copies of their relying party and their cost of password hashes.
+   * Creates a copy of options, with copies of their relying party, their providers and their cost of password hashes.
    *
    * @param other the options to copy
    */
@@ -93,7 +94,8 @@ public class AuthenticationOptions {
    * Tells which of what a declaration with accounts needs these options lack.
    *
    * @return the names of the options that are not set, of {@code macKey}, {@code encryptionKey},
-   * {@code accessTokenKey}, {@code issuer} and {@code relyingPartyOptions}; empty when none is missing
+   * {@code accessTokenKey}, {@code issuer} and {@code relyingPartyOptions}, which lacks its id, its name or an origin;
+   * empty when none is missing
    */
   public List<String> missing() {
     List<String> missing = new ArrayList<>();
@@ -109,7 +111,8 @@ public class AuthenticationOptions {
     if (issuer == null) {
       missing.add("issuer");
     }
-    if (relyingPartyOptions.getId() == null || relyingPartyOptions.getName() == null) {
+    if (relyingPartyOptions.getId() == null || relyingPartyOptions.getName() == null
+        || relyingPartyOptions.getOrigins().isEmpty()) {
       missing.add("relyingPartyOptions");
     }
     return missing;
@@ -198,36 +201,42 @@ public class AuthenticationOptions {
   /**
    * Gives the providers that people sign in at.
    *
-   * @return the providers, which a change changes in these options
+   * @return copies of the providers, in the order that they were added; a change of them does not reach these options
    */
   public List<ProviderOptions> getProviders() {
-    return providers;
+    return providers.stream().map(ProviderOptions::new).toList();
   }
 
   /**
    * Sets the providers that people sign in at, in place of those before.
    *
-   * @param providers the providers, each with a name, a Vert.x provider and a callback; none by default
+   * @param providers the providers, each with a name, a Vert.x provider and a callback, and no two with the same name;
+   * none by default
    * @return these options
+   * @throws IllegalArgumentException if a provider lacks its name, its Vert.x provider or its callback, or has the name
+   * of another
    */
   public AuthenticationOptions setProviders(List<ProviderOptions> providers) {
-    this.providers = new ArrayList<>(providers);
+    List<ProviderOptions> copies = new ArrayList<>();
+    for (ProviderOptions provider : providers) {
+      add(copies, provider);
+    }
+    this.providers = copies;
     return this;
   }
 
   /**
    * Adds a provider that people sign in at, which an exchange takes as a factor, and whose accounts the stage
-   * {@code enrol: PROVIDER} links.
+   * {@code enrol: PROVIDER} links. The options keep a copy of it, so a later change of the provider does not reach
+   * them.
    *
    * @param provider the provider, with a name, a Vert.x provider and a callback
    * @return these options
-   * @throws IllegalArgumentException if the provider lacks its name, its Vert.x provider or its callback
+   * @throws IllegalArgumentException if the provider lacks its name, its Vert.x provider or its callback, or has the
+   * name of a provider that these options have
    */
   public AuthenticationOptions addProvider(ProviderOptions provider) {
-    if (provider.getName() == null || provider.getAuth() == null || provider.getRedirectUri() == null) {
-      throw new IllegalArgumentException("A provider has a name, a Vert.x provider and a callback.");
-    }
-    providers.add(provider);
+    add(providers, provider);
     return this;
   }
 
@@ -238,7 +247,7 @@ public class AuthenticationOptions {
   /**
    * Sets the WebAuthn relying party that passkeys are registered with.
    *
-   * @param relyingPartyOptions the relying party, with its id and name; by default one without them
+   * @param relyingPartyOptions the relying party, with its id, its name and its origins; by default one without them
    * @return these options
    */
   public AuthenticationOptions setRelyingPartyOptions(RelyingPartyOptions relyingPartyOptions) {
@@ -369,8 +378,19 @@ public class AuthenticationOptions {
     return this;
   }
 
+  private static void add(List<ProviderOptions> providers, ProviderOptions provider) {
+    Objects.requireNonNull(provider, "provider");
+    if (provider.getName() == null || provider.getAuth() == null || provider.getRedirectUri() == null) {
+      throw new IllegalArgumentException("A provider has a name, a Vert.x provider and a callback.");
+    }
+    if (providers.stream().anyMatch(other -> other.getName().equals(provider.getName()))) {
+      throw new IllegalArgumentException("Two providers have the name " + provider.getName() + ".");
+    }
+    providers.add(new ProviderOptions(provider));
+  }
+
   private static Duration positive(Duration lifetime, String name) {
-    if (lifetime.isNegative() || lifetime.isZero()) {
+    if (Objects.requireNonNull(lifetime, name).isNegative() || lifetime.isZero()) {
       throw new IllegalArgumentException("The " + name + " is positive.");
     }
     return lifetime;

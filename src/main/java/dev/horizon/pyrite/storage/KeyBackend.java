@@ -35,4 +35,17 @@ public record KeyBackend(Database database) implements ResourceBackend<Tables.Ke
             rows -> rows.stream()
                 .findFirst());
   }
+
+  /**
+   * Gives back the rotation of a key whose rotation failed after its claim: sets its next rotation time to what it was
+   * before the claim, if the key is still as the claim left it, so that its next use rotates it again.
+   *
+   * @param claim the key as {@link #claimRotation(Tables.Key)} gave it
+   * @param nextRotationTime the next rotation time before the claim
+   * @return whether the key took the time back; not when another change came after the claim
+   */
+  public Future<Boolean> releaseRotation(Tables.Key claim, String nextRotationTime) {
+    return execute(update().set("next_rotation_time", nextRotationTime).where(and(eq("uid", claim.getUid()),
+        eq("revision", claim.getRevision())))).map(count -> count > 0);
+  }
 }

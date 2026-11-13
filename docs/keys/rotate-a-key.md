@@ -18,7 +18,8 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
    ```
 
    The key's `next_rotation_time` is 90 days after its creation. Its first encryption or signature after that time
-   rotates it.
+   rotates it. A period is a whole number of seconds, from a minute to 50 years, or zero for a key that rotates only
+   on request; any other period fails with `INVALID_ARGUMENT`.
 
 2. To change the period of a key that exists, read the key, and name the revision that you read:
 
@@ -44,6 +45,9 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
 
 2. Read `rotated.getPrimaryVersion()`. It is the next version, such as `keyVersions/payments-2`. New encryptions and
    signatures name it in `key_version`.
+
+   A rotation that another change of the key comes first to, such as another rotation at the same time, fails with
+   `ABORTED` and leaves no version of its own. Rotate again if the other change did not rotate the key.
 
 3. For a signing key, publish the public key of the new version. See
    [Sign and verify tokens](sign-and-verify-tokens.md#publish-the-public-key).

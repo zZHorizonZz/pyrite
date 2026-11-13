@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * A run of the interceptors that deliver a one-time code.
  */
-final class CodeChain extends Chain<CodeContext> implements CodeContext {
+final class CodeChain extends Chain<CodeContext> {
 
   private final Delivery delivery;
 
@@ -18,12 +18,23 @@ final class CodeChain extends Chain<CodeContext> implements CodeContext {
   }
 
   @Override
-  public Delivery delivery() {
-    return delivery;
-  }
+  CodeContext context(Turn turn) {
+    return new CodeContext() {
 
-  @Override
-  CodeContext context() {
-    return this;
+      @Override
+      public Delivery delivery() {
+        return delivery;
+      }
+
+      @Override
+      public void next() {
+        turn.next();
+      }
+
+      @Override
+      public void fail(Throwable cause) {
+        turn.fail(cause);
+      }
+    };
   }
 }

@@ -71,7 +71,7 @@ public class KeyOptions {
    * @throws IllegalArgumentException if the skew is negative
    */
   public KeyOptions setClockSkew(Duration clockSkew) {
-    if (clockSkew.isNegative()) {
+    if (Objects.requireNonNull(clockSkew, "clockSkew").isNegative()) {
       throw new IllegalArgumentException("The clock skew is not negative.");
     }
     this.clockSkew = clockSkew;

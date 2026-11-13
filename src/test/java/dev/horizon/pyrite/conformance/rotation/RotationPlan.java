@@ -20,6 +20,7 @@ public final class RotationPlan implements Plan {
     return List.<Supplier<ConformanceModule>> of(KeyRotation::new, ConcurrentRotation::new, OldSigningVersion::new,
         RotationPermission::new,
         RotationPeriod::new, PeriodChange::new, NoRotationPeriod::new, VersionDisabling::new, VersionDestruction::new,
-        VerificationOfDisabledVersion::new, PrimaryVersionState::new, VersionStateValue::new);
+        VerificationOfDisabledVersion::new, PrimaryVersionState::new, VersionStateValue::new, RotationFailure::new,
+        ShortPeriod::new, FractionalPeriod::new, LongPeriod::new);
   }
 }

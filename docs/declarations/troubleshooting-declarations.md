@@ -352,6 +352,20 @@ wildcard.
 
 **Verify:** `WriteDeclaration` gives an id.
 
+## The type pyrite.dev/Account has the singular name ..., but its singular name is user
+
+```text
+INVALID_ARGUMENT: The type pyrite.dev/Account has the singular name person, but its singular name is user: subjects of calls, such as user:anne, are accounts.
+```
+
+**Cause:** The `definition.type` of `pyrite.dev/Account` is not `user`. Pyrite names the subject of each call, and the
+owner of each account, as `user:<id>`.
+
+**Fix:** Set `definition.type` of `pyrite.dev/Account` to `user`, and name `user` in the direct types that take
+accounts.
+
+**Verify:** `WriteDeclaration` gives an id.
+
 ## The declaration has keys, whose material a root key seals...
 
 ```text
@@ -377,6 +391,35 @@ FAILED_PRECONDITION: The declaration has accounts, which need the type pyrite.de
 
 **Fix:** Declare `pyrite.dev/Key`, and set what the message names in the authentication options. See
 [Options](../deployment/options.md).
+
+**Verify:** `WriteDeclaration` gives an id.
+
+## The declaration drops the type ..., but Pyrite knows resources of the type
+
+```text
+FAILED_PRECONDITION: The declaration changes the plural of the type acme.dev/Project from projects to ventures, but Pyrite knows resources of the type; forget them first, or keep the type as it is.
+```
+
+**Cause:** The declaration drops a type of the latest declaration, or changes its `plural`, its `definition.type` or
+its `parents`, and Pyrite knows resources of the type. The message starts with `drops the type`, `changes the plural`,
+`changes the singular name` or `changes the parents`. A known resource finds its type by its plural, its grants by the
+singular name, and its parent among the parent types, so the change would leave it out of reach.
+
+**Fix:** Keep the type as the latest declaration has it. To change it all the same, forget each resource of the type
+with `DeleteObject`, those under it first, and write the declaration again.
+
+**Verify:** `WriteDeclaration` gives an id.
+
+## Other declarations were written at the same time as this one
+
+```text
+ABORTED: Other declarations were written at the same time as this one; write it again.
+```
+
+**Cause:** Other Pyrites on the database stored a declaration while this one wrote, at each of its three attempts.
+Each declaration is stored on the latest one, and the database stores no two on the same one.
+
+**Fix:** Write the declaration again. Write declarations from one place, such as when the application starts.
 
 **Verify:** `WriteDeclaration` gives an id.
 

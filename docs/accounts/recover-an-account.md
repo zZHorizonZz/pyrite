@@ -57,8 +57,8 @@ end every session of the account in case someone else holds one.
    ```
 
 An exchange of an address that no account has, or that is not verified, does not fail. It has no deliveries, its
-challenge has no `CodeSent` parameters, and no code is ever right. Show the person the same page either way, so that
-the page does not tell whether the address has an account.
+challenge is the same as for a real address, and no code is ever right. Show the person the same page either way, so
+that the page does not tell whether the address has an account.
 
 ## Verify
 

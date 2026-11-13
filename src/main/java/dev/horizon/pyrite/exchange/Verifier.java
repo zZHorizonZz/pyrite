@@ -18,7 +18,7 @@ import java.util.Optional;
  *
  * @param <A> the message of the answer
  */
-sealed interface Verifier<A extends Message> permits CredentialVerifier, CodeVerifier, ProviderVerifier, Enrolling {
+sealed interface Verifier<A extends Message> permits FactorVerifier, CodeVerifier, ProviderChallenge, Enrolling {
 
   /**
    * Gives an empty answer of the message that the verifier takes.
@@ -46,7 +46,7 @@ sealed interface Verifier<A extends Message> permits CredentialVerifier, CodeVer
    *
    * @return the code to deliver, or nothing
    */
-  default Future<Optional<Delivery>> prepare(Exchange exchange) {
+  default Future<Optional<Delivery>> prepare(ExchangeRecord exchange) {
     return Future.succeededFuture(Optional.empty());
   }
 
@@ -54,7 +54,7 @@ sealed interface Verifier<A extends Message> permits CredentialVerifier, CodeVer
    * Gives the challenge that the response names for this answer, with the parameters that the client needs, such as
    * the options of a passkey.
    */
-  default Future<Challenge> challenge(Exchange exchange) {
+  default Future<Challenge> challenge(ExchangeRecord exchange) {
     return Future.succeededFuture(Challenge.newBuilder().setMethod(name()).build());
   }
 
@@ -65,7 +65,7 @@ sealed interface Verifier<A extends Message> permits CredentialVerifier, CodeVer
    * @param answer the answer, parsed
    * @return the evidence of a right answer, or nothing for a wrong one
    */
-  Future<Optional<Evidence>> verify(Exchange exchange, A answer);
+  Future<Optional<Evidence>> verify(ExchangeRecord exchange, A answer);
 
   /**
    * Parses an answer, and weighs it.
@@ -74,7 +74,7 @@ sealed interface Verifier<A extends Message> permits CredentialVerifier, CodeVer
    * answer that does not parse
    */
   @SuppressWarnings("unchecked")
-  default Future<Optional<Evidence>> accept(Exchange exchange, Any answer) {
+  default Future<Optional<Evidence>> accept(ExchangeRecord exchange, Any answer) {
     A parsed;
     try {
       parsed = (A) prototype().getParserForType().parseFrom(answer.getValue());

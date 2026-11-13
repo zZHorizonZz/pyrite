@@ -38,7 +38,7 @@ The migrations give the database the rules that keep the rows consistent:
 - **Single use.** A refresh marks its refresh token as used in the statement that checks that it is unused, so two
   refreshes with one token cannot both succeed.
 - **Unique values.** The name of each resource is unique, the number of a version is unique per key, so that two
-  rotations at once cannot make the same version, and the value of an identifier is unique per kind.
+  rotations at once cannot make the same version, and a verified value of an identifier is unique per kind.
 - **Revisions and times.** The database gives each row its `uid`, its first `revision` and its `create_time`, and
   each update of a resource a new `revision` and `update_time`.
 - **The clock.** Every time that Pyrite stores or compares is the database's: the expiry of a session, an exchange or a
@@ -68,13 +68,14 @@ indexed.
 
 ## pyrite_declaration
 
-| Column        | Type        | Description                                                                  |
-| ------------- | ----------- | ---------------------------------------------------------------------------- |
-| `id`          | `TEXT(36)`  | The declaration's id, a UUID. The primary key                                |
-| `declaration` | `BYTES`     | The serialized `pyrite.schema.v1.Declaration`                                |
-| `store_id`    | `TEXT(26)`  | The OpenFGA store of the grants, the same for every declaration              |
-| `model_id`    | `TEXT(26)`  | The authorization model that the declaration wrote to the store              |
-| `create_time` | `TIMESTAMP` | When it was written. Indexed; the latest is the one that every service reads |
+| Column        | Type        | Description                                                                                                                                       |
+| ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | `TEXT(36)`  | The declaration's id, a UUID. The primary key                                                                                                     |
+| `declaration` | `BYTES`     | The serialized `pyrite.schema.v1.Declaration`                                                                                                     |
+| `store_id`    | `TEXT(26)`  | The OpenFGA store of the grants, the same for every declaration                                                                                   |
+| `model_id`    | `TEXT(26)`  | The authorization model that the declaration wrote to the store                                                                                   |
+| `create_time` | `TIMESTAMP` | When it was written. Indexed; the latest is the one that every service reads                                                                      |
+| `previous_id` | `TEXT(36)`  | The declaration that was the latest when it was written, or empty for the first. Unique, so two writes at once cannot both follow one declaration |
 
 ## pyrite_node
 
@@ -124,12 +125,13 @@ The `name` of an account is a foreign key to its node.
 
 ## pyrite_identifier
 
-| Column     | Type        | Description                                                              |
-| ---------- | ----------- | ------------------------------------------------------------------------ |
-| `kind`     | `TEXT(16)`  | The name of its identifier kind in the declaration, such as `email`      |
-| `value`    | `TEXT(320)` | The value as the kind normalized it. Unique with `kind`                  |
-| `verified` | `BOOLEAN`   | Whether an exchange verified it with a code                              |
-| `primary`  | `BOOLEAN`   | Whether the account prefers it among its identifiers; the caller sets it |
+| Column     | Type        | Description                                                                                                                       |
+| ---------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`     | `TEXT(16)`  | The name of its identifier kind in the declaration, such as `email`                                                               |
+| `value`    | `TEXT(320)` | The value as the kind normalized it. Indexed with `kind`                                                                          |
+| `verified` | `BOOLEAN`   | Whether an exchange verified it with a code                                                                                       |
+| `primary`  | `BOOLEAN`   | Whether the account prefers it among its identifiers; the caller sets it                                                          |
+| `claim`    | `TEXT(340)` | `kind:value` once the identifier is verified, so no two verified identifiers hold one value; its own name while it is not. Unique |
 
 ## pyrite_factor
 
@@ -177,25 +179,25 @@ A refresh token is not a resource. Its rows go with their session, when it is pu
 
 An exchange is not a resource, and its table has none of the columns of a resource table.
 
-| Column              | Type        | Description                                                                               |
-| ------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `id`                | `TEXT(36)`  | The exchange's id, in its name `exchanges/<id>`. The primary key                          |
-| `definition`        | `TEXT(63)`  | The name of the exchange definition                                                       |
-| `account`           | `TEXT(255)` | The account; null when the exchange names no account that exists                          |
-| `identifier`        | `TEXT(255)` | The identifier that the exchange started with; can be null                                |
-| `revision`          | `BIGINT`    | One more after each answer that moves the exchange on                                     |
-| `stage`             | `INT`       | The index of the current stage                                                            |
-| `proofs`            | `JSON`      | What the answers of the current stage proved                                              |
-| `answers`           | `INT`       | The wrong answers taken, against `maxAnswers`                                             |
-| `expire_time`       | `TIMESTAMP` | When the exchange expires                                                                 |
-| `nonce`             | `BYTES`     | The random nonce of the current stage, which a passkey answer signs; can be null          |
-| `nonce_expire_time` | `TIMESTAMP` | When the nonce, and what the verifiers keep with it, expire; can be null                  |
-| `state`             | `JSON`      | What the verifiers keep for the stage, such as the MAC of the code that the exchange sent |
-| `factor`            | `TEXT(255)` | The factor that the exchange enrols; can be null                                          |
-| `request_id`        | `TEXT(64)`  | The id of the last answer, for retries; can be null                                       |
-| `response`          | `BYTES`     | The response to the last answer, returned again on a retry; can be null                   |
-| `done`              | `BOOLEAN`   | Whether the exchange is done; a done exchange takes no answers                            |
-| `provider_account`  | `BYTES`     | The provider account that the exchange creates an account for; can be null                |
+| Column              | Type        | Description                                                                                                        |
+| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| `id`                | `TEXT(36)`  | The exchange's id, in its name `exchanges/<id>`. The primary key                                                   |
+| `definition`        | `TEXT(63)`  | The name of the exchange definition                                                                                |
+| `account`           | `TEXT(255)` | The account; null when the exchange names no account that exists                                                   |
+| `identifier`        | `TEXT(255)` | The identifier that the exchange started with; can be null                                                         |
+| `revision`          | `BIGINT`    | One more after each answer that moves the exchange on                                                              |
+| `stage`             | `INT`       | The index of the current stage                                                                                     |
+| `proofs`            | `JSON`      | What the answers of the current stage proved                                                                       |
+| `answers`           | `INT`       | The wrong answers taken, against `maxAnswers`                                                                      |
+| `expire_time`       | `TIMESTAMP` | When the exchange expires                                                                                          |
+| `nonce`             | `BYTES`     | The random nonce of the current stage, which a passkey answer signs; can be null                                   |
+| `nonce_expire_time` | `TIMESTAMP` | When the nonce, and what the verifiers keep with it, expire; can be null                                           |
+| `state`             | `JSON`      | What the verifiers keep for the stage, such as the MAC of the code that the exchange sent                          |
+| `factor`            | `TEXT(255)` | The factor that the exchange enrols; can be null                                                                   |
+| `request_id`        | `TEXT(64)`  | The id of the last answer, for retries; can be null                                                                |
+| `response`          | `BYTES`     | The response to the last answer, encrypted with the key of `encryptionKey`, returned again on a retry; can be null |
+| `done`              | `BOOLEAN`   | Whether the exchange is done; a done exchange takes no answers                                                     |
+| `provider_account`  | `BYTES`     | The provider account that the exchange creates an account for; can be null                                         |
 
 `account` is a foreign key to the account, so deleting an account deletes its exchanges.
 

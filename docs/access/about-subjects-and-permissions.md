@@ -21,9 +21,9 @@ that `Authenticate` accepted.
 Serve Pyrite only to code that you control: a gateway, or a verticle in the same Vert.x instance. A client that sets
 `subject` itself acts as anyone.
 
-A few calls take no subject: `WriteDeclaration` and `ReadDeclaration`, `Purge`, which your application makes on its own
-behalf, and `ContinueExchange` and `Authenticate`, which prove who the caller is. `StartExchange` takes one only for an
-exchange whose input is the account that calls.
+A few calls take no subject: `WriteDeclaration` and `ReadDeclaration`, which your application makes on its own behalf,
+and `ContinueExchange`, `Authenticate` and `RefreshSession`, which prove who the caller is. `StartExchange` takes one
+only for an exchange whose input is the account that calls.
 
 The type `user` is an account, so `user:anne` is the principal of `accounts/anne`. A grant names its grantee in one of
 three forms:

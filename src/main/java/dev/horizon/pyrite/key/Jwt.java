@@ -18,7 +18,7 @@ import java.util.Optional;
  * A JWT in compact serialization that a verification reads: its header, which it checks before the signature, and its
  * claims, which it checks after.
  *
- * @param jws the parsed token
+ * @param jws the token
  */
 record Jwt(JWSObject jws) {
 
@@ -34,20 +34,20 @@ record Jwt(JWSObject jws) {
 
   Optional<Rejected> header(JWSAlgorithm algorithm, String type) {
     JWSHeader header = jws.getHeader();
-    Rejected.Builder rejected = Rejected.newBuilder();
+    Rejected.Builder rejection = Rejected.newBuilder();
     if (header.getCriticalParams() != null && !header.getCriticalParams().isEmpty()) {
-      rejected.setReason(Rejected.Reason.MALFORMED).setMessage("The token names critical header parameters, which"
+      rejection.setReason(Rejected.Reason.MALFORMED).setMessage("The token names critical header parameters, which"
           + " Pyrite does not support.");
     } else if (!algorithm.equals(header.getAlgorithm())) {
-      rejected.setReason(Rejected.Reason.ALGORITHM).setMessage("The token is not signed with " + algorithm + ".");
+      rejection.setReason(Rejected.Reason.ALGORITHM).setMessage("The token is not signed with " + algorithm + ".");
     } else if (header.getType() == null || !type.equalsIgnoreCase(header.getType().getType())) {
-      rejected.setReason(Rejected.Reason.TYPE).setMessage("The token is not of the type " + type + ".");
+      rejection.setReason(Rejected.Reason.TYPE).setMessage("The token is not of the type " + type + ".");
     } else if (header.getKeyID() == null) {
-      rejected.setReason(Rejected.Reason.UNKNOWN_VERSION).setMessage("The token names no key id.");
+      rejection.setReason(Rejected.Reason.UNKNOWN_VERSION).setMessage("The token names no key id.");
     } else {
       return Optional.empty();
     }
-    return Optional.of(rejected.build());
+    return Optional.of(rejection.build());
   }
 
   String keyId() {
@@ -62,7 +62,7 @@ record Jwt(JWSObject jws) {
     return jws.getSignature().decode();
   }
 
-  VerifyResponse claims(Expected expected, Instant now, String version) {
+  VerifyResponse claims(Expected expectation, Instant now, String version) {
     JsonObject claims;
     try {
       claims = new JsonObject(jws.getPayload().toString());
@@ -72,26 +72,26 @@ record Jwt(JWSObject jws) {
     }
     Object audience = claims.getValue("aud");
     long seconds = now.getEpochSecond();
-    long leeway = expected.getLeeway().getSeconds();
-    Rejected.Builder rejected = Rejected.newBuilder();
-    if (!expected.getIssuer().isEmpty() && !expected.getIssuer().equals(claims.getValue("iss"))) {
-      rejected.setReason(Rejected.Reason.ISSUER).setMessage("The token is not issued by " + expected.getIssuer()
+    long leeway = expectation.getLeeway().getSeconds();
+    Rejected.Builder rejection = Rejected.newBuilder();
+    if (!expectation.getIssuer().isEmpty() && !expectation.getIssuer().equals(claims.getValue("iss"))) {
+      rejection.setReason(Rejected.Reason.ISSUER).setMessage("The token is not issued by " + expectation.getIssuer()
           + ".");
-    } else if (!expected.getAudience().isEmpty() && !(audience instanceof String single
-        ? single.equals(expected.getAudience())
-        : audience instanceof JsonArray many && many.contains(expected.getAudience()))) {
-      rejected.setReason(Rejected.Reason.AUDIENCE).setMessage("The token is not for " + expected.getAudience()
+    } else if (!expectation.getAudience().isEmpty() && !(audience instanceof String single
+        ? single.equals(expectation.getAudience())
+        : audience instanceof JsonArray many && many.contains(expectation.getAudience()))) {
+      rejection.setReason(Rejected.Reason.AUDIENCE).setMessage("The token is not for " + expectation.getAudience()
           + ".");
-    } else if (!(claims.getValue("exp") instanceof Number expires)) {
-      rejected.setReason(Rejected.Reason.EXPIRED).setMessage("The token has no exp.");
-    } else if (seconds > expires.longValue() + leeway) {
-      rejected.setReason(Rejected.Reason.EXPIRED).setMessage("The token expired at " + expires + ".");
+    } else if (!(claims.getValue("exp") instanceof Number expiry)) {
+      rejection.setReason(Rejected.Reason.EXPIRED).setMessage("The token has no exp.");
+    } else if (seconds > expiry.longValue() + leeway) {
+      rejection.setReason(Rejected.Reason.EXPIRED).setMessage("The token expired at " + expiry + ".");
     } else if (claims.getValue("nbf") instanceof Number notBefore && seconds + leeway < notBefore.longValue()) {
-      rejected.setReason(Rejected.Reason.NOT_YET_VALID).setMessage("The token is valid from " + notBefore + ".");
+      rejection.setReason(Rejected.Reason.NOT_YET_VALID).setMessage("The token is valid from " + notBefore + ".");
     } else {
       return VerifyResponse.newBuilder().setVerified(Verified.newBuilder().setClaims(new ClaimSet(claims).struct())
           .setKeyVersion(version)).build();
     }
-    return VerifyResponse.newBuilder().setRejected(rejected).build();
+    return VerifyResponse.newBuilder().setRejected(rejection).build();
   }
 }

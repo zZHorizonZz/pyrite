@@ -75,7 +75,8 @@ exchanges {
 }
 ```
 
-The email address matches only when the provider says that it verified it, and a verified identifier of an account
+The email address matches only when the provider says that it verified it, with the claim `email_verified` of OpenID
+Connect, and a verified identifier of an account
 holds it. A provider account that an account links already never matches by email; it signs in to its account.
 
 | `email_match` | A provider account of a matching email address                                                                                                                                               |

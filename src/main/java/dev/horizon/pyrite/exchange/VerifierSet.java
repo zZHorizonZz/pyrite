@@ -1,21 +1,12 @@
 package dev.horizon.pyrite.exchange;
 
 import dev.horizon.pyrite.AuthenticationOptions;
-import dev.horizon.pyrite.authentication.v1.PasswordAnswer;
-import dev.horizon.pyrite.authentication.v1.RecoveryCodeAnswer;
-import dev.horizon.pyrite.authentication.v1.TotpAnswer;
-import dev.horizon.pyrite.identity.CredentialType;
-import dev.horizon.pyrite.identity.IdentifierType;
-import dev.horizon.pyrite.identity.PasswordCredential;
-import dev.horizon.pyrite.identity.Proof;
-import dev.horizon.pyrite.identity.RecoveryCodeCredential;
-import dev.horizon.pyrite.identity.TotpCredential;
-import dev.horizon.pyrite.key.KeyType;
+import dev.horizon.pyrite.identity.FactorService;
+import dev.horizon.pyrite.identity.IdentifierService;
+import dev.horizon.pyrite.key.KeyService;
 import dev.horizon.pyrite.schema.v1.Stage;
-import io.vertx.core.Future;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * The verifiers of exchanges, each built once with the services that it uses, and which of them a stage takes: those
@@ -27,22 +18,19 @@ final class VerifierSet {
   private final List<Verifier<?>> verifiers = new ArrayList<>();
   private final List<Enrolling<?>> enrolments = new ArrayList<>();
 
-  VerifierSet(CredentialType credentials, IdentifierType identifiers, KeyType keys, AuthenticationOptions options) {
+  VerifierSet(FactorService factors, IdentifierService identifiers, KeyService keys, AuthenticationOptions options) {
     verifiers.add(new CodeVerifier(keys, options));
-    verifiers.add(new CredentialVerifier<>(PasswordCredential.class, PasswordAnswer.getDefaultInstance(),
-        Evidence.of(Set.of(Proof.KNOWLEDGE), false), credentials::hashDecoy));
-    verifiers.add(new CredentialVerifier<>(TotpCredential.class, TotpAnswer.getDefaultInstance(),
-        Evidence.of(Set.of(Proof.POSSESSION), false), Future::succeededFuture));
-    verifiers.add(new CredentialVerifier<>(RecoveryCodeCredential.class, RecoveryCodeAnswer.getDefaultInstance(),
-        Evidence.of(Set.of(Proof.POSSESSION), false), Future::succeededFuture));
-    verifiers.add(new PasskeyVerifier(credentials.webAuthn()));
-    enrolments.add(new PasswordEnrolment(credentials));
-    enrolments.add(new TotpEnrolment(credentials));
-    enrolments.add(new PasskeyEnrolment(credentials));
+    verifiers.add(new PasswordVerifier(factors));
+    verifiers.add(new TotpVerifier(factors));
+    verifiers.add(new RecoveryCodeVerifier(factors));
+    verifiers.add(new PasskeyVerifier(factors));
+    enrolments.add(new PasswordEnrolment(factors));
+    enrolments.add(new TotpEnrolment(factors));
+    enrolments.add(new PasskeyEnrolment(factors));
     ProviderSet providers = new ProviderSet(options.getProviders());
     if (!providers.isEmpty()) {
-      verifiers.add(new ProviderVerifier(providers, credentials, identifiers));
-      enrolments.add(new ProviderEnrolment(providers, credentials));
+      verifiers.add(new ProviderVerifier(providers, factors, identifiers));
+      enrolments.add(new ProviderEnrolment(providers, factors));
     }
   }
 

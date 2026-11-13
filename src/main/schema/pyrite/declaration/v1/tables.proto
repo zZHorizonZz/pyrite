@@ -8,13 +8,15 @@ option java_multiple_files = false;
 option java_outer_classname = "Tables";
 option java_package = "dev.horizon.pyrite.schema.declaration.v1";
 
-// A declaration that pyrite.schema.v1.Schema wrote, with the OpenFGA store and model that it wrote for it. The latest
-// is the one that every service reads.
+// A declaration that pyrite.schema.v1.Schema wrote, with the store of grants and the model that it wrote for it. The
+// latest is the one that every service reads. Each declaration is written on the one that was the latest, and no two
+// on the same one, so that of two Pyrites that write at once, one writes again on the declaration of the other.
 message Declaration {
   option (leadseal.v1.table) = {
     name: "pyrite_declaration"
     index: [
-      { fields: ["create_time"] }
+      { fields: ["create_time"] },
+      { fields: ["previous_id"] unique: true }
     ]
   };
 
@@ -30,6 +32,9 @@ message Declaration {
   string model_id = 4 [(leadseal.v1.column).text = { length: 26 }];
 
   string create_time = 5 [(leadseal.v1.column).timestamp = { default_now: true }];
+
+  // The id of the declaration that was the latest when this one was written; empty for the first.
+  string previous_id = 6 [(leadseal.v1.column).text = { length: 36 }];
 }
 
 // A resource that Pyrite knows: its type and the resource it is under. The application keeps the resource itself;
@@ -38,7 +43,8 @@ message Node {
   option (leadseal.v1.table) = {
     name: "pyrite_node"
     index: [
-      { fields: ["parent"] }
+      { fields: ["parent"] },
+      { fields: ["type"] }
     ]
   };
 

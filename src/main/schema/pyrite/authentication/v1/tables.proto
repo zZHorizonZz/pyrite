@@ -63,7 +63,8 @@ message Identifier {
     index: [
       { fields: ["name"] unique: true },
       { fields: ["parent"] },
-      { fields: ["kind", "value"] unique: true }
+      { fields: ["kind", "value"] },
+      { fields: ["claim"] unique: true }
     ]
   };
 
@@ -121,6 +122,11 @@ message Identifier {
 
   // Whether the account prefers it among its identifiers; the caller sets it.
   bool primary = 14;
+
+  // The kind and the value, as email:anne@acme.dev, once the identifier is verified, so that no two verified
+  // identifiers hold one value; the identifier's own name while it is not verified, so that any account can add a value
+  // without learning or blocking whether another holds it.
+  string claim = 15 [(leadseal.v1.column).text = { length: 340 }];
 }
 
 // A factor of an account: the resource pyrite.dev/Factor, under its account.

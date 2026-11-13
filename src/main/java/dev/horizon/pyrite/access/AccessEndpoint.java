@@ -20,6 +20,7 @@ import dev.horizon.pyrite.access.v1.ListObjectsRequest;
 import dev.horizon.pyrite.access.v1.ListObjectsResponse;
 import dev.horizon.pyrite.access.v1.ListSubjectsRequest;
 import dev.horizon.pyrite.access.v1.ListSubjectsResponse;
+import dev.horizon.pyrite.declaration.ResourceType;
 import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.deployment.Deployment;
 import dev.horizon.pyrite.deployment.Schema;
@@ -55,9 +56,17 @@ public final class AccessEndpoint extends AccessGrpcService {
 
   @Override
   public Future<Empty> createObject(CreateObjectRequest request) {
-    return deployment.schema().compose(schema -> schema.resources().create(Subject.parse(request.getSubject()),
-        request.getName(), request.getParent(), request.getContext())).map(Empty.getDefaultInstance())
-        .recover(PyriteException::fail);
+    return deployment.schema().compose(schema -> {
+      for (String own : List.of(TypeSystem.KEY, TypeSystem.ACCOUNT)) {
+        Optional<ResourceType> type = schema.types().type(own);
+        if (type.isPresent() && request.getName().startsWith(type.get().plural() + "/")) {
+          return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The resource "
+              + request.getName() + " is of the type " + own + ", which its own service creates."));
+        }
+      }
+      return schema.resources().create(Subject.parse(request.getSubject()), request.getName(), request.getParent(),
+          request.getContext());
+    }).map(Empty.getDefaultInstance()).recover(PyriteException::fail);
   }
 
   @Override

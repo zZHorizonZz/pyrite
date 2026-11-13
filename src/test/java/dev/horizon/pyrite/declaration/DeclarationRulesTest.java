@@ -106,6 +106,10 @@ class DeclarationRulesTest {
           rule("has the singular name", declaration -> project(declaration).getDefinitionBuilder()
               .setType("Project")),
           rule("is Pyrite's accounts'", declaration -> project(declaration).getDefinitionBuilder().setType("user")),
+          rule("has the singular name person, but its singular name is user", declaration -> type(declaration,
+              "pyrite.dev/Account").getDefinitionBuilder().setType("person")),
+          rule("has the singular name group, but its singular name is user", declaration -> type(declaration,
+              "pyrite.dev/Account").getDefinitionBuilder().setType("group")),
           rule("which another type has", declaration -> project(declaration).getDefinitionBuilder()
               .setType("group")),
           rule("has the plural name", declaration -> project(declaration).setPlural("pro-jects")),
@@ -205,9 +209,9 @@ class DeclarationRulesTest {
             type(declaration, "pyrite.dev/Key").getDefinitionBuilder().getMetadataBuilder()
                 .removeRelations("verifier");
             Type.Builder key = type(declaration, "pyrite.dev/Key");
-            List<String> kept = new ArrayList<>(key.getGrantableList());
-            kept.remove("verifier");
-            key.clearGrantable().addAllGrantable(kept);
+            List<String> grantable = new ArrayList<>(key.getGrantableList());
+            grantable.remove("verifier");
+            key.clearGrantable().addAllGrantable(grantable);
           }),
           rule("takes a user directly", declaration -> type(declaration, "pyrite.dev/Account")
               .getDefinitionBuilder().getMetadataBuilder().putRelations("owner", takes("group", "member"))));
@@ -336,6 +340,16 @@ class DeclarationRulesTest {
       assertThat(types.identifierKindOf("+420 777 123 456").map(IdentifierFormat::name)).contains("phone");
       assertThat(types.identifierKindOf("Anne_Smith").map(IdentifierFormat::name)).contains("username");
       assertThat(types.identifierKindOf("!!")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a value whose normalize fails to evaluate is of no kind; without normalize, it stays as given")
+    void normalizeFailure() {
+      IdentifierFormat badge = IdentifierFormat.of(kind("badge", "true", "value.substring(4)"));
+
+      assertThat(badge.normalize("abc")).isEmpty();
+      assertThat(badge.normalize("abcdef")).contains("ef");
+      assertThat(IdentifierFormat.of(kind("badge", "true", "")).normalize(" Abc ")).contains(" Abc ");
     }
   }
 

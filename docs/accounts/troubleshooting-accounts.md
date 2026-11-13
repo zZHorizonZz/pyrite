@@ -262,19 +262,32 @@ PERMISSION_DENIED: The subject user:bob has no admin on accounts/anne.
 
 **Verify:** The call gives the account, its identifiers or its session.
 
-## The ... is another account's or this one's already
+## The account ... has the ... already
 
 ```text
-ALREADY_EXISTS: The email anne@acme.dev is another account's or this one's already.
+ALREADY_EXISTS: The account accounts/anne has the email anne@acme.dev already.
 ```
 
-**Cause:** `AddIdentifier` of a value that an account has, after the kind normalizes it, such as `Anne@Acme.dev` when
-an account has `anne@acme.dev`.
+**Cause:** `AddIdentifier` of a value that the account has, after the kind normalizes it, such as `Anne@Acme.dev` when
+it has `anne@acme.dev`. Another account's value is no failure: any account can add a value, and only a verified one
+belongs to one account.
 
-**Fix:** Tell the person that the address is taken, and offer a sign-in or a recovery. To move an address to another
-account, delete the account that has it.
+**Fix:** Keep the identifier that the account has.
 
-**Verify:** `ListIdentifiers` of the account lists the identifier.
+**Verify:** `ListIdentifiers` of the account lists the identifier once.
+
+## The ... is verified by another account
+
+```text
+ALREADY_EXISTS: The email anne@acme.dev is verified by another account.
+```
+
+**Cause:** An exchange that verifies an identifier, with `MARK_VERIFIED`, of a value that another account verified
+before. Only the code sent to the value reaches this point, so only who receives it learns that it is taken.
+
+**Fix:** Tell the person that the address belongs to another account, and offer a sign-in or a recovery of that one.
+
+**Verify:** A sign-in with the value reaches the account that verified it.
 
 ## The value ... is of no identifier kind of the declaration
 
@@ -466,7 +479,7 @@ account that was deleted, with its exchanges.
 NOT_FOUND: The session sessions/3d5e7a1c-0f42-4b8e-9c61-2a7d9e4f1b03 does not exist.
 ```
 
-**Cause:** `GetSession` or `EndSession` of a session that no exchange issued, or whose row `Purge` deleted.
+**Cause:** `GetSession` or `EndSession` of a session that no exchange issued, or whose row `Pyrite.purge()` deleted.
 
 **Fix:** Name a session that an exchange issued, as `principal.getSession()` or `session` of the `TokenSet` gives
 it. A purged session ended before the purge, so its tokens sign nobody in.

@@ -6,13 +6,10 @@ import static dev.horizon.basepoint.filter.Filter.eq;
 import dev.horizon.basepoint.UpdateQuery;
 import dev.horizon.basepoint.expression.Expression;
 import dev.horizon.cinder.Backend;
-import dev.horizon.cinder.Context;
 import dev.horizon.cinder.Field;
-import dev.horizon.cinder.Part;
 import dev.horizon.pyrite.PyriteException;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,14 +66,7 @@ public interface ResourceBackend<E> extends Backend<E, String> {
    * @return the row as the database holds it
    */
   default Future<E> insert(E row, Map<String, Expression> set) {
-    return table().with(new Part() {
-      @Override
-      public Map<String, Object> write(Map<String, Object> fields, Context<?> context) {
-        Map<String, Object> values = new LinkedHashMap<>(fields);
-        values.putAll(set);
-        return values;
-      }
-    }).insert(row);
+    return table().with(new ExpressionPart(set)).insert(row);
   }
 
   /**

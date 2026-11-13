@@ -11,7 +11,7 @@ public enum Requirement {
   ACCOUNT_OWNER("An account owns itself, and nobody else reads it."),
   IDENTIFIER_FORMAT("An identifier is stored normalized and unverified, and only in a format of a declared kind."),
   IDENTIFIER_OWNER("Only who administers an account adds identifiers to it."),
-  IDENTIFIER_UNIQUE("An identifier belongs to one account, whatever its case."),
+  IDENTIFIER_UNIQUE("A verified identifier belongs to one account, whatever its case; its sign-ins reach that account."),
   IDENTIFIER_LIST("An account lists its identifiers, and nobody else does."),
 
   // Sessions
@@ -93,6 +93,7 @@ public enum Requirement {
   OBJECT_NAME("A name is of a declared type, with an id that OpenFGA takes."),
   OBJECT_DELETE("A resource is forgotten with its grants, only when nothing is under it, by who may grant on it."),
   OBJECT_MISSING("A resource that is not known is not found."),
+  OBJECT_OWN_TYPES("CreateObject makes no account or key, which their own services create."),
   OBJECT_LIST("A subject lists the objects that it has a permission on, through their parents too."),
 
   // Grants
@@ -131,7 +132,6 @@ public enum Requirement {
   KEY_ENCRYPTION("A key decrypts what it encrypted, of any size, and no two encryptions are alike."),
   KEY_TAMPERING("A ciphertext that was changed, or is not this key's for this associated data, is refused."),
   KEY_ROTATION("A rotation makes a new primary version, and old versions still decrypt and verify."),
-  KEY_ROTATION_RACE("Rotations at the same time each make a version of their own, numbered without a gap."),
   KEY_SCHEDULE("A key rotates once after its period, which a change at its revision restarts."),
   KEY_VERSION_STATE("A disabled version works again once enabled, a destroyed one never, and the primary is neither."),
   KEY_SIGNATURE("A detached signature verifies only its data, with the key and version that made it."),
@@ -150,7 +150,23 @@ public enum Requirement {
   HANDLER_CODE("An interceptor that cannot send a code stops the exchange."),
   HANDLER_ACCOUNT("The handlers of accounts hear of each account created and deleted."),
   HANDLER_SESSION("The handlers of sessions hear of each session issued and ended."),
-  HANDLER_THROW("A handler that throws changes nothing of what happened.");
+  HANDLER_THROW("A handler that throws changes nothing of what happened."),
+
+  // Accounts and their factors
+  FACTOR_LIST("An account lists its active factors, and nobody else does."),
+  ACCOUNT_DELETE("Only who administers an account deletes it."),
+
+  // Rotation of keys
+  KEY_ROTATION_CONFLICT("A rotation that another change of the key came first to fails with ABORTED and leaves no"
+      + " version; each one that succeeds makes a version of its own."),
+  KEY_ROTATION_RETRY("A scheduled rotation that fails is due again at the next use."),
+  KEY_PERIOD("A rotation period is zero, or whole seconds from a minute to 50 years."),
+
+  // Writes of declarations
+  DECLARATION_REACH("A declaration that drops a type, or changes its plural, singular name or parents, while resources"
+      + " of the type are known, is refused with FAILED_PRECONDITION, and the latest stays."),
+  DECLARATION_FIRST("Declarations written at once before any are each stored, one on the other, and share the one"
+      + " store of grants that the first creates.");
 
   private final String text;
 

@@ -1,5 +1,6 @@
 package dev.horizon.pyrite.key;
 
+import dev.horizon.pyrite.schema.keys.v1.Tables;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,6 +38,16 @@ public record KeyVersionName(String key, long number) {
     Matcher matcher = ID.matcher(id);
     return matcher.matches() ? Optional.of(new KeyVersionName(matcher.group(1), Long.parseLong(matcher.group(2))))
         : Optional.empty();
+  }
+
+  /**
+   * Gives the name of a version's row.
+   *
+   * @throws IllegalStateException for a row whose name is not a version's
+   */
+  static KeyVersionName of(Tables.KeyVersion version) {
+    return parse(version.getName()).orElseThrow(() -> new IllegalStateException("The row of a key version has the"
+        + " name " + version.getName() + ", which is not a version's"));
   }
 
   /**

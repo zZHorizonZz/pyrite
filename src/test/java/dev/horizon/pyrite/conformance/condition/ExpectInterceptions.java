@@ -15,9 +15,9 @@ public record ExpectInterceptions(int count, String definition) implements Condi
 
   @Override
   public void evaluate(Environment environment) {
-    List<ExchangeContext> seen = environment.get(Value.INTERCEPTIONS);
-    assertThat(seen).hasSize(count);
-    assertThat(seen).allSatisfy(context -> {
+    List<ExchangeContext> contexts = environment.get(Value.INTERCEPTIONS);
+    assertThat(contexts).hasSize(count);
+    assertThat(contexts).allSatisfy(context -> {
       assertThat(context.definition()).as("definition").isEqualTo(definition);
       assertThat(context.exchange()).as("exchange").startsWith("exchanges/");
     });

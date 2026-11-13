@@ -2,6 +2,7 @@ package dev.horizon.pyrite;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
+import java.util.Set;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
@@ -28,6 +29,7 @@ public class PyriteOptions {
   public static final int DEFAULT_TUPLES_PER_READ = 100;
 
   private static final int PAGE_TOKEN_KEY_BITS = 256;
+  private static final Set<Integer> AES_KEY_BYTES = Set.of(16, 24, 32);
 
   private int defaultPageSize;
   private int maxPageSize;
@@ -130,11 +132,19 @@ public class PyriteOptions {
    * Sets the AES key that the Cinder database of Pyrite's tables encrypts its page tokens with. The pages of
    * {@code ListGrants} and {@code ListChanges} carry the continuation tokens of OpenFGA instead.
    *
-   * @param pageTokenKey the key; a random key of 256 bits by default, which lasts as long as these options
+   * @param pageTokenKey the AES key of 128, 192 or 256 bits; a random key of 256 bits by default, which lasts as long
+   * as these options
    * @return these options
+   * @throws IllegalArgumentException if the key is not an AES key of 128, 192 or 256 bits, or does not give its bytes
    */
   public PyriteOptions setPageTokenKey(SecretKey pageTokenKey) {
-    this.pageTokenKey = Objects.requireNonNull(pageTokenKey, "pageTokenKey");
+    Objects.requireNonNull(pageTokenKey, "pageTokenKey");
+    byte[] bytes = pageTokenKey.getEncoded();
+    if (!"AES".equalsIgnoreCase(pageTokenKey.getAlgorithm()) || bytes == null
+        || !AES_KEY_BYTES.contains(bytes.length)) {
+      throw new IllegalArgumentException("The page token key is an AES key of 128, 192 or 256 bits.");
+    }
+    this.pageTokenKey = pageTokenKey;
     return this;
   }
 

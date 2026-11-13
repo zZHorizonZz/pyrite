@@ -4,20 +4,19 @@ import static dev.horizon.basepoint.expression.Expression.now;
 import static dev.horizon.basepoint.filter.Filter.and;
 import static dev.horizon.basepoint.filter.Filter.eq;
 import static dev.horizon.basepoint.filter.Filter.gt;
+import static dev.horizon.basepoint.filter.Filter.lt;
+import static dev.horizon.basepoint.filter.Filter.lte;
 
 import com.google.protobuf.ByteString;
 import dev.horizon.basepoint.UpdateQuery;
 import dev.horizon.basepoint.expression.Expression;
 import dev.horizon.cinder.Backend;
-import dev.horizon.cinder.Context;
 import dev.horizon.cinder.Database;
 import dev.horizon.cinder.Field;
-import dev.horizon.cinder.Part;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.schema.authentication.v1.Tables;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,14 +38,7 @@ public record ExchangeBackend(Database database) implements Backend<Tables.Excha
    * @return the exchange as the database holds it
    */
   public Future<Tables.Exchange> start(Tables.Exchange exchange, Map<String, Expression> set) {
-    return table().with(new Part() {
-      @Override
-      public Map<String, Object> write(Map<String, Object> fields, Context<?> context) {
-        Map<String, Object> values = new LinkedHashMap<>(fields);
-        values.putAll(set);
-        return values;
-      }
-    }).insert(exchange);
+    return table().with(new ExpressionPart(set)).insert(exchange);
   }
 
   /**
@@ -70,10 +62,15 @@ public record ExchangeBackend(Database database) implements Backend<Tables.Excha
 
   /**
    * Keeps the response to the last answer of an exchange, which a request with the same id gets again.
+   *
+   * @param response the response, encrypted
+   * @return a future that completes once the response is kept, or a failure with {@code ABORTED} when another answer
+   * moved the exchange on
    */
   public Future<Void> remember(Tables.Exchange exchange, ByteString response) {
     return execute(update().set("response", response).where(and(eq("id", exchange.getId()), eq("revision",
-        exchange.getRevision())))).mapEmpty();
+        exchange.getRevision())))).compose(count -> count == 0 ? aborted(exchange.getId(), exchange.getRevision())
+            : Future.succeededFuture());
   }
 
   /**
@@ -91,17 +88,31 @@ public record ExchangeBackend(Database database) implements Backend<Tables.Excha
   }
 
   /**
-   * Counts a wrong answer of an exchange, if the exchange is still at its revision and its count.
+   * Counts an answer of an exchange before it is verified, in one statement that also checks the count, so that answers
+   * at once cannot pass the most wrong answers. A right answer gives its count back when it saves the exchange.
    *
    * @param exchange the exchange, as it was read
-   * @return a future that completes once the count is one more, or a failure with {@code ABORTED} when another answer
-   * came first
+   * @param maxAnswers the most wrong answers that an exchange takes
+   * @return whether the answer was counted; false when the exchange moved to another revision, or took the most
+   * answers
    */
-  public Future<Void> miss(Tables.Exchange exchange) {
-    return execute(update().set("answers", exchange.getAnswers() + 1).where(and(eq("id", exchange.getId()), eq("revision",
-        exchange.getRevision()), eq("answers", exchange.getAnswers())))).compose(count -> count == 0
-            ? Future.failedFuture(new PyriteException(GrpcStatus.ABORTED, "The exchange exchanges/" + exchange.getId()
-                + " changed since revision " + exchange.getRevision() + "."))
-            : Future.succeededFuture());
+  public Future<Boolean> attempt(Tables.Exchange exchange, int maxAnswers) {
+    return execute(update().increment("answers", 1).where(and(eq("id", exchange.getId()), eq("revision",
+        exchange.getRevision()), lt("answers", maxAnswers)))).map(count -> count > 0);
+  }
+
+  /**
+   * Deletes the rows of exchanges that expired. An expired exchange takes no answers, so its row, and the response that
+   * it keeps, serves nothing.
+   *
+   * @return the number of rows
+   */
+  public Future<Long> purge() {
+    return execute(delete().where(lte("expire_time", now())));
+  }
+
+  private static <T> Future<T> aborted(String id, long revision) {
+    return Future.failedFuture(new PyriteException(GrpcStatus.ABORTED, "The exchange exchanges/" + id
+        + " changed since revision " + revision + "."));
   }
 }

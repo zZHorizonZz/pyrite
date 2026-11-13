@@ -37,7 +37,7 @@ import org.junit.jupiter.api.TestInstance;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConformanceTest {
 
-  private static final List<Plan> PLANS = List.of(new SessionPlan(), new ExchangePlan(), new CodePlan(),
+  static final List<Plan> PLANS = List.of(new SessionPlan(), new ExchangePlan(), new CodePlan(),
       new PasswordPlan(), new IdentifierPlan(), new FactorPlan(), new PasskeyPlan(), new HandlerPlan(), new ObjectPlan(),
       new GrantPlan(), new CheckPlan(), new ListPlan(), new AgreementPlan(), new DeclarationPlan(),
       new EncryptionPlan(), new RotationPlan(), new SigningPlan(), new ProviderPlan());

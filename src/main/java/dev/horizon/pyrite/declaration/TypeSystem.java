@@ -23,12 +23,12 @@ import java.util.regex.Pattern;
 
 /**
  * A declaration, compiled: its types, their relations and hierarchy, its conditions and its exchanges, and the
- * authorization model that it gives OpenFGA.
+ * authorization model that it writes to the store of grants.
  *
  * <p>
  * Compiling checks every rule of the declaration, and fails with {@link IllegalArgumentException} at the first rule
  * that it breaks. A type with parents gets the relation {@code parent} in the model, whose tuples Pyrite writes when a
- * resource is made known, so OpenFGA reads a relation from the parent itself.
+ * resource is made known, so that a check reads a relation from the parent itself.
  *
  * <pre>{@code
  * TypeSystem types = new TypeSystem(declaration);
@@ -40,7 +40,7 @@ public final class TypeSystem {
 
   private static final Pattern EXCHANGE = Pattern.compile("[a-z][a-z0-9-]{0,62}");
 
-  /** The singular name of {@code pyrite.dev/Account}, and the OpenFGA type of the subjects of calls. */
+  /** The singular name of {@code pyrite.dev/Account}, and the type of the subjects of calls in the model. */
   public static final String USER = "user";
   /** The relation that holds the parent of a resource, which Pyrite adds to each type with parents. */
   public static final String PARENT = "parent";
@@ -77,19 +77,23 @@ public final class TypeSystem {
       }
       conditions.put(name, condition);
     });
-    for (Type type : expand(declaration)) {
-      ResourceType compiled = ResourceType.of(type);
-      if (byName.put(compiled.name(), compiled) != null) {
-        throw new IllegalArgumentException("The type " + compiled.name() + " is declared twice.");
+    for (Type definition : expand(declaration)) {
+      ResourceType type = ResourceType.of(definition);
+      if (byName.put(type.name(), type) != null) {
+        throw new IllegalArgumentException("The type " + type.name() + " is declared twice.");
       }
-      boolean reserved = compiled.singular().equals(USER) && !compiled.name().equals(ACCOUNT);
-      if (reserved || bySingular.put(compiled.singular(), compiled) != null) {
-        throw new IllegalArgumentException("The type " + compiled.name() + " has the singular name "
-            + compiled.singular() + ", which " + (reserved ? "is Pyrite's accounts'" : "another type has") + ".");
+      if (type.name().equals(ACCOUNT) && !type.singular().equals(USER)) {
+        throw new IllegalArgumentException("The type " + ACCOUNT + " has the singular name " + type.singular()
+            + ", but its singular name is " + USER + ": subjects of calls, such as user:anne, are accounts.");
       }
-      if (byPlural.put(compiled.plural(), compiled) != null) {
-        throw new IllegalArgumentException("The type " + compiled.name() + " has the plural name "
-            + compiled.plural() + ", which another type has.");
+      boolean user = type.singular().equals(USER) && !type.name().equals(ACCOUNT);
+      if (user || bySingular.put(type.singular(), type) != null) {
+        throw new IllegalArgumentException("The type " + type.name() + " has the singular name " + type.singular()
+            + ", which " + (user ? "is Pyrite's accounts'" : "another type has") + ".");
+      }
+      if (byPlural.put(type.plural(), type) != null) {
+        throw new IllegalArgumentException("The type " + type.name() + " has the plural name " + type.plural()
+            + ", which another type has.");
       }
     }
     for (IdentifierKind kind : declaration.getIdentifierKindsList()) {
@@ -145,7 +149,7 @@ public final class TypeSystem {
   }
 
   /**
-   * Finds a type by its singular name, the OpenFGA type of its objects.
+   * Finds a type by its singular name, the type of its objects in the model.
    *
    * @param singular the singular name, such as {@code project}
    * @return the type, or empty when the declaration has none of the name, such as for {@code user} without
@@ -185,11 +189,11 @@ public final class TypeSystem {
   }
 
   /**
-   * Gives the authorization model of the declaration, to write to OpenFGA. It has each type with its relations, the
-   * relation {@code parent} of each type with parents, the conditions, and a type {@code user} without relations when
-   * the declaration has no {@code pyrite.dev/Account}.
+   * Gives the authorization model of the declaration, to write to the store of grants. It has each type with its
+   * relations, the relation {@code parent} of each type with parents, the conditions, and a type {@code user} without
+   * relations when the declaration has no {@code pyrite.dev/Account}.
    *
-   * @param store the id of the OpenFGA store
+   * @param store the id of the store of grants
    * @return the request that writes the model to the store, in schema version 1.1
    */
   public WriteAuthorizationModelRequest model(String store) {
@@ -276,7 +280,7 @@ public final class TypeSystem {
         throw new IllegalArgumentException(where + " sends a code to an identifier, but no identifier kind of the"
             + " declaration receives codes.");
       }
-      boolean identified = exchange.getInput() == ExchangeDefinition.Input.SUBJECT
+      boolean account = exchange.getInput() == ExchangeDefinition.Input.SUBJECT
           || exchange.getInput() == ExchangeDefinition.Input.SUBJECT_IDENTIFIER;
       boolean factors = false;
       boolean identifier = false;
@@ -295,26 +299,26 @@ public final class TypeSystem {
             && stage.getEnrol() == Stage.Factor.FACTOR_UNSPECIFIED) {
           throw new IllegalArgumentException(where + " has a stage that requires nothing.");
         }
-        if (stage.getEnrol() != Stage.Factor.FACTOR_UNSPECIFIED && (enrols || !identified)) {
+        if (stage.getEnrol() != Stage.Factor.FACTOR_UNSPECIFIED && (enrols || !account)) {
           throw new IllegalArgumentException(where + " enrols a factor twice, or before the account is proven by the"
               + " input SUBJECT or by an earlier stage.");
         }
         factors |= stage.getFactors() > 0 || stage.getPhishingResistant();
         identifier |= stage.getIdentifier();
         enrols |= stage.getEnrol() != Stage.Factor.FACTOR_UNSPECIFIED;
-        identified |= factors || identifier;
+        account |= factors || identifier;
       }
       for (ExchangeDefinition.Completion completion : exchange.getCompletesList()) {
-        boolean proven = switch (completion) {
+        boolean possible = switch (completion) {
           case ISSUE_SESSION -> factors && (exchange.getInput() == ExchangeDefinition.Input.IDENTIFIER
               || exchange.getInput() == ExchangeDefinition.Input.NONE);
           case CREATE_ACCOUNT -> factors && exchange.getInput() == ExchangeDefinition.Input.NONE;
           case MARK_VERIFIED -> identifier && exchange.getInput() == ExchangeDefinition.Input.SUBJECT_IDENTIFIER;
           case ACTIVATE_FACTOR -> enrols;
-          case END_SESSIONS -> identified;
+          case END_SESSIONS -> account;
           case COMPLETION_UNSPECIFIED, UNRECOGNIZED -> false;
         };
-        if (!proven) {
+        if (!possible) {
           throw new IllegalArgumentException(where + " completes with " + completion + " without the stages and the"
               + " input that it needs.");
         }

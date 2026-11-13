@@ -77,8 +77,8 @@ sign-in issues.
                .addOrigin("https://acme.dev")));
    ```
 
-   `WriteDeclaration` refuses a declaration with accounts while one of the three keys, the issuer, or the id or the
-   name of the relying party is not set. See [Options](../deployment/options.md).
+   `WriteDeclaration` refuses a declaration with accounts while one of the three keys, the issuer, or the id, the name
+   or an origin of the relying party is not set. See [Options](../deployment/options.md).
 
 5. Make Pyrite with these options, and add its services to your server:
 
@@ -119,9 +119,10 @@ sign-in issues.
        .setAccount("accounts/anne").setKind("email").setValue("Anne@Acme.dev").setPrimary(true).build()).await();
    ```
 
-   Pyrite stores the address as the kind's `normalize` gives it, `anne@acme.dev`, unverified. An address that an
-   account has already fails with `ALREADY_EXISTS`, and a value that is not an email address fails with
-   `INVALID_ARGUMENT`.
+   Pyrite stores the address as the kind's `normalize` gives it, `anne@acme.dev`, unverified. Another account may add
+   the same address; only verifying it makes it one account's, and a sign-in with it reaches the account that verified
+   it, or else the one that added it first. An address that this account has already fails with `ALREADY_EXISTS`, and a
+   value that is not an email address fails with `INVALID_ARGUMENT`.
 
 ## Enrol a password
 

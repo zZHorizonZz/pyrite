@@ -46,7 +46,7 @@ public abstract class ConformanceModule {
       condition.evaluate(environment);
       trace.add("  ok    " + name(condition));
     } catch (Exception | AssertionError broken) {
-      trace.add("  BROKE " + name(condition) + ": " + broken.getMessage());
+      trace.add("  BROKE " + name(condition) + ": " + message(broken));
       throw new Stop(broken);
     }
   }
@@ -87,14 +87,21 @@ public abstract class ConformanceModule {
       trace.add("  ok    " + name(condition) + " (" + requirement.name() + ")");
       return true;
     } catch (Exception | AssertionError failure) {
-      trace.add("  FAIL  " + name(condition) + " (" + requirement + "): " + failure.getMessage().strip());
       failures.add(requirement.name());
+      trace.add("  FAIL  " + name(condition) + " (" + requirement + "): " + message(failure));
       return false;
     }
   }
 
   private String report(String outcome) {
     return summary() + " " + outcome + " in " + environment.variant() + "\n" + String.join("\n", trace);
+  }
+
+  /**
+   * Gives the message of a failure, or the failure itself when it has none.
+   */
+  private static String message(Throwable failure) {
+    return failure.getMessage() == null ? failure.toString() : failure.getMessage().strip();
   }
 
   private static String name(Condition condition) {
