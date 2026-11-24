@@ -76,7 +76,7 @@ and Vert.x 5. It is the Java module `dev.horizon.pyrite`. The JAR contains cel-j
 <dependency>
   <groupId>dev.horizon</groupId>
   <artifactId>pyrite</artifactId>
-  <version>0.4.1-SNAPSHOT</version>
+  <version>0.5.0</version>
 </dependency>
 ```
 <!-- x-release-please-end -->

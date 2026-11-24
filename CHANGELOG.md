@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/zZHorizonZz/pyrite/compare/v0.4.0...v0.5.0) (2026-11-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* name types, relations and resources within OpenFGA's own limits, so callers' names go through Pyrite unchanged. ([#45](https://github.com/zZHorizonZz/pyrite/issues/45))
+
+### Features
+
+* name types, relations and resources within OpenFGA's own limits, so callers' names go through Pyrite unchanged. ([#45](https://github.com/zZHorizonZz/pyrite/issues/45)) ([403756b](https://github.com/zZHorizonZz/pyrite/commit/403756b8331deac1996d2e1a44cd241d9f6cccff)), closes [#44](https://github.com/zZHorizonZz/pyrite/issues/44)
+
 ## [0.4.0](https://github.com/zZHorizonZz/pyrite/compare/v0.3.1...v0.4.0) (2026-11-13)
 
 
