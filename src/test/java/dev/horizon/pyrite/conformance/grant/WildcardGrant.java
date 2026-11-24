@@ -15,8 +15,8 @@ final class WildcardGrant extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", "user:*"));
-    call(new Check("user:anyone", "projects/ledger", "can_view"));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", "pyrite.dev/Account:*"));
+    call(new Check("pyrite.dev/Account:accounts/anyone", "acme.dev/Project:projects/ledger", "can_view"));
     callAndStopOnFailure(new ExpectCheckAnswer(true), Requirement.GRANT_WRITE);
   }
 }

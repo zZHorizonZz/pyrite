@@ -18,8 +18,9 @@ final class ConditionOfRelation extends AccessModule {
   protected void run() {
     prepareGroups();
     callAndStopOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantWithCondition(ANNE, "projects/ledger", "viewer", BOB,
-            "not_expired", Map.of("expires_at", "2026-06-01T00:00:00Z"))),
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new GrantWithCondition(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB,
+                "not_expired", Map.of("expires_at", "2026-06-01T00:00:00Z"))),
         Requirement.GRANT_CONDITION);
   }
 }

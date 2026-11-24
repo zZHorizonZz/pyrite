@@ -21,8 +21,16 @@ import io.vertx.grpc.common.GrpcStatus;
  * The accounts of the declared type {@code pyrite.dev/Account}: a person or a service, with its identifiers, its
  * factors and its sessions under it. It creates accounts as resources that own themselves, finds them, and deletes
  * them with what is under them. A declaration without the type has none.
+ *
+ * <p>
+ * An account is named {@code accounts/{account}} in the authentication service. Its resource, which is also its
+ * object in OpenFGA and the subject that it calls as, is that name under the type:
+ * {@code pyrite.dev/Account:accounts/anne}.
  */
 public final class AccountService {
+
+  /** The start of the name of every account. */
+  public static final String PREFIX = "accounts/";
 
   private final ResourceTree resources;
   private final ResourceType declared;
@@ -45,7 +53,7 @@ public final class AccountService {
    * and the account's row goes with it.
    *
    * @param creator the subject that creates it, which gets the type's {@code creator} relation if it has one
-   * @param id the id of the account, such as {@code anne}
+   * @param id the id of the account, such as {@code anne}, which matches {@link TypeSystem#OWN_ID}
    * @param kind {@code HUMAN} or {@code SERVICE}
    * @return the account, or a failure with {@code INVALID_ARGUMENT} for another kind or an id that is not valid, or
    * with {@code ALREADY_EXISTS} when an account has the id
@@ -57,8 +65,13 @@ public final class AccountService {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "An account's kind is HUMAN or"
           + " SERVICE."));
     }
-    return resources.create(creator, declared.resource(id), "", Struct.getDefaultInstance())
-        .compose(resource -> accounts.insert(Tables.Account.newBuilder().setName(resource.name())
+    if (!TypeSystem.OWN_ID.matcher(id).matches()) {
+      return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The account id '" + id + "' does"
+          + " not match " + TypeSystem.OWN_ID.pattern() + "."));
+    }
+    String name = PREFIX + id;
+    return resources.create(creator, declared.resource(name), "", Struct.getDefaultInstance())
+        .compose(resource -> accounts.insert(Tables.Account.newBuilder().setName(name).setResource(resource.name())
             .setKind(Tables.Account.Kind.valueOf(kind.name())).build())
             .compose(row -> openFga.write(TupleKey.newBuilder().setUser(resource.object().toString())
                 .setRelation(TypeSystem.OWNER).setObject(resource.object().toString()).build())
@@ -80,17 +93,18 @@ public final class AccountService {
   }
 
   /**
-   * Finds the account of a subject of the type {@code user}, such as {@code accounts/anne} of {@code user:anne}.
+   * Finds the account of a subject of the type {@code pyrite.dev/Account}, such as {@code accounts/anne} of
+   * {@code pyrite.dev/Account:accounts/anne}.
    *
    * @return the account, or a failure with {@code INVALID_ARGUMENT} for a subject of another type, or with
    * {@code NOT_FOUND}
    */
   public Future<Tables.Account> account(Subject subject) {
-    if (!subject.type().equals(TypeSystem.USER)) {
+    if (!subject.type().equals(TypeSystem.ACCOUNT)) {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The subject " + subject
           + " is not an account."));
     }
-    return account(declared.resource(subject.id()));
+    return account(subject.id());
   }
 
   /**
@@ -105,11 +119,12 @@ public final class AccountService {
    * {@code NOT_FOUND}
    */
   public Future<Tables.Account> account(String name, Subject subject, String relation) {
-    if (!name.startsWith(declared.plural() + "/")) {
+    if (!name.startsWith(PREFIX)) {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The name " + name
           + " is not of an account."));
     }
-    return new Resource(resources, declared, name).require(subject, relation, Struct.getDefaultInstance())
+    return new Resource(resources, declared, declared.resource(name)).require(subject, relation,
+        Struct.getDefaultInstance())
         .compose(allowed -> account(name));
   }
 
@@ -121,7 +136,7 @@ public final class AccountService {
    * @return a future that completes once the account is deleted, or a failure with {@code NOT_FOUND}
    */
   public Future<Void> delete(String name) {
-    return account(name).compose(row -> resources.forget(row.getName())
+    return account(name).compose(row -> resources.forget(row.getResource())
         .onSuccess(ignored -> observer.end(message(row))));
   }
 
@@ -141,7 +156,7 @@ public final class AccountService {
    * Gives the subject that an account is in OpenFGA, and in the requests of the services.
    *
    * @param account the name of the account
-   * @return the subject, such as {@code user:anne} for {@code accounts/anne}
+   * @return the subject, such as {@code pyrite.dev/Account:accounts/anne} for {@code accounts/anne}
    */
   public static String subject(String account) {
     return Subject.account(account).toString();

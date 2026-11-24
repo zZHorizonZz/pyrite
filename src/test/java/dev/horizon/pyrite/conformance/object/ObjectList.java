@@ -18,14 +18,16 @@ final class ObjectList extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new CreateObject(ANNE, "projects/payroll", "organizations/acme"));
-    call(new CreateObject(BOB, "organizations/globex", ""));
-    call(new CreateObject(BOB, "projects/mars", "organizations/globex"));
-    call(new GrantRelation(BOB, "projects/mars", "viewer", ANNE));
+    call(new CreateObject(ANNE, "acme.dev/Project:projects/payroll", "acme.dev/Organization:organizations/acme"));
+    call(new CreateObject(BOB, "acme.dev/Organization:organizations/globex", ""));
+    call(new CreateObject(BOB, "acme.dev/Project:projects/mars", "acme.dev/Organization:organizations/globex"));
+    call(new GrantRelation(BOB, "acme.dev/Project:projects/mars", "viewer", ANNE));
     call(new ListObjects(ANNE, "acme.dev/Project", "can_view"));
-    callAndContinueOnFailure(new ExpectObjects(List.of("projects/ledger", "projects/mars", "projects/payroll")),
+    callAndContinueOnFailure(
+        new ExpectObjects(
+            List.of("acme.dev/Project:projects/ledger", "acme.dev/Project:projects/mars", "acme.dev/Project:projects/payroll")),
         Requirement.OBJECT_LIST);
     call(new ListObjects(BOB, "acme.dev/Project", "can_view"));
-    callAndContinueOnFailure(new ExpectObjects(List.of("projects/mars")), Requirement.OBJECT_LIST);
+    callAndContinueOnFailure(new ExpectObjects(List.of("acme.dev/Project:projects/mars")), Requirement.OBJECT_LIST);
   }
 }

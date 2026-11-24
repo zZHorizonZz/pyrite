@@ -15,12 +15,14 @@ final class GroupCycle extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "groups/finance", "member", "group:audit#member"));
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new GrantRelation(ANNE, "groups/audit", "member",
-        "group:finance#member")), Requirement.GRANT_CYCLE);
+    call(new GrantRelation(ANNE, "acme.dev/Group:groups/finance", "member", "acme.dev/Group:groups/audit#member"));
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new GrantRelation(ANNE, "groups/finance", "member",
-            "group:finance#member")),
+        new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new GrantRelation(ANNE, "acme.dev/Group:groups/audit", "member",
+            "acme.dev/Group:groups/finance#member")),
+        Requirement.GRANT_CYCLE);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new GrantRelation(ANNE, "acme.dev/Group:groups/finance", "member",
+            "acme.dev/Group:groups/finance#member")),
         Requirement.GRANT_CYCLE);
   }
 }

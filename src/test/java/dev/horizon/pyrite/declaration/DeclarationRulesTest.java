@@ -16,6 +16,7 @@ import dev.horizon.spectrum.openfga.v1.ObjectRelation;
 import dev.horizon.spectrum.openfga.v1.RelationMetadata;
 import dev.horizon.spectrum.openfga.v1.RelationReference;
 import dev.horizon.spectrum.openfga.v1.TupleToUserset;
+import dev.horizon.spectrum.openfga.v1.TypeDefinition;
 import dev.horizon.spectrum.openfga.v1.Userset;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -101,21 +102,27 @@ class DeclarationRulesTest {
           rule("A type has no name", declaration -> project(declaration).setName("")),
           rule("is Pyrite's; a declaration does not declare it", declaration -> project(declaration)
               .setName("pyrite.dev/Project")),
-          rule("leaves plural empty", declaration -> type(declaration, "pyrite.dev/Key")
-              .setPlural("keys")),
-          rule("has the singular name", declaration -> project(declaration).getDefinitionBuilder()
-              .setType("Project")),
-          rule("is Pyrite's accounts'", declaration -> project(declaration).getDefinitionBuilder().setType("user")),
-          rule("has the singular name person, but its singular name is user", declaration -> type(declaration,
-              "pyrite.dev/Account").getDefinitionBuilder().setType("person")),
-          rule("has the singular name group, but its singular name is user", declaration -> type(declaration,
-              "pyrite.dev/Account").getDefinitionBuilder().setType("group")),
-          rule("which another type has", declaration -> project(declaration).getDefinitionBuilder()
-              .setType("group")),
-          rule("has the plural name", declaration -> project(declaration).setPlural("pro-jects")),
-          rule("has the plural name groups", declaration -> project(declaration).setPlural("groups")),
+          rule("The type acme.dev/Project:v2 has a name that does not match", declaration -> project(declaration)
+              .setName("acme.dev/Project:v2")),
+          rule("The type acme.dev/Project#v2 has a name that does not match", declaration -> project(declaration)
+              .setName("acme.dev/Project#v2")),
+          rule("The type acme@dev/Project has a name that does not match", declaration -> project(declaration)
+              .setName("acme@dev/Project")),
+          rule("The type acme.dev/My Project has a name that does not match", declaration -> project(declaration)
+              .setName("acme.dev/My Project")),
+          rule("The type acme.dev/\tProject has a name that does not match", declaration -> project(declaration)
+              .setName("acme.dev/\tProject")),
+          rule("The type acme.dev/\nProject has a name that does not match", declaration -> project(declaration)
+              .setName("acme.dev/\nProject")),
+          rule("The type " + "t".repeat(255) + " has a name that does not match", declaration -> project(
+              declaration).setName("t".repeat(255))),
+          rule("sets definition.type to project; leave it empty", declaration -> project(declaration)
+              .getDefinitionBuilder().setType("project")),
+          rule("sets definition.type to acme.dev/Project; leave it empty", declaration -> project(declaration)
+              .getDefinitionBuilder().setType("acme.dev/Project")),
           rule("has the parent type acme.dev/Folder", declaration -> project(declaration).setParents(0,
-              "acme.dev/Folder")));
+              "acme.dev/Folder")),
+          rule("has the parent type project", declaration -> project(declaration).setParents(0, "project")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -123,6 +130,22 @@ class DeclarationRulesTest {
     @DisplayName("a type that breaks a rule is refused")
     void refused(String message, Consumer<Declaration.Builder> breaking) throws Exception {
       broken(breaking, message);
+    }
+
+    static Stream<String> names() {
+      return Stream.of("app.shopdemo.dev/Project", "projects", "Project", "acme.dev/v1/Project-Ü",
+          "t".repeat(254));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("names")
+    @DisplayName("a type named within OpenFGA's limits is accepted, and is the type of its model")
+    void accepted(String name) throws Exception {
+      Declaration.Builder declaration = acme().toBuilder();
+      project(declaration).setName(name);
+
+      assertThat(new TypeSystem(declaration.build()).model("store").getTypeDefinitionsList())
+          .extracting(TypeDefinition::getType).contains(name).doesNotContain("acme.dev/Project");
     }
   }
 
@@ -133,17 +156,29 @@ class DeclarationRulesTest {
     static Stream<Arguments> rules() {
       return Stream.of(
           rule("has metadata for", declaration -> project(declaration).getDefinitionBuilder().getMetadataBuilder()
-              .putRelations("auditor", takes("user", ""))),
+              .putRelations("auditor", takes("pyrite.dev/Account", ""))),
           rule("declares the relation parent", declaration -> project(declaration).getDefinitionBuilder()
               .putRelations("parent", direct())),
-          rule("has the relation ", declaration -> project(declaration).getDefinitionBuilder()
-              .putRelations("Auditor", computed("owner"))),
+          rule("has the relation can:view, whose name does not match", declaration -> project(declaration)
+              .getDefinitionBuilder().putRelations("can:view", computed("owner"))),
+          rule("has the relation can#view, whose name does not match", declaration -> project(declaration)
+              .getDefinitionBuilder().putRelations("can#view", computed("owner"))),
+          rule("has the relation can@view, whose name does not match", declaration -> project(declaration)
+              .getDefinitionBuilder().putRelations("can@view", computed("owner"))),
+          rule("has the relation can view, whose name does not match", declaration -> project(declaration)
+              .getDefinitionBuilder().putRelations("can view", computed("owner"))),
+          rule("has the relation can\tview, whose name does not match", declaration -> project(declaration)
+              .getDefinitionBuilder().putRelations("can\tview", computed("owner"))),
+          rule("has the relation , whose name does not match", declaration -> project(declaration)
+              .getDefinitionBuilder().putRelations("", computed("owner"))),
+          rule("has the relation " + "r".repeat(51) + ", whose name does not match", declaration -> project(
+              declaration).getDefinitionBuilder().putRelations("r".repeat(51), computed("owner"))),
           rule("exactly when its rewrite has this", declaration -> project(declaration).getDefinitionBuilder()
               .putRelations("auditor", direct())),
           rule("exactly when its rewrite has this", declaration -> {
             project(declaration).getDefinitionBuilder().putRelations("auditor", computed("owner"));
-            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes("user",
-                ""));
+            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes(
+                "pyrite.dev/Account", ""));
           }),
           rule("which is not declared", declaration -> {
             project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
@@ -152,19 +187,29 @@ class DeclarationRulesTest {
           }),
           rule("which is not a relation of that type", declaration -> {
             project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
-            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes("group",
-                "owner"));
+            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes(
+                "acme.dev/Group", "owner"));
           }),
-          rule("the type user has no relations", declaration -> {
+          rule("to the type group, which is not declared", declaration -> {
+            project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
+            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes("group",
+                "member"));
+          }),
+          rule("to the type user, which is not declared", declaration -> {
             project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
             project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes("user",
-                "member"));
+                ""));
+          }),
+          rule("to pyrite.dev/Account#member, which is not a relation of that type", declaration -> {
+            project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
+            project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor", takes(
+                "pyrite.dev/Account", "member"));
           }),
           rule("with the condition", declaration -> {
             project(declaration).getDefinitionBuilder().putRelations("auditor", direct());
             project(declaration).getDefinitionBuilder().getMetadataBuilder().putRelations("auditor",
                 RelationMetadata.newBuilder().addDirectlyRelatedUserTypes(RelationReference.newBuilder()
-                    .setType("user").setCondition("on_weekdays")).build());
+                    .setType("pyrite.dev/Account").setCondition("on_weekdays")).build());
           }),
           rule("which is not a relation of the type", declaration -> project(declaration).getDefinitionBuilder()
               .putRelations("auditor", computed("accountant"))),
@@ -183,6 +228,23 @@ class DeclarationRulesTest {
     @DisplayName("a relation that breaks a rule is refused")
     void refused(String message, Consumer<Declaration.Builder> breaking) throws Exception {
       broken(breaking, message);
+    }
+
+    static Stream<String> names() {
+      return Stream.of("app.shopdemo.dev/products.get", "Auditor", "can-view", "r".repeat(50));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("names")
+    @DisplayName("a relation named within OpenFGA's limits is accepted, and grants and checks by that name")
+    void accepted(String name) throws Exception {
+      Declaration.Builder declaration = acme().toBuilder();
+      project(declaration).getDefinitionBuilder().putRelations(name, direct()).getMetadataBuilder()
+          .putRelations(name, takes("pyrite.dev/Account", ""));
+      project(declaration).addGrantable(name).getPermissionsBuilder().setGrant(name);
+
+      assertThat(new TypeSystem(declaration.build()).type("acme.dev/Project").orElseThrow().relations())
+          .containsKey(name);
     }
   }
 
@@ -213,8 +275,9 @@ class DeclarationRulesTest {
             grantable.remove("verifier");
             key.clearGrantable().addAllGrantable(grantable);
           }),
-          rule("takes a user directly", declaration -> type(declaration, "pyrite.dev/Account")
-              .getDefinitionBuilder().getMetadataBuilder().putRelations("owner", takes("group", "member"))));
+          rule("takes pyrite.dev/Account directly", declaration -> type(declaration, "pyrite.dev/Account")
+              .getDefinitionBuilder().getMetadataBuilder().putRelations("owner", takes("acme.dev/Group",
+                  "member"))));
     }
 
     @ParameterizedTest(name = "{0}")

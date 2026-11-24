@@ -11,7 +11,8 @@ import java.util.Set;
 
 /**
  * A call to one of Pyrite's services that Pyrite refused, with the gRPC status that the call ends with. The message
- * names the resource, the field or the rule, such as {@code The resource projects/ledger is not known.}
+ * names the resource, the field or the rule, such as {@code The resource acme.dev/Project:projects/ledger is not
+ * known.}
  *
  * <p>
  * An interceptor of exchanges fails an exchange with one to end the call with a status of its choice:

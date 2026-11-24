@@ -18,7 +18,7 @@ final class AccountDeletePermission extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new CreateAccountOfKind("mallory", "HUMAN"));
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new DeleteAccount("user:mallory",
+    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new DeleteAccount("pyrite.dev/Account:accounts/mallory",
         "accounts/anne")), Requirement.ACCOUNT_DELETE);
     callAndStopOnFailure(new GetAccount(ANNE, "accounts/anne"), Requirement.ACCOUNT_DELETE);
   }

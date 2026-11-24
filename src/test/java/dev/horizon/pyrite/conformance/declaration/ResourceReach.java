@@ -20,16 +20,15 @@ final class ResourceReach extends ConformanceModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
-    call(new CreateObject(ANNE, "projects/ledger", "organizations/acme"));
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
+    call(new CreateObject(ANNE, "acme.dev/Project:projects/ledger", "acme.dev/Organization:organizations/acme"));
     call(new ReadDeclaration(""));
-    for (TypeChange change : List.of(TypeChange.PROJECT_DROP, TypeChange.PROJECT_PLURAL, TypeChange.PROJECT_SINGULAR,
-        TypeChange.ORGANIZATION_PARENTS)) {
+    for (TypeChange change : List.of(TypeChange.PROJECT_DROP, TypeChange.ORGANIZATION_PARENTS)) {
       callAndContinueOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new WriteTypeChange(change)),
           Requirement.DECLARATION_REACH);
     }
     callAndStopOnFailure(new ExpectLatestDeclaration(false), Requirement.DECLARATION_REACH);
-    callAndStopOnFailure(new WriteTypeChange(TypeChange.ROLE_PLURAL), Requirement.DECLARATION_REACH);
+    callAndStopOnFailure(new WriteTypeChange(TypeChange.ROLE_PARENTS), Requirement.DECLARATION_REACH);
     callAndStopOnFailure(new ExpectLatestDeclaration(true), Requirement.DECLARATION_REACH);
   }
 }

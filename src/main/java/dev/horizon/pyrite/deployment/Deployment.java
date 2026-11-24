@@ -214,9 +214,9 @@ public final class Deployment {
 
   /**
    * Refuses a declaration that leaves resources that Pyrite knows out of reach: one that drops a type of the latest
-   * declaration, or changes its plural, its singular name or its parents, while the table {@code pyrite_node} has rows
-   * of the type. A resource finds its type by the plural, its object in the store of grants by the singular name, and
-   * the resource that it is under among the parents of its type.
+   * declaration, or changes its parents, while the table {@code pyrite_node} has rows of the type. A resource finds
+   * its type by the type's name, which its own name starts with, and the resource that it is under among the parents
+   * of its type.
    *
    * @param latest the latest declaration
    * @param declaration the new declaration
@@ -246,22 +246,12 @@ public final class Deployment {
    *
    * @param type the type in the latest declaration
    * @param next the type in the new declaration; empty when it drops the type
-   * @return the change, such as {@code drops the type acme.dev/Project}, or empty when the plural, the singular name
-   * and the parents stay
+   * @return the change, such as {@code drops the type acme.dev/Project}, or empty when the type and its parents stay
    */
   private static Optional<String> change(Type type, Optional<Type> next) {
     String name = type.getName();
     if (next.isEmpty()) {
       return Optional.of("drops the type " + name);
-    }
-    if (!next.get().getPlural().equals(type.getPlural())) {
-      return Optional.of("changes the plural of the type " + name + " from " + type.getPlural() + " to "
-          + next.get().getPlural());
-    }
-    String singular = type.getDefinition().getType();
-    if (!next.get().getDefinition().getType().equals(singular)) {
-      return Optional.of("changes the singular name of the type " + name + " from " + singular + " to "
-          + next.get().getDefinition().getType());
     }
     if (!Set.copyOf(next.get().getParentsList()).equals(Set.copyOf(type.getParentsList()))) {
       return Optional.of("changes the parents of the type " + name + " from " + type.getParentsList() + " to "

@@ -19,16 +19,16 @@ final class CheckOfOtherPrincipal extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantRelation(ANNE, "organizations/acme", "member", BOB));
-    call(new Check(ANNE, BOB, "projects/ledger", "can_view"));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "member", BOB));
+    call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.ACCESS_PRINCIPAL);
-    call(new Check(ANNE, CAROL, "projects/ledger", "can_view"));
+    call(new Check(ANNE, CAROL, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.ACCESS_PRINCIPAL);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Check(BOB, ANNE, "projects/ledger", "can_view")),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Check(BOB, ANNE, "acme.dev/Project:projects/ledger", "can_view")),
         Requirement.ACCESS_PRINCIPAL);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Check(BOB, CAROL, "projects/ledger", "can_view")),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Check(BOB, CAROL, "acme.dev/Project:projects/ledger", "can_view")),
         Requirement.ACCESS_PRINCIPAL);
   }
 }

@@ -16,11 +16,11 @@ final class ParentBlock extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantRelation(ANNE, "projects/ledger", "editor", BOB));
-    call(new GrantRelation(ANNE, "organizations/acme", "blocked", BOB));
-    call(new Check(ANNE, BOB, "projects/ledger", "can_edit"));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "blocked", BOB));
+    call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "can_edit"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.ACCESS_HIERARCHY);
-    call(new Check(ANNE, BOB, "projects/ledger", "editor"));
+    call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "editor"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.ACCESS_HIERARCHY);
   }
 }

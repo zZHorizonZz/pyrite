@@ -13,6 +13,10 @@ option java_package = "dev.horizon.pyrite.access.v1";
 // The application's resources as Pyrite knows them, the grants on them, as OpenFGA tuples, and the questions about
 // them. The application keeps its resources itself and tells Pyrite when one is created and when it is gone. Every
 // call runs as its subject.
+//
+// A resource is named by its object in OpenFGA: the name of its type, a colon, and an id, such as
+// acme.dev/Project:organizations/acme/projects/ledger. The id has no colon, no #, no white space and no control
+// characters, and the name has at most 256 characters. Pyrite gives names back as they were made known.
 service Access {
   // Makes a resource known: its parent, and the relation that the type grants its creator. Every other method needs
   // the resource known. The subject needs the type's create permission on the parent.
@@ -51,10 +55,11 @@ service Access {
 message CreateObjectRequest {
   string subject = 1;
 
-  // The resource's name, such as projects/ledger.
+  // The resource's name, such as acme.dev/Project:organizations/acme/projects/ledger.
   string name = 2;
 
-  // The name of the resource it is under, such as organizations/acme; empty for a type without parents.
+  // The name of the resource it is under, such as acme.dev/Organization:organizations/acme; empty for a type without
+  // parents.
   string parent = 3;
 
   // The values that the conditions of grants read, such as current_time.
@@ -84,19 +89,20 @@ message ListObjectsRequest {
 }
 
 message ListObjectsResponse {
-  // The names of the resources, such as projects/ledger.
+  // The names of the resources, such as acme.dev/Project:organizations/acme/projects/ledger.
   repeated string names = 1;
 }
 
 // A relation on a resource, granted to a principal or to a set of them.
 message Grant {
-  // The resource's name, such as projects/ledger.
+  // The resource's name, such as acme.dev/Project:organizations/acme/projects/ledger.
   string object = 1;
 
   // The relation, such as editor.
   string relation = 2;
 
-  // The principal, such as user:anne, all of a type, such as user:*, or a set, such as group:finance#member.
+  // The principal, such as pyrite.dev/Account:accounts/anne, all of a type, such as pyrite.dev/Account:*, or a set,
+  // such as acme.dev/Group:organizations/acme/groups/finance#member.
   string grantee = 3;
 
   // The condition on the grant, if any.
@@ -131,7 +137,7 @@ message DeleteGrantRequest {
 message CheckRequest {
   string subject = 1;
 
-  // The principal whose access is checked, such as user:bob.
+  // The principal whose access is checked, such as pyrite.dev/Account:accounts/bob.
   string principal = 2;
 
   // The resource's name.
@@ -181,7 +187,7 @@ message ListSubjectsRequest {
 
   string permission = 3;
 
-  // The type of the principals, such as user, or a set, such as group#member.
+  // The type of the principals, such as pyrite.dev/Account, or a set, such as acme.dev/Group#member.
   string subject_type = 4;
 
   google.protobuf.Struct context = 5;

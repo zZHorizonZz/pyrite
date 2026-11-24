@@ -123,7 +123,8 @@ providers that verify addresses as you do.
 Start `link-provider` as the account, and answer it with a provider sign-in as above:
 
 ```java
-Exchange link = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
+Exchange link = authentication.startExchange(StartExchangeRequest.newBuilder()
+    .setSubject("pyrite.dev/Account:accounts/anne")
     .setDefinition("link-provider").build()).await();
 ```
 
@@ -134,10 +135,12 @@ A provider account that an account links already fails with `ALREADY_EXISTS`.
 List the factors of the account, and remove the one of the provider, as the account:
 
 ```java
-Factor google = authentication.listFactors(ListFactorsRequest.newBuilder().setSubject("user:anne")
+Factor google = authentication.listFactors(ListFactorsRequest.newBuilder()
+    .setSubject("pyrite.dev/Account:accounts/anne")
     .setAccount("accounts/anne").build()).await().getFactorsList().stream()
     .filter(factor -> factor.getProvider().equals("google")).findFirst().orElseThrow();
-authentication.deleteFactor(DeleteFactorRequest.newBuilder().setSubject("user:anne").setName(google.getName())
+authentication.deleteFactor(DeleteFactorRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+    .setName(google.getName())
     .build()).await();
 ```
 

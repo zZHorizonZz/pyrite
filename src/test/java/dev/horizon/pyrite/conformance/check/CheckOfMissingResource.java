@@ -15,7 +15,8 @@ final class CheckOfMissingResource extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new Check(ANNE, "projects/payroll", "can_view")),
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.NOT_FOUND, new Check(ANNE, "acme.dev/Project:projects/payroll", "can_view")),
         Requirement.OBJECT_MISSING);
   }
 }

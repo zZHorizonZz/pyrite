@@ -53,23 +53,19 @@ message IdentifierKind {
 }
 
 // A type of the application's resources, as Pyrite knows it: where it sits in the hierarchy and who may do what on
-// its resources. The application keeps the resources themselves. Pyrite's own types, pyrite.dev/Key and
-// pyrite.dev/Account, leave plural empty.
+// its resources. The application keeps the resources themselves. A resource of the type is named by its object in
+// OpenFGA: the type's name, a colon, and an id, such as acme.dev/Project:organizations/acme/projects/ledger.
 message Type {
-  // The type's name, such as acme.dev/Project.
+  // The type's name, such as acme.dev/Project, which is also its type in the authorization model: 1 to 254
+  // characters, without :, #, @ or white space.
   string name = 1;
-
-  // The first segment of its resources' names, such as projects.
-  string plural = 2;
 
   // The types that its resources can be under; none for a type at the top.
   repeated string parents = 3;
 
-  reserved 4, 5, 10;
-  reserved "table", "fields", "retention";
-
-  // The OpenFGA type: its name, which is the type's singular name, its relations, and the types that each takes
-  // directly. A relation reads from the parent through a tuple to userset whose tupleset is parent; Pyrite adds the
+  // The OpenFGA type: its relations, and the types that each takes directly, by their names. Leave its type empty:
+  // the type's name is its type in the model. A relation's name has 1 to 50 characters, without :, #, @ or white
+  // space. A relation reads from the parent through a tuple to userset whose tupleset is parent; Pyrite adds the
   // relation parent to a type that has parents.
   openfga.v1.TypeDefinition definition = 6;
 
@@ -86,9 +82,6 @@ message Type {
 message Permissions {
   // The relation on the parent that creates a resource under it; empty for a type without parents.
   string create = 1;
-
-  reserved 2, 3, 4;
-  reserved "read", "update", "delete";
 
   // The relation that grants, revokes and lists the grants on a resource.
   string grant = 5;

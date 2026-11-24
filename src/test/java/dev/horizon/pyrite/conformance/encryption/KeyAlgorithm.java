@@ -14,7 +14,9 @@ final class KeyAlgorithm extends KeyModule {
   @Override
   protected void run() {
     preparePayments();
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKey("organizations/acme", "invalid",
-        Algorithm.ALGORITHM_UNSPECIFIED)), Requirement.KEY_CREATE);
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKey("acme.dev/Organization:organizations/acme", "invalid",
+            Algorithm.ALGORITHM_UNSPECIFIED)),
+        Requirement.KEY_CREATE);
   }
 }

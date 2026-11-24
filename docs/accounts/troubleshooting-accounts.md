@@ -251,14 +251,14 @@ INVALID_ARGUMENT: The exchange verify sends a code to an identifier, but no iden
 ## The subject ... has no ... on accounts/...
 
 ```text
-PERMISSION_DENIED: The subject user:bob has no admin on accounts/anne.
+PERMISSION_DENIED: The subject pyrite.dev/Account:accounts/bob has no admin on accounts/anne.
 ```
 
 **Cause:** A call on an account by a subject without the relation that the call checks: `viewer` for `GetAccount`,
 `ListIdentifiers` and `GetSession`, and `admin` for `AddIdentifier`, `EndSession` and `DeleteAccount`.
 
-**Fix:** Call as the account, such as `user:anne` for `accounts/anne`, or grant the subject the relation. Check that
-`pyrite.dev/Account` builds `admin` and `viewer` from `owner`.
+**Fix:** Call as the account, such as `pyrite.dev/Account:accounts/anne` for `accounts/anne`, or grant the subject the
+relation. Check that `pyrite.dev/Account` builds `admin` and `viewer` from `owner`.
 
 **Verify:** The call gives the account, its identifiers or its session.
 
@@ -417,21 +417,22 @@ NOT_FOUND: The account accounts/bob does not exist.
 `ListIdentifiers`, `DeleteAccount`, or `StartExchange` of an exchange whose input is `SUBJECT` or `SUBJECT_IDENTIFIER`,
 whose subject has no account.
 
-**Fix:** Create the account first, and call with the subject of the account, such as `user:bob` for `accounts/bob`.
+**Fix:** Create the account first, and call with the subject of the account, such as `pyrite.dev/Account:accounts/bob`
+for `accounts/bob`.
 
 **Verify:** The call gives the account, or the exchange.
 
 ## The subject ... is not an account
 
 ```text
-INVALID_ARGUMENT: The subject group:staff is not an account.
+INVALID_ARGUMENT: The subject acme.dev/Group:groups/staff is not an account.
 ```
 
 **Cause:** `StartExchange` of an exchange whose input is `SUBJECT` or `SUBJECT_IDENTIFIER`, with a subject of another
-type than `user`. A subject that is not of the form `type:id`, such as `anne` or `accounts/anne`, fails with `The
-subject 'anne' is not a principal of the form type:id, such as user:anne.` instead.
+type than `pyrite.dev/Account`. A subject that is not of the form `type:id`, such as `anne` or `accounts/anne`, fails
+with `The subject 'anne' is not a principal of the form type:id, such as pyrite.dev/Account:accounts/anne.` instead.
 
-**Fix:** Start the exchange as the account, such as `user:anne`.
+**Fix:** Start the exchange as the account, such as `pyrite.dev/Account:accounts/anne`.
 
 **Verify:** `StartExchange` gives an exchange with challenges.
 

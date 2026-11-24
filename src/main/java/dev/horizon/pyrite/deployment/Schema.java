@@ -138,13 +138,14 @@ public final class Schema {
    * Forgets a resource: an account through its type, which tells the handlers of deleted accounts, and any other
    * resource through the tree.
    *
-   * @param name the name of the resource, such as {@code projects/ledger}
+   * @param name the name of the resource, such as {@code acme.dev/Project:organizations/acme/projects/ledger}
    * @return a future that completes once the resource is forgotten, or a failure with {@code FAILED_PRECONDITION}
    * when resources are under it
    */
   public Future<Void> forget(String name) {
-    if (accounts.isPresent() && types.typeOf(name).map(type -> type.name().equals(TypeSystem.ACCOUNT)).orElse(false)) {
-      return accounts.get().delete(name);
+    Optional<ResourceType> type = types.typeOf(name);
+    if (accounts.isPresent() && type.map(found -> found.name().equals(TypeSystem.ACCOUNT)).orElse(false)) {
+      return accounts.get().delete(type.get().id(name));
     }
     return resources.forget(name);
   }

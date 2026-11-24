@@ -17,11 +17,13 @@ final class ChangePermission extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
     call(new ListChanges(BOB, "acme.dev/Project"));
     callAndContinueOnFailure(new ExpectChanges(List.of()), Requirement.CHANGE_LIST);
     call(new ListChanges(ANNE, "acme.dev/Project"));
-    callAndContinueOnFailure(new ExpectChanges(List.of("owner user:anne GRANTED", "viewer user:bob GRANTED")),
+    callAndContinueOnFailure(
+        new ExpectChanges(List.of("acme.dev/Project:projects/ledger owner pyrite.dev/Account:accounts/anne GRANTED",
+            "acme.dev/Project:projects/ledger viewer pyrite.dev/Account:accounts/bob GRANTED")),
         Requirement.CHANGE_LIST);
   }
 }

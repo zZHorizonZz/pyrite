@@ -1,8 +1,31 @@
-CREATE TABLE `pyrite_account` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(255) NULL, `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `kind` ENUM('KIND_UNSPECIFIED', 'HUMAN', 'SERVICE') NOT NULL, CONSTRAINT `pk_pyrite_account` PRIMARY KEY (`uid`));
+CREATE TABLE `pyrite_key` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(256) NULL COMMENT 'The name of the resource it is under, such as acme.dev/Organization:organizations/acme.', `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `purpose` ENUM('PURPOSE_UNSPECIFIED', 'ENCRYPTION', 'MAC', 'SIGNING') NOT NULL, `algorithm` ENUM('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA') NOT NULL, `rotation_period` BIGINT NOT NULL COMMENT 'How often the key gets a new primary version, in seconds; 0 for never.', `next_rotation_time` DATETIME(6) NULL COMMENT 'When the key next gets a new primary version, if it rotates.', `primary_version` VARCHAR(255) NOT NULL COMMENT 'The name of the version that encrypts and signs.', `resource` VARCHAR(256) COLLATE utf8mb4_bin NOT NULL COMMENT 'The key''s resource, which is also its object in OpenFGA, such as pyrite.dev/Key:keys/payments. Deleting the
+resource''s row in pyrite_node deletes the key.', CONSTRAINT `pk_pyrite_key` PRIMARY KEY (`uid`));
+
+CREATE UNIQUE INDEX `ux_pyrite_key_resource` ON `pyrite_key` (`resource`);
+
+CREATE UNIQUE INDEX `ux_pyrite_key_name` ON `pyrite_key` (`name`);
+
+CREATE INDEX `ix_pyrite_key_parent` ON `pyrite_key` (`parent`);
+
+ALTER TABLE `pyrite_key` COMMENT = 'A key: the resource pyrite.dev/Key, with the standard fields and its own.';
+
+CREATE TABLE `pyrite_key_version` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(255) COLLATE utf8mb4_bin NULL, `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `number` BIGINT NOT NULL COMMENT '1 for the first version of the key, and one more for each after it.', `state` ENUM('STATE_UNSPECIFIED', 'ENABLED', 'DISABLED') NOT NULL, `algorithm` ENUM('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA') NOT NULL, `public_key` JSON NULL COMMENT 'The public key of a signing version, as a JWK; empty for the others.', `sealed` LONGBLOB NOT NULL COMMENT 'The key material, encrypted by the root key.', `public_key_info` LONGBLOB NULL COMMENT 'The X.509 SubjectPublicKeyInfo of a signing version; empty for the others.', CONSTRAINT `pk_pyrite_key_version` PRIMARY KEY (`uid`));
+
+CREATE UNIQUE INDEX `ux_pyrite_key_version_name` ON `pyrite_key_version` (`name`);
+
+CREATE UNIQUE INDEX `ux_pyrite_key_version_parent_number` ON `pyrite_key_version` (`parent`, `number`);
+
+ALTER TABLE `pyrite_key_version` COMMENT = 'A version of a key: the resource pyrite.dev/KeyVersion, under its key.';
+
+CREATE TABLE `pyrite_account` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(255) NULL, `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `kind` ENUM('KIND_UNSPECIFIED', 'HUMAN', 'SERVICE') NOT NULL, `resource` VARCHAR(256) COLLATE utf8mb4_bin NOT NULL COMMENT 'The account''s resource, which is also its object in OpenFGA and its subject, such as
+pyrite.dev/Account:accounts/anne. Deleting the resource''s row in pyrite_node deletes the account.', CONSTRAINT `pk_pyrite_account` PRIMARY KEY (`uid`));
+
+CREATE UNIQUE INDEX `ux_pyrite_account_resource` ON `pyrite_account` (`resource`);
 
 CREATE UNIQUE INDEX `ux_pyrite_account_name` ON `pyrite_account` (`name`);
 
-ALTER TABLE `pyrite_account` COMMENT = 'An account: the resource pyrite.dev/Account, whose principals are user:<id>.';
+ALTER TABLE `pyrite_account` COMMENT = 'An account: the resource pyrite.dev/Account, whose subject is its resource, such as
+pyrite.dev/Account:accounts/anne.';
 
 CREATE TABLE `pyrite_identifier` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(255) COLLATE utf8mb4_bin NULL, `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `kind` VARCHAR(16) NOT NULL COMMENT 'EMAIL, PHONE or USERNAME.', `value` VARCHAR(320) COLLATE utf8mb4_bin NOT NULL COMMENT 'The address, the number in E.164, or the username, as Pyrite normalized it.', `verified` BOOLEAN NOT NULL, `primary` BOOLEAN NOT NULL COMMENT 'Whether the account prefers it among its identifiers; the caller sets it.', `claim` VARCHAR(340) NOT NULL COMMENT 'The kind and the value, as email:anne@acme.dev, once the identifier is verified, so that no two verified
 identifiers hold one value; the identifier''s own name while it is not verified, so that any account can add a value
@@ -68,7 +91,8 @@ ALTER TABLE `pyrite_declaration` COMMENT = 'A declaration that pyrite.schema.v1.
 latest is the one that every service reads. Each declaration is written on the one that was the latest, and no two
 on the same one, so that of two Pyrites that write at once, one writes again on the declaration of the other.';
 
-CREATE TABLE `pyrite_node` (`name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL COMMENT 'The resource''s name, such as projects/ledger.', `type` VARCHAR(255) NOT NULL COMMENT 'The declared type, such as acme.dev/Project.', `parent` VARCHAR(255) COLLATE utf8mb4_bin NULL COMMENT 'The name of the resource it is under; unset for a resource at the top.', `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), CONSTRAINT `pk_pyrite_node` PRIMARY KEY (`name`));
+CREATE TABLE `pyrite_node` (`name` VARCHAR(256) COLLATE utf8mb4_bin NOT NULL COMMENT 'The resource''s name, which is also its object in OpenFGA, such as
+acme.dev/Project:organizations/acme/projects/ledger.', `type` VARCHAR(254) NOT NULL COMMENT 'The declared type, such as acme.dev/Project.', `parent` VARCHAR(256) COLLATE utf8mb4_bin NULL COMMENT 'The name of the resource it is under; unset for a resource at the top.', `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), CONSTRAINT `pk_pyrite_node` PRIMARY KEY (`name`));
 
 CREATE INDEX `ix_pyrite_node_parent` ON `pyrite_node` (`parent`);
 
@@ -77,23 +101,11 @@ CREATE INDEX `ix_pyrite_node_type` ON `pyrite_node` (`type`);
 ALTER TABLE `pyrite_node` COMMENT = 'A resource that Pyrite knows: its type and the resource it is under. The application keeps the resource itself;
 Pyrite keeps where it sits, so that grants reach it from its parents and nothing is made twice.';
 
-CREATE TABLE `pyrite_key` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(255) NULL, `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `purpose` ENUM('PURPOSE_UNSPECIFIED', 'ENCRYPTION', 'MAC', 'SIGNING') NOT NULL, `algorithm` ENUM('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA') NOT NULL, `rotation_period` BIGINT NOT NULL COMMENT 'How often the key gets a new primary version, in seconds; 0 for never.', `next_rotation_time` DATETIME(6) NULL COMMENT 'When the key next gets a new primary version, if it rotates.', `primary_version` VARCHAR(255) NOT NULL COMMENT 'The name of the version that encrypts and signs.', CONSTRAINT `pk_pyrite_key` PRIMARY KEY (`uid`));
+ALTER TABLE `pyrite_key` ADD CONSTRAINT `fk_pyrite_key_resource` FOREIGN KEY (`resource`) REFERENCES `pyrite_node` (`name`) ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX `ux_pyrite_key_name` ON `pyrite_key` (`name`);
+ALTER TABLE `pyrite_key_version` ADD CONSTRAINT `fk_pyrite_key_version_parent` FOREIGN KEY (`parent`) REFERENCES `pyrite_key` (`name`) ON DELETE CASCADE;
 
-CREATE INDEX `ix_pyrite_key_parent` ON `pyrite_key` (`parent`);
-
-ALTER TABLE `pyrite_key` COMMENT = 'A key: the resource pyrite.dev/Key, with the standard fields and its own.';
-
-CREATE TABLE `pyrite_key_version` (`uid` UUID NOT NULL DEFAULT (UUID()), `name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, `parent` VARCHAR(255) COLLATE utf8mb4_bin NULL, `display_name` VARCHAR(255) NULL, `labels` JSON NOT NULL DEFAULT '{}', `revision` BIGINT NOT NULL DEFAULT 1, `create_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `update_time` DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)), `delete_time` DATETIME(6) NULL, `purge_time` DATETIME(6) NULL, `number` BIGINT NOT NULL COMMENT '1 for the first version of the key, and one more for each after it.', `state` ENUM('STATE_UNSPECIFIED', 'ENABLED', 'DISABLED') NOT NULL, `algorithm` ENUM('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA') NOT NULL, `public_key` JSON NULL COMMENT 'The public key of a signing version, as a JWK; empty for the others.', `sealed` LONGBLOB NOT NULL COMMENT 'The key material, encrypted by the root key.', `public_key_info` LONGBLOB NULL COMMENT 'The X.509 SubjectPublicKeyInfo of a signing version; empty for the others.', CONSTRAINT `pk_pyrite_key_version` PRIMARY KEY (`uid`));
-
-CREATE UNIQUE INDEX `ux_pyrite_key_version_name` ON `pyrite_key_version` (`name`);
-
-CREATE UNIQUE INDEX `ux_pyrite_key_version_parent_number` ON `pyrite_key_version` (`parent`, `number`);
-
-ALTER TABLE `pyrite_key_version` COMMENT = 'A version of a key: the resource pyrite.dev/KeyVersion, under its key.';
-
-ALTER TABLE `pyrite_account` ADD CONSTRAINT `fk_pyrite_account_name` FOREIGN KEY (`name`) REFERENCES `pyrite_node` (`name`) ON DELETE CASCADE;
+ALTER TABLE `pyrite_account` ADD CONSTRAINT `fk_pyrite_account_resource` FOREIGN KEY (`resource`) REFERENCES `pyrite_node` (`name`) ON DELETE CASCADE;
 
 ALTER TABLE `pyrite_identifier` ADD CONSTRAINT `fk_pyrite_identifier_parent` FOREIGN KEY (`parent`) REFERENCES `pyrite_account` (`name`) ON DELETE CASCADE;
 
@@ -109,9 +121,15 @@ ALTER TABLE `pyrite_exchange` ADD CONSTRAINT `fk_pyrite_exchange_account` FOREIG
 
 ALTER TABLE `pyrite_node` ADD CONSTRAINT `fk_pyrite_node_parent` FOREIGN KEY (`parent`) REFERENCES `pyrite_node` (`name`) ON DELETE RESTRICT;
 
-ALTER TABLE `pyrite_key` ADD CONSTRAINT `fk_pyrite_key_name` FOREIGN KEY (`name`) REFERENCES `pyrite_node` (`name`) ON DELETE CASCADE;
+CREATE TRIGGER `rw_pyrite_key` BEFORE UPDATE ON `pyrite_key` FOR EACH ROW BEGIN
+  SET NEW.`revision` = (OLD.`revision` + 1);
+  SET NEW.`update_time` = (UTC_TIMESTAMP(6));
+END;
 
-ALTER TABLE `pyrite_key_version` ADD CONSTRAINT `fk_pyrite_key_version_parent` FOREIGN KEY (`parent`) REFERENCES `pyrite_key` (`name`) ON DELETE CASCADE;
+CREATE TRIGGER `rw_pyrite_key_version` BEFORE UPDATE ON `pyrite_key_version` FOR EACH ROW BEGIN
+  SET NEW.`revision` = (OLD.`revision` + 1);
+  SET NEW.`update_time` = (UTC_TIMESTAMP(6));
+END;
 
 CREATE TRIGGER `rw_pyrite_account` BEFORE UPDATE ON `pyrite_account` FOR EACH ROW BEGIN
   SET NEW.`revision` = (OLD.`revision` + 1);
@@ -129,16 +147,6 @@ CREATE TRIGGER `rw_pyrite_factor` BEFORE UPDATE ON `pyrite_factor` FOR EACH ROW 
 END;
 
 CREATE TRIGGER `rw_pyrite_session` BEFORE UPDATE ON `pyrite_session` FOR EACH ROW BEGIN
-  SET NEW.`revision` = (OLD.`revision` + 1);
-  SET NEW.`update_time` = (UTC_TIMESTAMP(6));
-END;
-
-CREATE TRIGGER `rw_pyrite_key` BEFORE UPDATE ON `pyrite_key` FOR EACH ROW BEGIN
-  SET NEW.`revision` = (OLD.`revision` + 1);
-  SET NEW.`update_time` = (UTC_TIMESTAMP(6));
-END;
-
-CREATE TRIGGER `rw_pyrite_key_version` BEFORE UPDATE ON `pyrite_key_version` FOR EACH ROW BEGIN
   SET NEW.`revision` = (OLD.`revision` + 1);
   SET NEW.`update_time` = (UTC_TIMESTAMP(6));
 END;

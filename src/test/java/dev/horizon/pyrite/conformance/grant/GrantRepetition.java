@@ -18,13 +18,16 @@ final class GrantRepetition extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
-    callAndContinueOnFailure(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB), Requirement.GRANT_WRITE);
-    call(new ListGrants(ANNE, "projects/ledger"));
-    callAndContinueOnFailure(new ExpectGrants(List.of("owner user:anne", "viewer user:bob")), Requirement.GRANT_WRITE);
-    call(new Revoke(ANNE, "projects/ledger", "viewer", BOB));
-    callAndContinueOnFailure(new Revoke(ANNE, "projects/ledger", "viewer", BOB), Requirement.GRANT_REVOKE);
-    call(new ListGrants(ANNE, "projects/ledger"));
-    callAndContinueOnFailure(new ExpectGrants(List.of("owner user:anne")), Requirement.GRANT_REVOKE);
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    callAndContinueOnFailure(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB),
+        Requirement.GRANT_WRITE);
+    call(new ListGrants(ANNE, "acme.dev/Project:projects/ledger"));
+    callAndContinueOnFailure(
+        new ExpectGrants(List.of("owner pyrite.dev/Account:accounts/anne", "viewer pyrite.dev/Account:accounts/bob")),
+        Requirement.GRANT_WRITE);
+    call(new Revoke(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    callAndContinueOnFailure(new Revoke(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB), Requirement.GRANT_REVOKE);
+    call(new ListGrants(ANNE, "acme.dev/Project:projects/ledger"));
+    callAndContinueOnFailure(new ExpectGrants(List.of("owner pyrite.dev/Account:accounts/anne")), Requirement.GRANT_REVOKE);
   }
 }

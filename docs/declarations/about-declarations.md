@@ -8,10 +8,8 @@ JSON or in protobuf text format.
 ```textproto
 types {
   name: "acme.dev/Project"
-  plural: "projects"
   parents: "acme.dev/Organization"
   definition {
-    type: "project"
     relations { key: "owner" value { this {} } }
     relations {
       key: "viewer"
@@ -24,8 +22,8 @@ types {
       }
     }
     metadata {
-      relations { key: "owner" value { directly_related_user_types { type: "user" } } }
-      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+      relations { key: "owner" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { create: "admin" grant: "owner" }
@@ -34,37 +32,42 @@ types {
 }
 ```
 
-With this type, a resource `projects/ledger` sits under an organization, such as `organizations/acme`. Making it known
-needs `admin` on the organization. Its creator becomes its `owner`, an owner grants `owner` and `viewer` on it, and the
-members of the organization view it.
+With this type, a resource `acme.dev/Project:organizations/acme/projects/ledger` sits under an organization, such as
+`acme.dev/Organization:organizations/acme`. Making it known needs `admin` on the organization. Its creator becomes its
+`owner`, an owner grants `owner` and `viewer` on it, and the members of the organization view it.
 
 ## Types
 
 A type is one kind of resource, such as an organization or a project. Your application keeps the resources
 themselves, in its own tables. The type tells Pyrite where they sit and who may do what on them:
 
-| Part         | Field         | Example                             |
-| ------------ | ------------- | ----------------------------------- |
-| Name         | `name`        | `acme.dev/Project`                  |
-| Name segment | `plural`      | `projects`, as in `projects/ledger` |
-| Parents      | `parents`     | `acme.dev/Organization`             |
-| Relations    | `definition`  | `owner`, `viewer`                   |
-| Checks       | `permissions` | `create: "admin"`, `grant: "owner"` |
-| Grants       | `grantable`   | `owner`, `viewer`                   |
-| Creator      | `creator`     | `owner`                             |
+| Part      | Field         | Example                             |
+| --------- | ------------- | ----------------------------------- |
+| Name      | `name`        | `acme.dev/Project`                  |
+| Parents   | `parents`     | `acme.dev/Organization`             |
+| Relations | `definition`  | `owner`, `viewer`                   |
+| Checks    | `permissions` | `create: "admin"`, `grant: "owner"` |
+| Grants    | `grantable`   | `owner`, `viewer`                   |
+| Creator   | `creator`     | `owner`                             |
 
-The `definition` is an OpenFGA type definition, `openfga.v1.TypeDefinition` from Spectrum's protos. Its `type` is the
-singular name of the type, such as `project`, and OpenFGA names the resources of the type by it, such as
-`project:ledger`. Each relation of the definition is a rewrite: `this` takes grants, `computed_userset` reads another
-relation of the same resource, and `tuple_to_userset` reads a relation of the resources that another relation names.
-`union`, `intersection` and `difference` combine them. The `metadata` lists, for each relation with `this`, the types
-that it takes.
+The name of the type is also its type in OpenFGA, and the start of the names of its resources:
+`acme.dev/Project:organizations/acme/projects/ledger` is a resource of `acme.dev/Project`. A type's name has 1 to 254
+characters, without `:`, `#`, `@` or white space, as OpenFGA takes it.
+
+The `definition` is an OpenFGA type definition, `openfga.v1.TypeDefinition` from Spectrum's protos. Leave its `type`
+empty: Pyrite gives the type its name in the model. A relation's name has 1 to 50 characters, without `:`, `#`, `@` or
+white space, so a permission such as `acme.dev/projects.get` is a relation as it is. The `metadata` names the types that
+a relation takes by their names, such as `pyrite.dev/Account` or `acme.dev/Group`. Each relation of the definition is a
+rewrite: `this` takes grants, `computed_userset` reads another relation of the same resource, and `tuple_to_userset`
+reads a relation of the resources that another relation names. `union`, `intersection` and `difference` combine them.
+The `metadata` lists, for each relation with `this`, the types that it takes.
 
 ## The hierarchy
 
 A type's `parents` are the types that its resources sit under. A type without parents is at the top. Pyrite adds the
 relation `parent` to each type that has parents, and you do not declare it. When your application makes
-`projects/ledger` known under `organizations/acme`, Pyrite writes the tuple `organization:acme parent project:ledger`
+`acme.dev/Project:organizations/acme/projects/ledger` known under `acme.dev/Organization:organizations/acme`, Pyrite
+writes the tuple `acme.dev/Organization:organizations/acme parent acme.dev/Project:organizations/acme/projects/ledger`
 to OpenFGA.
 
 A relation reads from the parent through a `tuple_to_userset` whose tupleset is `parent`:
@@ -96,12 +99,13 @@ grants the subject that makes a resource known, so that someone can grant on the
 
 `pyrite.dev/Key` and `pyrite.dev/Account` are types whose resources Pyrite keeps: keys with their versions, and
 accounts with their identifiers, factors and sessions. You declare them as your own types, with their relations,
-permissions and parents, but without `plural`: Pyrite names their resources `keys/<id>` and `accounts/<id>`. The
-cryptography and authentication services check fixed relations on them, which the declaration must have.
+permissions and parents. Their resources are their names under the type, such as `pyrite.dev/Key:keys/payments` and
+`pyrite.dev/Account:accounts/anne`. The cryptography and authentication services check fixed relations on them, which
+the declaration must have.
 
-The singular name `user` belongs to `pyrite.dev/Account`, so `user:anne` is the account `accounts/anne`. A
-declaration without `pyrite.dev/Account` still gives OpenFGA a type `user`, without relations, for the subjects of
-calls. See [Pyrite's types](pyrite-types.md).
+An account calls as its resource, so `pyrite.dev/Account:accounts/anne` is the subject of the account `accounts/anne`.
+A declaration without `pyrite.dev/Account` still gives OpenFGA the type `pyrite.dev/Account`, without relations, for
+the subjects of calls. See [Pyrite's types](pyrite-types.md).
 
 ## Identifier kinds and exchanges
 

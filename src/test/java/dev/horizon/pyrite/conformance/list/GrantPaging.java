@@ -17,10 +17,12 @@ final class GrantPaging extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    for (String user : List.of(BOB, CAROL, "user:dave", "user:erin")) {
-      call(new GrantRelation(ANNE, "projects/ledger", "viewer", user));
+    for (String user : List.of(BOB, CAROL, "pyrite.dev/Account:accounts/dave", "pyrite.dev/Account:accounts/erin")) {
+      call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", user));
     }
-    callAndStopOnFailure(new ExpectGrantPages(ANNE, "projects/ledger", 2, List.of(ANNE, BOB, CAROL, "user:dave",
-        "user:erin")), Requirement.GRANT_LIST);
+    callAndStopOnFailure(new ExpectGrantPages(ANNE, "acme.dev/Project:projects/ledger", 2,
+        List.of(ANNE, BOB, CAROL, "pyrite.dev/Account:accounts/dave",
+            "pyrite.dev/Account:accounts/erin")),
+        Requirement.GRANT_LIST);
   }
 }

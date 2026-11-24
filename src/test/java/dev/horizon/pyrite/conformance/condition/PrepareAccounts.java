@@ -14,9 +14,9 @@ public record PrepareAccounts() implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    new CreateObject(ANNE, "organizations/acme", "").evaluate(environment);
-    new CreateKey("organizations/acme", "sessions", Algorithm.HMAC_SHA256).evaluate(environment);
-    new CreateKey("organizations/acme", "factors", Algorithm.AES256_GCM).evaluate(environment);
-    new CreateKey("organizations/acme", "access", Algorithm.ES256).evaluate(environment);
+    new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", "").evaluate(environment);
+    new CreateKey("acme.dev/Organization:organizations/acme", "sessions", Algorithm.HMAC_SHA256).evaluate(environment);
+    new CreateKey("acme.dev/Organization:organizations/acme", "factors", Algorithm.AES256_GCM).evaluate(environment);
+    new CreateKey("acme.dev/Organization:organizations/acme", "access", Algorithm.ES256).evaluate(environment);
   }
 }

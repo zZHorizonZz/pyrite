@@ -18,17 +18,18 @@ to people on an organization or a project, from permissions that the declaration
    ```textproto
    types {
      name: "acme.dev/Role"
-     plural: "roles"
      parents: "acme.dev/Organization"
      definition {
-       type: "role"
        relations {
          key: "admin"
          value { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
        }
        relations { key: "can_manage_stock" value { this {} } }
        metadata {
-         relations { key: "can_manage_stock" value { directly_related_user_types { type: "user" wildcard {} } } }
+         relations {
+           key: "can_manage_stock"
+           value { directly_related_user_types { type: "pyrite.dev/Account" wildcard {} } }
+         }
        }
      }
      permissions { create: "admin" grant: "admin" }
@@ -42,10 +43,8 @@ to people on an organization or a project, from permissions that the declaration
    ```textproto
    types {
      name: "acme.dev/Binding"
-     plural: "bindings"
      parents: "acme.dev/Organization"
      definition {
-       type: "binding"
        relations {
          key: "admin"
          value { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
@@ -62,8 +61,8 @@ to people on an organization or a project, from permissions that the declaration
          }
        }
        metadata {
-         relations { key: "role" value { directly_related_user_types { type: "role" } } }
-         relations { key: "member" value { directly_related_user_types { type: "user" } } }
+         relations { key: "role" value { directly_related_user_types { type: "acme.dev/Role" } } }
+         relations { key: "member" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
        }
      }
      permissions { create: "admin" grant: "admin" }
@@ -90,7 +89,7 @@ to people on an organization or a project, from permissions that the declaration
    Add `binding` to the `grantable` relations of the type, and to its `metadata` with the direct type `binding`:
 
    ```textproto
-   relations { key: "binding" value { directly_related_user_types { type: "binding" } } }
+   relations { key: "binding" value { directly_related_user_types { type: "acme.dev/Binding" } } }
    ```
 
    The organization has no parent, so its `can_manage_stock` reads only through `binding`.
@@ -108,36 +107,45 @@ An admin of the organization, here Anne, does these steps at runtime, through yo
 1. Create the role in your table, with the name "Stock admin", and make it known:
 
    ```java
-   access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("roles/stock-admin")
-       .setParent("organizations/acme").build()).await();
+   access.createObject(CreateObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("acme.dev/Role:roles/stock-admin")
+       .setParent("acme.dev/Organization:organizations/acme").build()).await();
    ```
 
 2. Give the role its permissions, by granting each one to every user on the role:
 
    ```java
-   access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-       .setObject("roles/stock-admin").setRelation("can_manage_stock").setGrantee("user:*")).build()).await();
+   access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+       .newBuilder()
+       .setObject("acme.dev/Role:roles/stock-admin").setRelation("can_manage_stock").setGrantee("pyrite.dev/Account:*"))
+       .build()).await();
    ```
 
 3. Make a binding known, and give it the role and a member:
 
    ```java
-   access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("bindings/stock")
-       .setParent("organizations/acme").build()).await();
-   access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-       .setObject("bindings/stock").setRelation("role").setGrantee("role:stock-admin")).build()).await();
-   access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-       .setObject("bindings/stock").setRelation("member").setGrantee("user:bob")).build()).await();
+   access.createObject(CreateObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("acme.dev/Binding:bindings/stock")
+       .setParent("acme.dev/Organization:organizations/acme").build()).await();
+   access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+       .newBuilder()
+       .setObject("acme.dev/Binding:bindings/stock").setRelation("role").setGrantee("acme.dev/Role:roles/stock-admin"))
+       .build()).await();
+   access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+       .newBuilder()
+       .setObject("acme.dev/Binding:bindings/stock").setRelation("member")
+       .setGrantee("pyrite.dev/Account:accounts/bob")).build()).await();
    ```
 
-   A grantee names a resource by its OpenFGA object: the singular name of its type and its id, such as
-   `role:stock-admin`.
+   A grantee names a resource by its name, which is its OpenFGA object, such as `acme.dev/Role:roles/stock-admin`.
 
 4. Attach the binding where it applies, here the whole organization:
 
    ```java
-   access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-       .setObject("organizations/acme").setRelation("binding").setGrantee("binding:stock")).build()).await();
+   access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+       .newBuilder()
+       .setObject("acme.dev/Organization:organizations/acme").setRelation("binding")
+       .setGrantee("acme.dev/Binding:bindings/stock")).build()).await();
    ```
 
 ## Verify
@@ -145,7 +153,8 @@ An admin of the organization, here Anne, does these steps at runtime, through yo
 Bob checks the permission on a project of the organization:
 
 ```java
-boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
+boolean allowed = access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/bob")
+    .setObject("acme.dev/Project:projects/ledger")
     .setPermission("can_manage_stock").build()).await().getAllowed();
 System.out.println(allowed);
 ```
@@ -155,7 +164,7 @@ true
 ```
 
 `ListObjects` of `acme.dev/Project` with the permission `can_manage_stock` gives Bob the projects of the organization.
-A binding attached to `projects/ledger` instead applies to that project only.
+A binding attached to `acme.dev/Project:projects/ledger` instead applies to that project only.
 
 ## Related
 

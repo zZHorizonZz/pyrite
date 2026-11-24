@@ -16,7 +16,8 @@ final class CheckRelation extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new Check(ANNE, BOB, "projects/ledger", "flies")),
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "flies")),
         Requirement.ACCESS_CHECK);
   }
 }

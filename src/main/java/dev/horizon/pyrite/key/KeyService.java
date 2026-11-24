@@ -23,6 +23,7 @@ import dev.horizon.pyrite.crypto.v1.SignResponse;
 import dev.horizon.pyrite.crypto.v1.Verified;
 import dev.horizon.pyrite.crypto.v1.VerifyResponse;
 import dev.horizon.pyrite.declaration.ResourceType;
+import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.resource.Resource;
 import dev.horizon.pyrite.resource.ResourceTree;
 import dev.horizon.pyrite.resource.Subject;
@@ -57,8 +58,15 @@ import java.util.Optional;
  * decrypts only with the same key and the same associated data. A signature that does not verify is a rejection in the
  * response, not a failure. A JWT's {@code alg} is the key's algorithm, such as {@code HS256} for
  * {@code HMAC_SHA256}, and its key id is the id of the version that signed, such as {@code oauth-1}.
+ *
+ * <p>
+ * A key is named {@code keys/{key}} in the cryptography service. Its resource, which is also its object in OpenFGA,
+ * is that name under the type: {@code pyrite.dev/Key:keys/payments}.
  */
 public final class KeyService {
+
+  /** The start of the name of every key. */
+  public static final String PREFIX = "keys/";
 
   /**
    * The shortest rotation period other than zero.
@@ -120,8 +128,9 @@ public final class KeyService {
    *
    * @param creator the subject, which needs the type's create permission on the parent, and gets the type's creator
    * relation on the key
-   * @param id the key's id, the last segment of its name
-   * @param parent the parent's name; empty for a key at the top
+   * @param id the key's id, the last segment of its name, which matches {@link TypeSystem#OWN_ID}
+   * @param parent the name of the parent's resource, such as {@code acme.dev/Organization:organizations/acme}; empty
+   * for a key at the top
    * @param period the rotation period: zero for none, or whole seconds from a minute to 50 years
    * @param context the values that the conditions of grants read
    * @return the key, or a failure with {@code INVALID_ARGUMENT} for no algorithm, a period out of that range or an id
@@ -135,6 +144,10 @@ public final class KeyService {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The request names no algorithm,"
           + " one of " + Arrays.toString(KeyAlgorithm.values()) + "."));
     }
+    if (!TypeSystem.OWN_ID.matcher(id).matches()) {
+      return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The key id '" + id + "' does not"
+          + " match " + TypeSystem.OWN_ID.pattern() + "."));
+    }
     return checkPeriod(period).compose(ignored -> insert(creator, id, parent, keyAlgorithm.get(), period, context));
   }
 
@@ -146,7 +159,7 @@ public final class KeyService {
    * {@code NOT_FOUND} for a key that does not exist
    */
   public Future<Tables.Key> key(String name) {
-    if (!name.startsWith(keyType.plural() + "/")) {
+    if (!name.startsWith(PREFIX)) {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The name " + name + " is not a"
           + " key's, keys/{key}."));
     }
@@ -182,10 +195,10 @@ public final class KeyService {
    * Gives a key as a resource, on which a call checks the relation of its subject.
    *
    * @param name the key's name, such as {@code keys/payments}
-   * @return the resource of the name
+   * @return the resource of the name, such as {@code pyrite.dev/Key:keys/payments}
    */
   public Resource resource(String name) {
-    return new Resource(resources, keyType, name);
+    return new Resource(resources, keyType, keyType.resource(name));
   }
 
   /**
@@ -419,9 +432,10 @@ public final class KeyService {
 
   private Future<Tables.Key> insert(Subject creator, String id, String parent, KeyAlgorithm algorithm,
       Duration period, Struct context) {
-    String name = keyType.resource(id);
-    return resources.create(creator, name, parent, context).compose(resource -> {
-      Tables.Key.Builder row = Tables.Key.newBuilder().setName(name).setPurpose(algorithm.purpose())
+    String name = PREFIX + id;
+    return resources.create(creator, keyType.resource(name), parent, context).compose(resource -> {
+      Tables.Key.Builder row = Tables.Key.newBuilder().setName(name).setResource(resource.name())
+          .setPurpose(algorithm.purpose())
           .setAlgorithm(Tables.Key.Algorithm.valueOf(algorithm.name())).setRotationPeriod(period.toSeconds())
           .setPrimaryVersion(new KeyVersionName(id, 1).name());
       if (!parent.isEmpty()) {
@@ -430,7 +444,7 @@ public final class KeyService {
       Map<String, Expression> set = period.isPositive() ? Map.of("next_rotation_time", Expression.add(now(), period))
           : Map.of();
       return keys.insert(row.build(), set).compose(key -> add(key, NUMBER_ATTEMPTS).map(key))
-          .recover(failure -> resources.forget(name).transform(ignored -> Future.failedFuture(failure)));
+          .recover(failure -> resources.forget(resource.name()).transform(ignored -> Future.failedFuture(failure)));
     });
   }
 

@@ -7,31 +7,30 @@ the relations that Pyrite checks.
 
 - Serve Pyrite and write a first declaration, as [Get started](../get-started.md) does. The examples add the type
   `acme.dev/Project` under its `acme.dev/Organization`, whose relation `admin` its creator holds.
-- Make `organizations/acme` known as `user:anne`, so that Anne is its `admin`.
+- Make `acme.dev/Organization:organizations/acme` known as `pyrite.dev/Account:accounts/anne`, so that Anne is its
+  `admin`.
 - Keep the resources of the new type in a table of your application. Pyrite keeps only their names, types and
   parents.
 
 ## Declare the type
 
-1. Add a `types` entry with the name, the plural and the parents:
+1. Add a `types` entry with the name and the parents:
 
    ```textproto
    types {
      name: "acme.dev/Project"
-     plural: "projects"
      parents: "acme.dev/Organization"
    ```
 
-   The plural is the first segment of the names of the resources, such as `projects/ledger`. Use the same names in
-   your tables.
+   The name starts the names of the resources, such as `acme.dev/Project:organizations/acme/projects/ledger`, and is
+   the type in OpenFGA. Use the same names in your tables.
 
-2. Write the OpenFGA type definition. Its `type` is the singular name. A relation with `this` takes grants, and lists
-   the types that it takes in `metadata`. Here the editors of a project include its owners and the admins of its
-   organization:
+2. Write the OpenFGA type definition, and leave its `type` empty. A relation with `this` takes grants, and lists the
+   types that it takes in `metadata`, by their names. Here the editors of a project include its owners and the admins of
+   its organization:
 
    ```textproto
      definition {
-       type: "project"
        relations { key: "owner" value { this {} } }
        relations {
          key: "editor"
@@ -48,13 +47,13 @@ the relations that Pyrite checks.
          value { union { child { this {} } child { computed_userset { relation: "editor" } } } }
        }
        metadata {
-         relations { key: "owner" value { directly_related_user_types { type: "user" } } }
-         relations { key: "editor" value { directly_related_user_types { type: "user" } } }
+         relations { key: "owner" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+         relations { key: "editor" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
          relations {
            key: "viewer"
            value {
-             directly_related_user_types { type: "user" }
-             directly_related_user_types { type: "user" wildcard {} }
+             directly_related_user_types { type: "pyrite.dev/Account" }
+             directly_related_user_types { type: "pyrite.dev/Account" wildcard {} }
            }
          }
        }
@@ -75,7 +74,7 @@ the relations that Pyrite checks.
 
    `create` is a relation of each parent type, which `CreateObject` checks on the parent. `grant` is a relation of
    this type, which the grant methods check on the resource. Each `grantable` relation takes grants, and the
-   `creator` is one of them that takes `user` directly, without a condition or a wildcard.
+   `creator` is one of them that takes `pyrite.dev/Account` directly, without a condition or a wildcard.
 
 4. Write the whole declaration, with the types that it had and the new one:
 
@@ -90,9 +89,11 @@ the relations that Pyrite checks.
 Make a resource of the type known, and check a relation on it:
 
 ```java
-access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("projects/ledger")
-    .setParent("organizations/acme").build()).await();
-boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:anne").setObject("projects/ledger")
+access.createObject(CreateObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+    .setName("acme.dev/Project:projects/ledger")
+    .setParent("acme.dev/Organization:organizations/acme").build()).await();
+boolean allowed = access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+    .setObject("acme.dev/Project:projects/ledger")
     .setPermission("editor").build()).await().getAllowed();
 System.out.println(allowed);
 ```
@@ -129,8 +130,8 @@ A relation can take grants that hold only while a condition is true, such as unt
    relations {
      key: "editor"
      value {
-       directly_related_user_types { type: "user" }
-       directly_related_user_types { type: "user" condition: "not_expired" }
+       directly_related_user_types { type: "pyrite.dev/Account" }
+       directly_related_user_types { type: "pyrite.dev/Account" condition: "not_expired" }
      }
    }
    ```
@@ -138,8 +139,10 @@ A relation can take grants that hold only while a condition is true, such as unt
 3. Write the declaration, and grant with the condition and the values that the grant holds:
 
    ```java
-   access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-       .setObject("projects/ledger").setRelation("editor").setGrantee("user:bob")
+   access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+       .newBuilder()
+       .setObject("acme.dev/Project:projects/ledger").setRelation("editor")
+       .setGrantee("pyrite.dev/Account:accounts/bob")
        .setCondition(Condition.newBuilder().setName("not_expired").setContext(Struct.newBuilder()
            .putFields("expires_at", Value.newBuilder().setStringValue("2026-06-01T00:00:00Z").build()))))
        .build()).await();
@@ -148,7 +151,8 @@ A relation can take grants that hold only while a condition is true, such as unt
 4. Give the other values in the `context` of each check, such as `current_time`:
 
    ```java
-   boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
+   boolean allowed = access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/bob")
+       .setObject("acme.dev/Project:projects/ledger")
        .setPermission("editor").setContext(Struct.newBuilder().putFields("current_time",
            Value.newBuilder().setStringValue("2026-05-01T00:00:00Z").build())).build()).await().getAllowed();
    ```

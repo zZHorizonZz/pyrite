@@ -17,10 +17,11 @@ final class ObjectOnce extends AccessModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.ALREADY_EXISTS, new CreateObject(BOB, "organizations/acme", "")),
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.ALREADY_EXISTS, new CreateObject(BOB, "acme.dev/Organization:organizations/acme", "")),
         Requirement.OBJECT_CREATE);
-    call(new Check(BOB, "organizations/acme", "admin"));
+    call(new Check(BOB, "acme.dev/Organization:organizations/acme", "admin"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.OBJECT_CREATE);
   }
 }

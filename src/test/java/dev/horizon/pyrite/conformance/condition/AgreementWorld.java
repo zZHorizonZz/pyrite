@@ -21,8 +21,9 @@ import java.util.TreeSet;
 public record AgreementWorld(Oracle oracle, Declaration declaration, Map<String, String> resources,
     Map<String, String> admins) {
 
-  public static final List<String> PRINCIPALS = List.of(ANNE, BOB, CAROL, DAVE, "user:erin", "user:frank",
-      "user:nobody");
+  public static final List<String> PRINCIPALS = List.of(ANNE, BOB, CAROL, DAVE, "pyrite.dev/Account:accounts/erin",
+      "pyrite.dev/Account:accounts/frank",
+      "pyrite.dev/Account:accounts/nobody");
   public static final List<Struct> TIMES = List.of(at("2026-05-01T00:00:00Z"), at("2026-07-01T00:00:00Z"));
 
   private static Struct at(String time) {

@@ -15,7 +15,7 @@ public abstract class KeyModule extends ConformanceModule {
    * Makes acme known, as anne.
    */
   protected final void prepareOrganization() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
   }
 
   /**
@@ -23,7 +23,7 @@ public abstract class KeyModule extends ConformanceModule {
    */
   protected final void preparePayments() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "payments", Algorithm.AES256_GCM));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "payments", Algorithm.AES256_GCM));
   }
 
   /**
@@ -31,6 +31,6 @@ public abstract class KeyModule extends ConformanceModule {
    */
   protected final void prepareOauth() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "oauth", Algorithm.ES256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "oauth", Algorithm.ES256));
   }
 }

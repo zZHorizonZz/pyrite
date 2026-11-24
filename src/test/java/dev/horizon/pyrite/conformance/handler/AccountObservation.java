@@ -18,7 +18,7 @@ final class AccountObservation extends AccountModule {
     prepareAnne();
     call(new ObserveAccounts());
     call(new CreateAccount("bob", "bob@acme.dev", "another long passphrase"));
-    call(new DeleteAccount("user:bob", "accounts/bob"));
+    call(new DeleteAccount("pyrite.dev/Account:accounts/bob", "accounts/bob"));
     callAndContinueOnFailure(new ExpectNames(Value.ACCOUNT_CREATES, List.of("accounts/bob")), Requirement.HANDLER_ACCOUNT);
     callAndContinueOnFailure(new ExpectNames(Value.ACCOUNT_DELETES, List.of("accounts/bob")), Requirement.HANDLER_ACCOUNT);
   }

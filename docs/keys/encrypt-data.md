@@ -9,7 +9,7 @@ Pyrite.
   and the parents that keys sit under. See [Pyrite's types](../declarations/pyrite-types.md).
 - Give Pyrite a root key in its key options. See
   [Serve the services](../deployment/serve-the-services.md#give-pyrite-a-root-key).
-- Make the parent of the key known, such as `organizations/acme`, with `CreateObject`. See
+- Make the parent of the key known, such as `acme.dev/Organization:organizations/acme`, with `CreateObject`. See
   [About resources](../access/about-resources.md).
 - Have a client of the cryptography service, `CryptographyGrpcClient.create(client)`. See
   [Serve the services](../deployment/serve-the-services.md).
@@ -19,8 +19,9 @@ Pyrite.
 1. Create the key under its parent, with the algorithm `AES256_GCM`, which gives it the purpose `ENCRYPTION`:
 
    ```java
-   Key key = cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("payments")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
+   Key key = cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setKeyId("payments")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
    ```
 
    Anne needs the `create` permission of `pyrite.dev/Key` on the organization, and gets the type's `creator`
@@ -31,7 +32,8 @@ Pyrite.
 1. Encrypt, with associated data that ties the ciphertext to where you store it, such as the name of the order:
 
    ```java
-   EncryptResponse encrypted = cryptography.encrypt(EncryptRequest.newBuilder().setSubject("user:anne")
+   EncryptResponse encrypted = cryptography.encrypt(EncryptRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setKey("keys/payments").setPlaintext(ByteString.copyFromUtf8("4111 1111 1111 1111"))
        .setAssociatedData(ByteString.copyFromUtf8("orders/1042")).build()).await();
    ```
@@ -43,7 +45,8 @@ Pyrite.
 3. Decrypt with the same key and the same associated data:
 
    ```java
-   DecryptResponse decrypted = cryptography.decrypt(DecryptRequest.newBuilder().setSubject("user:anne")
+   DecryptResponse decrypted = cryptography.decrypt(DecryptRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setKey("keys/payments").setCiphertext(encrypted.getCiphertext())
        .setAssociatedData(ByteString.copyFromUtf8("orders/1042")).build()).await();
    System.out.println(decrypted.getPlaintext().toStringUtf8());
@@ -69,11 +72,14 @@ Grant a principal only the relation that it needs. A service account that decryp
 `decrypter` alone:
 
 ```java
-access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-    .setObject("keys/payments").setRelation("decrypter").setGrantee("user:billing")).build()).await();
+access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+    .newBuilder()
+    .setObject("pyrite.dev/Key:keys/payments").setRelation("decrypter")
+    .setGrantee("pyrite.dev/Account:accounts/billing")).build()).await();
 ```
 
-The relation must be in the `grantable` of `pyrite.dev/Key`, and Anne needs the type's `grant` permission on the key.
+The access service names the key by its resource, `pyrite.dev/Key:keys/payments`. The relation must be in the
+`grantable` of `pyrite.dev/Key`, and Anne needs the type's `grant` permission on the key.
 
 ## Related
 

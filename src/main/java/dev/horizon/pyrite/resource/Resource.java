@@ -19,25 +19,26 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * A known resource of a declared type, such as {@code projects/ledger}: a node of the tree, and the object
- * {@code project:ledger} of OpenFGA, which grants and checks reach.
+ * A known resource of a declared type, such as {@code acme.dev/Project:organizations/acme/projects/ledger}: a node of
+ * the tree, and the object of OpenFGA of the same name, which grants and checks reach.
  *
  * <pre>{@code
- * tree.require("projects/ledger")
+ * tree.require("acme.dev/Project:organizations/acme/projects/ledger")
  *     .compose(project -> project.require(subject, project.type().permissions().getGrant(), context))
  *     .compose(project -> project.grant(grant, context));
  * }</pre>
  *
  * @param tree the tree that knows the resource
  * @param type the type of the resource
- * @param name the name of the resource, such as {@code projects/ledger}
+ * @param name the name of the resource, which is its object in OpenFGA, such as
+ * {@code acme.dev/Project:organizations/acme/projects/ledger}
  */
 public record Resource(ResourceTree tree, ResourceType type, String name) {
 
   /**
-   * Gives the id of the resource, the last segment of its name.
+   * Gives the id of the resource, the part of its name after the type.
    *
-   * @return the id, such as {@code ledger}
+   * @return the id, such as {@code organizations/acme/projects/ledger}
    */
   public String id() {
     return type.id(name);
@@ -46,10 +47,10 @@ public record Resource(ResourceTree tree, ResourceType type, String name) {
   /**
    * Gives the object of the resource in OpenFGA.
    *
-   * @return the object, such as {@code project:ledger}
+   * @return the object, whose text is the resource's name
    */
   public ObjectRef object() {
-    return new ObjectRef(type.singular(), id());
+    return new ObjectRef(type.name(), id());
   }
 
   /**
@@ -67,7 +68,8 @@ public record Resource(ResourceTree tree, ResourceType type, String name) {
   /**
    * Asks OpenFGA whether a principal has a relation on the resource.
    *
-   * @param principal the principal, such as {@code user:bob}, or a set, such as {@code project:ledger#editor}
+   * @param principal the principal, such as {@code pyrite.dev/Account:accounts/bob}, or a set, such as
+   * {@code acme.dev/Group:groups/finance#member}
    * @param relation the relation, such as {@code can_view}
    * @param context the values that the conditions of grants read, such as {@code current_time}
    * @return whether the principal has the relation, or the failure of OpenFGA, such as a condition that misses a value
@@ -147,12 +149,14 @@ public record Resource(ResourceTree tree, ResourceType type, String name) {
    * Lists the principals that have a permission on the resource.
    *
    * @param permission the relation, such as {@code can_view}
-   * @param filter the type of the principals, such as {@code user}, or of a set, such as {@code group#member}
+   * @param filter the type of the principals, such as {@code pyrite.dev/Account}, or of a set, such as
+   * {@code acme.dev/Group#member}
    * @param context the values that the conditions of grants read
-   * @return the principals, sorted, such as {@code user:anne}, or {@code user:*} for a grant to every user
+   * @return the principals, sorted, such as {@code pyrite.dev/Account:accounts/anne}, or
+   * {@code pyrite.dev/Account:*} for a grant to every account
    */
   public Future<List<String>> subjects(String permission, UserTypeFilter filter, Struct context) {
-    return tree.openFga().users(type.singular(), id(), permission, filter, context)
+    return tree.openFga().users(type.name(), id(), permission, filter, context)
         .map(users -> users.stream().map(Resource::text).filter(text -> !text.isEmpty()).sorted().toList());
   }
 
@@ -167,7 +171,7 @@ public record Resource(ResourceTree tree, ResourceType type, String name) {
     List<ReadRequestTupleKey> keys = new ArrayList<>();
     keys.add(ReadRequestTupleKey.newBuilder().setObject(object).build());
     for (ResourceType holder : tree.types().types()) {
-      String objects = holder.singular() + ":";
+      String objects = holder.name() + ":";
       keys.add(ReadRequestTupleKey.newBuilder().setObject(objects).setUser(object).build());
       for (String relation : type.relations().keySet()) {
         keys.add(ReadRequestTupleKey.newBuilder().setObject(objects).setUser(object + "#" + relation).build());
@@ -193,7 +197,7 @@ public record Resource(ResourceTree tree, ResourceType type, String name) {
     Optional<Grantee> grantee = Grantee.parse(grant.getGrantee());
     return grantee.isPresent() ? Future.succeededFuture(grantee.get())
         : Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The grantee '" + grant.getGrantee()
-            + "' is not of the form type:id, type:* or type:id#relation."));
+            + "' is not of the form type:id, type:* or type:id#relation, with names that OpenFGA takes."));
   }
 
   /**

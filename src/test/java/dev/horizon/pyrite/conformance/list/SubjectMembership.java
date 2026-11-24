@@ -18,12 +18,12 @@ final class SubjectMembership extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "organizations/acme", "member", BOB));
-    call(new GrantRelation(ANNE, "groups/finance", "member", CAROL));
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", "group:finance#member"));
-    call(new ListSubjects(ANNE, "projects/ledger", "can_view", "user"));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "member", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Group:groups/finance", "member", CAROL));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", "acme.dev/Group:groups/finance#member"));
+    call(new ListSubjects(ANNE, "acme.dev/Project:projects/ledger", "can_view", "pyrite.dev/Account"));
     callAndContinueOnFailure(new ExpectSubjects(List.of(ANNE, BOB, CAROL)), Requirement.SUBJECT_LIST);
-    call(new ListSubjects(ANNE, "projects/ledger", "viewer", "group#member"));
-    callAndContinueOnFailure(new ExpectSubjects(List.of("group:finance#member")), Requirement.SUBJECT_LIST);
+    call(new ListSubjects(ANNE, "acme.dev/Project:projects/ledger", "viewer", "acme.dev/Group#member"));
+    callAndContinueOnFailure(new ExpectSubjects(List.of("acme.dev/Group:groups/finance#member")), Requirement.SUBJECT_LIST);
   }
 }

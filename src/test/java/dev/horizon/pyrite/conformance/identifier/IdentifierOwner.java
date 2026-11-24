@@ -15,7 +15,7 @@ final class IdentifierOwner extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new CreateAccountOfKind("mallory", "HUMAN"));
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AddIdentifier("user:mallory",
+    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AddIdentifier("pyrite.dev/Account:accounts/mallory",
         "accounts/anne", "email", "mallory@evil.dev")), Requirement.IDENTIFIER_OWNER);
   }
 }

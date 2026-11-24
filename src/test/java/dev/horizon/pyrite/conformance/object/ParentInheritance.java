@@ -16,12 +16,13 @@ final class ParentInheritance extends AccessModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
-    call(new GrantRelation(ANNE, "organizations/acme", "member", BOB));
-    callAndStopOnFailure(new CreateObject(ANNE, "projects/ledger", "organizations/acme"), Requirement.OBJECT_CREATE);
-    call(new Check(BOB, "projects/ledger", "can_view"));
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "member", BOB));
+    callAndStopOnFailure(new CreateObject(ANNE, "acme.dev/Project:projects/ledger", "acme.dev/Organization:organizations/acme"),
+        Requirement.OBJECT_CREATE);
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.OBJECT_CREATE);
-    call(new Check(ANNE, "projects/ledger", "owner"));
+    call(new Check(ANNE, "acme.dev/Project:projects/ledger", "owner"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.OBJECT_CREATE);
   }
 }

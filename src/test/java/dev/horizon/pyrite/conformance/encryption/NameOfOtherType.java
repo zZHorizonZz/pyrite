@@ -15,7 +15,8 @@ final class NameOfOtherType extends KeyModule {
   @Override
   protected void run() {
     preparePayments();
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new Encrypt(ANNE, "organizations/acme", "x", "")),
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new Encrypt(ANNE, "acme.dev/Organization:organizations/acme", "x", "")),
         Requirement.KEY_NAME);
   }
 }

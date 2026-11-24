@@ -18,14 +18,17 @@ final class GrantPermission extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "editor", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB));
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new GrantRelation(BOB, "projects/ledger", "viewer", CAROL)),
-        Requirement.GRANT_PERMISSION);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Revoke(BOB, "projects/ledger", "editor", BOB)),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED,
+            new GrantRelation(BOB, "acme.dev/Project:projects/ledger", "viewer", CAROL)),
         Requirement.GRANT_PERMISSION);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new GrantRelation(BOB, "projects/ledger", "owner", BOB)),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Revoke(BOB, "acme.dev/Project:projects/ledger", "editor", BOB)),
+        Requirement.GRANT_PERMISSION);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED,
+            new GrantRelation(BOB, "acme.dev/Project:projects/ledger", "owner", BOB)),
         Requirement.GRANT_PERMISSION);
   }
 }

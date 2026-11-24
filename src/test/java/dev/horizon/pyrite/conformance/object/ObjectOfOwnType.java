@@ -14,10 +14,12 @@ final class ObjectOfOwnType extends AccessModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "accounts/squat",
-        "")), Requirement.OBJECT_OWN_TYPES);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "keys/squat",
-        "organizations/acme")), Requirement.OBJECT_OWN_TYPES);
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "pyrite.dev/Account:accounts/squat",
+            "")),
+        Requirement.OBJECT_OWN_TYPES);
+    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "pyrite.dev/Key:keys/squat",
+        "acme.dev/Organization:organizations/acme")), Requirement.OBJECT_OWN_TYPES);
   }
 }

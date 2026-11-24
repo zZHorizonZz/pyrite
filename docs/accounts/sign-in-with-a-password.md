@@ -6,8 +6,8 @@ sign-in issues.
 ## Before you begin
 
 - Declare `pyrite.dev/Key`, and give Pyrite a root key. See [Serve the services](../deployment/serve-the-services.md).
-- Have a resource that keys go under, such as `organizations/acme`, on which the subject of the steps below may
-  create keys. See [Encrypt data](../keys/encrypt-data.md).
+- Have a resource that keys go under, such as `acme.dev/Organization:organizations/acme`, on which the subject of the
+  steps below may create keys. See [Encrypt data](../keys/encrypt-data.md).
 - The examples call the authentication service through a client of your gRPC server:
 
   ```java
@@ -23,7 +23,6 @@ sign-in issues.
    types {
      name: "pyrite.dev/Account"
      definition {
-       type: "user"
        relations { key: "owner" value { this {} } }
        relations {
          key: "admin"
@@ -34,9 +33,9 @@ sign-in issues.
          value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
        }
        metadata {
-         relations { key: "owner" value { directly_related_user_types { type: "user" } } }
-         relations { key: "admin" value { directly_related_user_types { type: "user" } } }
-         relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+         relations { key: "owner" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+         relations { key: "admin" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+         relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
        }
      }
      permissions { grant: "admin" }
@@ -90,22 +89,26 @@ sign-in issues.
 
    ```java
    CryptographyGrpcClient cryptography = CryptographyGrpcClient.create(client);
-   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("sessions")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
-   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("factors")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
-   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("access")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.ES256).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setKeyId("sessions")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setKeyId("factors")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setKeyId("access")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.ES256).build()).await();
    ```
 
    Give the access token key no other use: a JWT that it signs for another purpose would pass as an access token.
 
 ## Create an account
 
-1. Create the account. Its id is the id of its principal, so `accounts/anne` is `user:anne`:
+1. Create the account. Its id is the id of its principal, so `accounts/anne` is `pyrite.dev/Account:accounts/anne`:
 
    ```java
-   authentication.createAccount(CreateAccountRequest.newBuilder().setSubject("user:anne").setAccountId("anne")
+   authentication.createAccount(CreateAccountRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setAccountId("anne")
        .setKind(Account.Kind.HUMAN).build()).await();
    ```
 
@@ -115,7 +118,7 @@ sign-in issues.
 2. Add the email address to the account. The subject needs `admin` on the account, which Anne has as its `owner`:
 
    ```java
-   authentication.addIdentifier(AddIdentifierRequest.newBuilder().setSubject("user:anne")
+   authentication.addIdentifier(AddIdentifierRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
        .setAccount("accounts/anne").setKind("email").setValue("Anne@Acme.dev").setPrimary(true).build()).await();
    ```
 
@@ -129,7 +132,8 @@ sign-in issues.
 1. Start the enrolment as the account:
 
    ```java
-   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
+   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setDefinition("enrol-password").build()).await();
    ```
 
@@ -209,7 +213,7 @@ session. Each refresh also extends the idle lifetime of the session.
 subject of the account:
 
 ```text
-user:anne
+pyrite.dev/Account:accounts/anne
 ```
 
 `principal.getSession()` is the session that the sign-in issued, and `principal.getExpireTime()` its expiry, 30 days

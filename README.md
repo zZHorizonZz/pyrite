@@ -9,9 +9,11 @@ EventBusGrpcServer server = EventBusGrpcServer.server(vertx).await();
 Pyrite.pyrite(vertx, pool, new PostgresDriver(), openFga, new PyriteOptions()).bind(server);
 
 AccessGrpcClient access = AccessGrpcClient.create(EventBusGrpcClient.client(vertx).await());
-access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("projects/ledger")
-    .setParent("organizations/acme").build()).await();
-boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
+access.createObject(CreateObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+    .setName("acme.dev/Project:projects/ledger")
+    .setParent("acme.dev/Organization:organizations/acme").build()).await();
+boolean allowed = access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/bob")
+    .setObject("acme.dev/Project:projects/ledger")
     .setPermission("viewer").build()).await().getAllowed();
 ```
 

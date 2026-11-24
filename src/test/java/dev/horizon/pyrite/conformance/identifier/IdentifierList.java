@@ -21,7 +21,9 @@ final class IdentifierList extends AccountModule {
     call(new CreateAccountOfKind("mallory", "HUMAN"));
     callAndStopOnFailure(new ListIdentifiers(ANNE, "accounts/anne"), Requirement.IDENTIFIER_LIST);
     callAndContinueOnFailure(new ExpectIdentifierValues(List.of(EMAIL)), Requirement.IDENTIFIER_LIST);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListIdentifiers("user:mallory",
-        "accounts/anne")), Requirement.IDENTIFIER_LIST);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListIdentifiers("pyrite.dev/Account:accounts/mallory",
+            "accounts/anne")),
+        Requirement.IDENTIFIER_LIST);
   }
 }

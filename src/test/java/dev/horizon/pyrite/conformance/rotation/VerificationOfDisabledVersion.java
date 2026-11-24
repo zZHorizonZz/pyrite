@@ -23,7 +23,7 @@ final class VerificationOfDisabledVersion extends KeyModule {
   @Override
   protected void run() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "codes", Algorithm.HMAC_SHA256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "codes", Algorithm.HMAC_SHA256));
     call(new SignData(ANNE, "keys/codes", "482913", Value.SIGNATURE));
     call(new RotateKey(ANNE, "keys/codes"));
     call(new SetVersionState("keyVersions/codes-1", 1, KeyVersion.State.DISABLED));

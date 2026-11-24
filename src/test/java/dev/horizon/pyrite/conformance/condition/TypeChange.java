@@ -12,21 +12,13 @@ public enum TypeChange {
    */
   PROJECT_DROP,
   /**
-   * Projects have the plural ventures.
-   */
-  PROJECT_PLURAL,
-  /**
-   * Projects have the singular name venture.
-   */
-  PROJECT_SINGULAR,
-  /**
    * Organizations are under organizations, created with admin.
    */
   ORGANIZATION_PARENTS,
   /**
-   * Roles have the plural duties.
+   * Roles are under organizations and under roles.
    */
-  ROLE_PLURAL;
+  ROLE_PARENTS;
 
   Declaration apply(Declaration acme) {
     Declaration.Builder declaration = acme.toBuilder();
@@ -38,24 +30,14 @@ public enum TypeChange {
             return declaration.removeTypes(index).build();
           }
         }
-        case PROJECT_PLURAL -> {
-          if (type.getName().equals("acme.dev/Project")) {
-            type.setPlural("ventures");
-          }
-        }
-        case PROJECT_SINGULAR -> {
-          if (type.getName().equals("acme.dev/Project")) {
-            type.getDefinitionBuilder().setType("venture");
-          }
-        }
         case ORGANIZATION_PARENTS -> {
           if (type.getName().equals("acme.dev/Organization")) {
             type.addParents("acme.dev/Organization").getPermissionsBuilder().setCreate("admin");
           }
         }
-        case ROLE_PLURAL -> {
+        case ROLE_PARENTS -> {
           if (type.getName().equals("acme.dev/Role")) {
-            type.setPlural("duties");
+            type.addParents("acme.dev/Role");
           }
         }
       }

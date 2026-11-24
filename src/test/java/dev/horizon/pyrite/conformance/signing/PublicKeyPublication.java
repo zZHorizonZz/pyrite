@@ -21,7 +21,7 @@ final class PublicKeyPublication extends KeyModule {
     prepareOrganization();
     for (Algorithm algorithm : List.of(Algorithm.RS256, Algorithm.ES256, Algorithm.EDDSA)) {
       String key = "keys/" + algorithm.name().toLowerCase();
-      call(new CreateKey("organizations/acme", algorithm.name().toLowerCase(), algorithm));
+      call(new CreateKey("acme.dev/Organization:organizations/acme", algorithm.name().toLowerCase(), algorithm));
       call(new SignToken(ANNE, key, 600, "at+jwt"));
       callAndContinueOnFailure(new VerifyToken(ANNE, key), Requirement.KEY_JWT);
       callAndContinueOnFailure(new ExpectClaim("sub", ANNE), Requirement.KEY_JWT);

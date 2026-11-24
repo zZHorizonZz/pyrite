@@ -28,7 +28,8 @@ meets `factors: 2`. Two passwords do not.
 1. Start the enrolment as the account:
 
    ```java
-   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
+   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setDefinition("enrol-totp").build()).await();
    ```
 
@@ -61,7 +62,8 @@ meets `factors: 2`. Two passwords do not.
 Start the exchange. It needs no answer, so it is done at once, and its result holds ten codes:
 
 ```java
-Exchange codes = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
+Exchange codes = authentication.startExchange(StartExchangeRequest.newBuilder()
+    .setSubject("pyrite.dev/Account:accounts/anne")
     .setDefinition("enrol-recovery-codes").build()).await();
 List<String> recovery = codes.getResult().getIssued(0).unpack(RecoveryCodes.class).getCodesList();
 ```

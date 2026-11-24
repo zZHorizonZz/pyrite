@@ -18,12 +18,16 @@ final class GrantFilter extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", CAROL));
-    call(new GrantRelation(ANNE, "projects/ledger", "editor", BOB));
-    call(new ListGrants(ANNE, "projects/ledger", "viewer", ""));
-    callAndContinueOnFailure(new ExpectGrants(List.of("viewer user:bob", "viewer user:carol")), Requirement.GRANT_LIST);
-    call(new ListGrants(ANNE, "projects/ledger", "", BOB));
-    callAndContinueOnFailure(new ExpectGrants(List.of("editor user:bob", "viewer user:bob")), Requirement.GRANT_LIST);
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", CAROL));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB));
+    call(new ListGrants(ANNE, "acme.dev/Project:projects/ledger", "viewer", ""));
+    callAndContinueOnFailure(
+        new ExpectGrants(List.of("viewer pyrite.dev/Account:accounts/bob", "viewer pyrite.dev/Account:accounts/carol")),
+        Requirement.GRANT_LIST);
+    call(new ListGrants(ANNE, "acme.dev/Project:projects/ledger", "", BOB));
+    callAndContinueOnFailure(
+        new ExpectGrants(List.of("editor pyrite.dev/Account:accounts/bob", "viewer pyrite.dev/Account:accounts/bob")),
+        Requirement.GRANT_LIST);
   }
 }

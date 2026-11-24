@@ -24,11 +24,11 @@ final class LatestDeclaration extends ConformanceModule {
     call(new MakeDeclarationOlder(Duration.ofSeconds(1)));
     callAndStopOnFailure(new WriteDeclaration(DeclarationChange.EDITOR_CREATES), Requirement.DECLARATION_LATEST);
     callAndStopOnFailure(new ExpectLatestDeclaration(true), Requirement.DECLARATION_LATEST);
-    call(new CreateObject(ANNE, "organizations/acme", ""));
-    call(new CreateObject(ANNE, "projects/ledger", "organizations/acme"));
-    call(new Check(ANNE, "projects/ledger", "editor"));
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
+    call(new CreateObject(ANNE, "acme.dev/Project:projects/ledger", "acme.dev/Organization:organizations/acme"));
+    call(new Check(ANNE, "acme.dev/Project:projects/ledger", "editor"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.DECLARATION_LATEST);
-    call(new Check(ANNE, "projects/ledger", "owner"));
+    call(new Check(ANNE, "acme.dev/Project:projects/ledger", "owner"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.DECLARATION_LATEST);
   }
 }

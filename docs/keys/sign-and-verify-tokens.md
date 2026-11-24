@@ -6,7 +6,7 @@ so that other parties verify it without Pyrite.
 ## Before you begin
 
 - Declare `pyrite.dev/Key`, and give Pyrite a root key. See [Encrypt data](encrypt-data.md#before-you-begin).
-- Make the parent of the key known, such as `organizations/acme`.
+- Make the parent of the key known, such as `acme.dev/Organization:organizations/acme`.
 - Have a client of the cryptography service, `CryptographyGrpcClient.create(client)`. See
   [Serve the services](../deployment/serve-the-services.md).
 
@@ -15,8 +15,8 @@ so that other parties verify it without Pyrite.
 1. Create a signing key. `ES256` signs with ECDSA on P-256, and gives the key the purpose `SIGNING`:
 
    ```java
-   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("oauth")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.ES256).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setKeyId("oauth")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.ES256).build()).await();
    ```
 
 2. Sign the claims, with the `typ` of the token. Include `exp`, because a verification rejects a token without it:
@@ -26,9 +26,9 @@ so that other parties verify it without Pyrite.
    Struct claims = Struct.newBuilder()
        .putFields("iss", Value.newBuilder().setStringValue("https://auth.acme.dev").build())
        .putFields("aud", Value.newBuilder().setStringValue("https://api.acme.dev").build())
-       .putFields("sub", Value.newBuilder().setStringValue("user:anne").build())
+       .putFields("sub", Value.newBuilder().setStringValue("pyrite.dev/Account:accounts/anne").build())
        .putFields("exp", Value.newBuilder().setNumberValue(now + 600).build()).build();
-   SignResponse signed = cryptography.sign(SignRequest.newBuilder().setSubject("user:anne")
+   SignResponse signed = cryptography.sign(SignRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
        .setKey("keys/oauth").setClaims(claims).setType("at+jwt").build()).await();
    String token = signed.getToken();
    ```
@@ -52,7 +52,8 @@ so that other parties verify it without Pyrite.
 2. Verify the token:
 
    ```java
-   VerifyResponse verified = cryptography.verify(VerifyRequest.newBuilder().setSubject("user:anne")
+   VerifyResponse verified = cryptography.verify(VerifyRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setKey("keys/oauth").setToken(token).setExpected(expected).build()).await();
    ```
 
@@ -73,7 +74,7 @@ so that other parties verify it without Pyrite.
 The verification prints the subject of the token:
 
 ```text
-user:anne
+pyrite.dev/Account:accounts/anne
 ```
 
 `verified.getVerified().getKeyVersion()` is `keyVersions/oauth-1`. A token with a changed payload is rejected with
@@ -86,7 +87,8 @@ Each version of a signing key has its public key as a JWK, in the field `public_
 carry. List the versions, and publish the public key of each enabled one in your JWKS:
 
 ```java
-List<Struct> jwks = cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder().setSubject("user:anne")
+List<Struct> jwks = cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder()
+    .setSubject("pyrite.dev/Account:accounts/anne")
     .setKey("keys/oauth").build()).await().getVersionsList().stream()
     .filter(version -> version.getState() == KeyVersion.State.ENABLED).map(KeyVersion::getPublicKey).toList();
 ```
@@ -102,21 +104,23 @@ but has no public key: only Pyrite verifies them.
 1. Create a key with the algorithm `HMAC_SHA256`, which gives it the purpose `MAC`:
 
    ```java
-   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("codes")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setKeyId("codes")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.HMAC_SHA256).build()).await();
    ```
 
 2. Sign the data:
 
    ```java
-   SignResponse mac = cryptography.sign(SignRequest.newBuilder().setSubject("user:anne").setKey("keys/codes")
+   SignResponse mac = cryptography.sign(SignRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setKey("keys/codes")
        .setData(ByteString.copyFromUtf8("482913")).build()).await();
    ```
 
 3. Verify it with the data and the signature. With an empty `key_version`, every enabled version of the key is tried:
 
    ```java
-   VerifyResponse checked = cryptography.verify(VerifyRequest.newBuilder().setSubject("user:anne")
+   VerifyResponse checked = cryptography.verify(VerifyRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setKey("keys/codes").setDetached(Detached.newBuilder().setData(ByteString.copyFromUtf8("482913"))
            .setSignature(mac.getSignature())).build()).await();
    ```

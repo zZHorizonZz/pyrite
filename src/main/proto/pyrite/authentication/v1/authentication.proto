@@ -12,7 +12,8 @@ option java_package = "dev.horizon.pyrite.authentication.v1";
 
 // Accounts and their identifiers, and sign-in, verification, recovery and enrolment, as exchanges that the declaration
 // defines, with the credentials that they issue. An account is the resource pyrite.dev/Account: reading it and its
-// identifiers needs viewer on it, and changing them needs admin.
+// identifiers needs viewer on it, and changing them needs admin. The account accounts/anne is the resource, and the
+// subject, pyrite.dev/Account:accounts/anne.
 service Authentication {
   // Creates an account, which owns itself. The subject gets the relation that pyrite.dev/Account grants its
   // creator.
@@ -67,8 +68,6 @@ message StartExchangeRequest {
   // The name of the exchange definition, such as sign-in.
   string definition = 2;
 
-  reserved 3;
-
   // The identifier, as the person typed it, for an exchange whose input is IDENTIFIER or SUBJECT_IDENTIFIER.
   string identifier = 4;
 
@@ -112,9 +111,6 @@ message Challenge {
 
 // A code for the application to send to an identifier. The application decides how, by the identifier's kind.
 message Delivery {
-  reserved 1;
-  reserved "channel";
-
   // The identifier's value, such as an email address.
   string to = 2;
 
@@ -130,9 +126,6 @@ message Delivery {
 }
 
 message Result {
-  reserved 1;
-  reserved "resources";
-
   // The account of the exchange, such as accounts/anne.
   string account = 3;
 
@@ -144,7 +137,6 @@ message Result {
 
   // The sessions that the exchange issued.
   repeated Session sessions = 6;
-
 
   // The credentials that are shown once, such as a TokenSet or RecoveryCodes.
   repeated google.protobuf.Any issued = 2;
@@ -171,7 +163,7 @@ message AuthenticateRequest {
 }
 
 message Principal {
-  // The subject, such as user:anne.
+  // The subject, such as pyrite.dev/Account:accounts/anne.
   string subject = 1;
 
   // The account, such as accounts/anne.
@@ -303,8 +295,6 @@ message Identifier {
   // The account, such as accounts/anne.
   string account = 2;
 
-  reserved 3;
-
   // The kind, such as email, as the declaration names it.
   string kind = 7;
 
@@ -376,8 +366,6 @@ message AddIdentifierRequest {
 
   // The account's name.
   string account = 2;
-
-  reserved 3;
 
   // The value, as given; Pyrite normalizes it as its kind says.
   string value = 4;

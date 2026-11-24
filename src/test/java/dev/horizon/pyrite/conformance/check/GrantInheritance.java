@@ -16,10 +16,10 @@ final class GrantInheritance extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantRelation(ANNE, "organizations/acme", "admin", BOB));
-    call(new Check(ANNE, BOB, "projects/ledger", "can_edit"));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "admin", BOB));
+    call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "can_edit"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.ACCESS_HIERARCHY);
-    call(new Check(ANNE, BOB, "projects/ledger", "owner"));
+    call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "owner"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.ACCESS_HIERARCHY);
   }
 }

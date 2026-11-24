@@ -15,7 +15,7 @@ final class ObjectListPermission extends AccessModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
     callAndStopOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new ListObjects(ANNE, "acme.dev/Project", "can_fly")),
         Requirement.OBJECT_LIST);
   }

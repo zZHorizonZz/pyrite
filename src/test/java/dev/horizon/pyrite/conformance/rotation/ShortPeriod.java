@@ -21,10 +21,11 @@ final class ShortPeriod extends KeyModule {
   protected void run() {
     preparePayments();
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKeyWithExactPeriod(
-        "organizations/acme", "hasty", Duration.ofSeconds(59))), Requirement.KEY_PERIOD);
+        "acme.dev/Organization:organizations/acme", "hasty", Duration.ofSeconds(59))), Requirement.KEY_PERIOD);
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKeyWithExactPeriod(
-        "organizations/acme", "instant", Duration.ofMillis(500))), Requirement.KEY_PERIOD);
-    callAndStopOnFailure(new CreateKeyWithExactPeriod("organizations/acme", "brisk", Duration.ofMinutes(1)),
+        "acme.dev/Organization:organizations/acme", "instant", Duration.ofMillis(500))), Requirement.KEY_PERIOD);
+    callAndStopOnFailure(
+        new CreateKeyWithExactPeriod("acme.dev/Organization:organizations/acme", "brisk", Duration.ofMinutes(1)),
         Requirement.KEY_PERIOD);
     callAndContinueOnFailure(new ExpectNextRotation(Duration.ofMinutes(1)), Requirement.KEY_PERIOD);
     call(new GetKey(ANNE, "keys/payments", Value.KEY_BEFORE));

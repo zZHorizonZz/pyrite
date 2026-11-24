@@ -13,8 +13,6 @@ import dev.horizon.spectrum.openfga.v1.RelationReference;
 import dev.horizon.spectrum.openfga.v1.TypeDefinition;
 import dev.horizon.spectrum.openfga.v1.Userset;
 import dev.horizon.spectrum.openfga.v1.WriteAuthorizationModelRequest;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +30,7 @@ import java.util.regex.Pattern;
  *
  * <pre>{@code
  * TypeSystem types = new TypeSystem(declaration);
- * Optional<ResourceType> project = types.typeOf("projects/ledger");
+ * Optional<ResourceType> project = types.typeOf("acme.dev/Project:organizations/acme/projects/ledger");
  * WriteAuthorizationModelRequest model = types.model(storeId);
  * }</pre>
  */
@@ -40,14 +38,31 @@ public final class TypeSystem {
 
   private static final Pattern EXCHANGE = Pattern.compile("[a-z][a-z0-9-]{0,62}");
 
-  /** The singular name of {@code pyrite.dev/Account}, and the type of the subjects of calls in the model. */
-  public static final String USER = "user";
+  /**
+   * The names of types, as OpenFGA takes them: 1 to 254 characters, without {@code :}, {@code #}, {@code @} or white
+   * space. A type's name is also its type in the authorization model.
+   */
+  public static final Pattern TYPE_NAME = Pattern.compile("[^:#@\\s]{1,254}");
+  /**
+   * The names of relations, as OpenFGA takes them: 1 to 50 characters, without {@code :}, {@code #}, {@code @} or
+   * white space.
+   */
+  public static final Pattern RELATION_NAME = Pattern.compile("[^:#@\\s]{1,50}");
   /** The relation that holds the parent of a resource, which Pyrite adds to each type with parents. */
   public static final String PARENT = "parent";
   /** The name of Pyrite's type of keys. */
   public static final String KEY = "pyrite.dev/Key";
-  /** The name of Pyrite's type of accounts. */
+  /**
+   * The name of Pyrite's type of accounts, and the type of the subjects of calls that are accounts, such as
+   * {@code pyrite.dev/Account:accounts/anne}. The authorization model has it even when the declaration does not
+   * declare it.
+   */
   public static final String ACCOUNT = "pyrite.dev/Account";
+  /**
+   * The ids of keys and accounts, the last segments of their names, such as {@code payments} of
+   * {@code keys/payments}.
+   */
+  public static final Pattern OWN_ID = Pattern.compile("[a-z]([a-z0-9-]{0,61}[a-z0-9])?");
   /** The relation that each account holds on itself. */
   public static final String OWNER = "owner";
   /** The relations that the cryptography service checks on a key. */
@@ -56,8 +71,6 @@ public final class TypeSystem {
   public static final List<String> ACCOUNT_RELATIONS = List.of(OWNER, "viewer", "admin");
 
   private final Map<String, ResourceType> byName = new LinkedHashMap<>();
-  private final Map<String, ResourceType> byPlural = new HashMap<>();
-  private final Map<String, ResourceType> bySingular = new HashMap<>();
   private final Map<String, Condition> conditions = new LinkedHashMap<>();
   private final Map<String, ExchangeDefinition> exchanges = new LinkedHashMap<>();
   private final Map<String, IdentifierFormat> kinds = new LinkedHashMap<>();
@@ -77,23 +90,14 @@ public final class TypeSystem {
       }
       conditions.put(name, condition);
     });
-    for (Type definition : expand(declaration)) {
+    for (Type definition : declaration.getTypesList()) {
+      String name = definition.getName();
+      if (name.startsWith("pyrite.dev/") && !name.equals(KEY) && !name.equals(ACCOUNT)) {
+        throw new IllegalArgumentException("The type " + name + " is Pyrite's; a declaration does not declare it.");
+      }
       ResourceType type = ResourceType.of(definition);
       if (byName.put(type.name(), type) != null) {
         throw new IllegalArgumentException("The type " + type.name() + " is declared twice.");
-      }
-      if (type.name().equals(ACCOUNT) && !type.singular().equals(USER)) {
-        throw new IllegalArgumentException("The type " + ACCOUNT + " has the singular name " + type.singular()
-            + ", but its singular name is " + USER + ": subjects of calls, such as user:anne, are accounts.");
-      }
-      boolean user = type.singular().equals(USER) && !type.name().equals(ACCOUNT);
-      if (user || bySingular.put(type.singular(), type) != null) {
-        throw new IllegalArgumentException("The type " + type.name() + " has the singular name " + type.singular()
-            + ", which " + (user ? "is Pyrite's accounts'" : "another type has") + ".");
-      }
-      if (byPlural.put(type.plural(), type) != null) {
-        throw new IllegalArgumentException("The type " + type.name() + " has the plural name " + type.plural()
-            + ", which another type has.");
       }
     }
     for (IdentifierKind kind : declaration.getIdentifierKindsList()) {
@@ -149,25 +153,14 @@ public final class TypeSystem {
   }
 
   /**
-   * Finds a type by its singular name, the type of its objects in the model.
+   * Finds the type of a resource by its name, whose part before the first {@code :} names the type.
    *
-   * @param singular the singular name, such as {@code project}
-   * @return the type, or empty when the declaration has none of the name, such as for {@code user} without
-   * {@code pyrite.dev/Account}
-   */
-  public Optional<ResourceType> singular(String singular) {
-    return Optional.ofNullable(bySingular.get(singular));
-  }
-
-  /**
-   * Finds the type of a resource by the first segment of its name.
-   *
-   * @param resource the name of the resource, such as {@code projects/ledger}
-   * @return the type whose plural the name starts with, or empty for a name without a slash or of no declared type
+   * @param resource the name of the resource, such as {@code acme.dev/Project:organizations/acme/projects/ledger}
+   * @return the type, such as {@code acme.dev/Project}, or empty for a name without a {@code :} or of no declared type
    */
   public Optional<ResourceType> typeOf(String resource) {
-    int slash = resource.indexOf('/');
-    return slash < 0 ? Optional.empty() : Optional.ofNullable(byPlural.get(resource.substring(0, slash)));
+    int colon = resource.indexOf(':');
+    return colon < 0 ? Optional.empty() : type(resource.substring(0, colon));
   }
 
   public List<ResourceType> types() {
@@ -189,9 +182,9 @@ public final class TypeSystem {
   }
 
   /**
-   * Gives the authorization model of the declaration, to write to the store of grants. It has each type with its
-   * relations, the relation {@code parent} of each type with parents, the conditions, and a type {@code user} without
-   * relations when the declaration has no {@code pyrite.dev/Account}.
+   * Gives the authorization model of the declaration, to write to the store of grants. It has each type, named by its
+   * name, with its relations, the relation {@code parent} of each type with parents, the conditions, and the type
+   * {@code pyrite.dev/Account} without relations when the declaration does not declare it.
    *
    * @param store the id of the store of grants
    * @return the request that writes the model to the store, in schema version 1.1
@@ -200,10 +193,10 @@ public final class TypeSystem {
     WriteAuthorizationModelRequest.Builder model = WriteAuthorizationModelRequest.newBuilder().setStoreId(store)
         .setSchemaVersion("1.1").putAllConditions(conditions);
     if (!byName.containsKey(ACCOUNT)) {
-      model.addTypeDefinitions(TypeDefinition.newBuilder().setType(USER));
+      model.addTypeDefinitions(TypeDefinition.newBuilder().setType(ACCOUNT));
     }
     for (ResourceType type : byName.values()) {
-      TypeDefinition.Builder definition = TypeDefinition.newBuilder().setType(type.singular());
+      TypeDefinition.Builder definition = TypeDefinition.newBuilder().setType(type.name());
       Metadata.Builder metadata = Metadata.newBuilder();
       type.relations().forEach((name, relation) -> {
         definition.putRelations(name, relation.rewrite());
@@ -213,34 +206,12 @@ public final class TypeSystem {
       if (!type.parents().isEmpty()) {
         definition.putRelations(PARENT, Userset.newBuilder().setThis(DirectUserset.getDefaultInstance()).build());
         metadata.putRelations(PARENT, RelationMetadata.newBuilder().addAllDirectlyRelatedUserTypes(parents(type)
-            .stream().map(parent -> RelationReference.newBuilder().setType(parent.singular()).build()).toList())
+            .stream().map(parent -> RelationReference.newBuilder().setType(parent.name()).build()).toList())
             .build());
       }
       model.addTypeDefinitions(definition.setMetadata(metadata));
     }
     return model.build();
-  }
-
-  private static List<Type> expand(Declaration declaration) {
-    List<Type> types = new ArrayList<>();
-    for (Type type : declaration.getTypesList()) {
-      boolean key = type.getName().equals(KEY);
-      boolean account = type.getName().equals(ACCOUNT);
-      if (type.getName().startsWith("pyrite.dev/") && !key && !account) {
-        throw new IllegalArgumentException("The type " + type.getName() + " is Pyrite's; a declaration does not"
-            + " declare it.");
-      }
-      if (!key && !account) {
-        types.add(type);
-        continue;
-      }
-      if (!type.getPlural().isEmpty()) {
-        throw new IllegalArgumentException("The type " + type.getName() + " is Pyrite's own, which names its"
-            + " resources itself; its declaration leaves plural empty.");
-      }
-      types.add(type.toBuilder().setPlural(key ? "keys" : "accounts").build());
-    }
-    return types;
   }
 
   /**

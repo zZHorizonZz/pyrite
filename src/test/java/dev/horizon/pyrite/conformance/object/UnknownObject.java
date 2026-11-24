@@ -15,8 +15,8 @@ final class UnknownObject extends AccessModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new DeleteObject(ANNE, "projects/missing")),
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
+    callAndStopOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new DeleteObject(ANNE, "acme.dev/Project:projects/missing")),
         Requirement.OBJECT_MISSING);
   }
 }

@@ -7,7 +7,7 @@ changes nothing in Pyrite's tables or in OpenFGA.
 ## The subject ... has no ... on ...
 
 ```text
-PERMISSION_DENIED: The subject user:bob has no owner on projects/ledger.
+PERMISSION_DENIED: The subject pyrite.dev/Account:accounts/bob has no owner on acme.dev/Project:projects/ledger.
 ```
 
 **Cause:** The subject does not hold the relation that the call checks. The message names it: the type's `create`
@@ -23,7 +23,7 @@ that the request names the subject that you expect.
 ## The resource ... is not known
 
 ```text
-NOT_FOUND: The resource projects/ledger is not known.
+NOT_FOUND: The resource acme.dev/Project:projects/ledger is not known.
 ```
 
 **Cause:** Your application never made the resource known with `CreateObject`, or forgot it with `DeleteObject`.
@@ -38,20 +38,21 @@ one known once, parents first. See [About resources](about-resources.md).
 ## The subject ... is not a principal of the form type:id
 
 ```text
-INVALID_ARGUMENT: The subject 'anne' is not a principal of the form type:id, such as user:anne.
+INVALID_ARGUMENT: The subject 'anne' is not a principal of the form type:id, such as pyrite.dev/Account:accounts/anne.
 ```
 
 **Cause:** The `subject` or the `principal` of the request is an id, a resource name, a wildcard or a set, not a
 principal.
 
-**Fix:** Name the principal: `user:anne`, not `anne`, `accounts/anne`, `user:*` or `group:finance#member`.
+**Fix:** Name the principal: `pyrite.dev/Account:accounts/anne`, not `anne`, `accounts/anne`, `pyrite.dev/Account:*` or
+`acme.dev/Group:groups/finance#member`.
 
 **Verify:** The call no longer fails with `INVALID_ARGUMENT`.
 
 ## The resource ... is known already
 
 ```text
-ALREADY_EXISTS: The resource projects/ledger is known already.
+ALREADY_EXISTS: The resource acme.dev/Project:projects/ledger is known already.
 ```
 
 **Cause:** `CreateObject` of a name that Pyrite knows, such as a retry of a call that succeeded, or a name that your
@@ -64,7 +65,7 @@ application gave twice.
 ## The resource ... has resources under it; forget them first
 
 ```text
-FAILED_PRECONDITION: The resource organizations/acme has resources under it; forget them first.
+FAILED_PRECONDITION: The resource acme.dev/Organization:organizations/acme has resources under it; forget them first.
 ```
 
 **Cause:** `DeleteObject` of a resource while known resources are under it, keys and accounts included.
@@ -111,8 +112,8 @@ INVALID_ARGUMENT: The grantee 'bob' is not of the form type:id, type:* or type:i
 **Cause:** The grantee of a grant is an id, a resource name, empty, or a set of every object, such as
 `group:*#member`.
 
-**Fix:** Name a principal, such as `user:bob`, every principal of a type, such as `user:*`, or a set, such as
-`group:finance#member`.
+**Fix:** Name a principal, such as `pyrite.dev/Account:accounts/bob`, every principal of a type, such as
+`pyrite.dev/Account:*`, or a set, such as `acme.dev/Group:groups/finance#member`.
 
 **Verify:** `CreateGrant` gives the grant.
 
@@ -123,10 +124,10 @@ INVALID_ARGUMENT: Invalid status: actual:INVALID_ARGUMENT, expected:OK
 ```
 
 **Cause:** OpenFGA refused the call, and Pyrite ends the call with the status of OpenFGA. The gRPC client of Vert.x
-gives the status without the message of OpenFGA. OpenFGA refuses a grant to a type or a set that the relation does
-not take, such as `project:payroll` or `group:finance` for `owner`, a condition that the relation does not take, a
-value of a condition of another type than its parameter, and a check whose conditions miss a value, such as
-`current_time`.
+gives the status without the message of OpenFGA. OpenFGA refuses a grant to a type or a set that the relation does not
+take, such as `acme.dev/Project:projects/payroll` or `acme.dev/Group:groups/finance` for `owner`, a condition that the
+relation does not take, a value of a condition of another type than its parameter, and a check whose conditions miss a
+value, such as `current_time`.
 
 **Fix:** Grant only the types and sets that the `metadata` of the relation lists, with the conditions that it lists.
 Give the values of conditions in the types of their parameters, such as a time as `2026-06-01T00:00:00Z`, and give
@@ -142,14 +143,14 @@ INVALID_ARGUMENT: A resource of the type acme.dev/Project is under one of [acme.
 
 **Cause:** `CreateObject` or `CreateKey` of a resource of a type with parents, with an empty `parent`.
 
-**Fix:** Name the parent, such as `organizations/acme`.
+**Fix:** Name the parent, such as `acme.dev/Organization:organizations/acme`.
 
 **Verify:** `CreateObject` succeeds, and a grant on the parent reaches the resource.
 
 ## A resource of the type ... cannot be under ...
 
 ```text
-INVALID_ARGUMENT: A resource of the type acme.dev/Project cannot be under projects/ledger.
+INVALID_ARGUMENT: A resource of the type acme.dev/Project cannot be under acme.dev/Project:projects/ledger.
 ```
 
 **Cause:** The parent is known, but of a type that is not one of the type's `parents`.
@@ -161,7 +162,7 @@ INVALID_ARGUMENT: A resource of the type acme.dev/Project cannot be under projec
 ## The type ... has no parents, but the request names ...
 
 ```text
-INVALID_ARGUMENT: The type acme.dev/Organization has no parents, but the request names organizations/acme.
+INVALID_ARGUMENT: The type acme.dev/Organization has no parents, but the request names acme.dev/Organization:organizations/acme.
 ```
 
 **Cause:** `CreateObject` of a resource of a type at the top, with a `parent`.
@@ -173,39 +174,41 @@ INVALID_ARGUMENT: The type acme.dev/Organization has no parents, but the request
 ## The name ... is not of a declared type
 
 ```text
-INVALID_ARGUMENT: The name folders/docs is not of a declared type: its first segment is no type's plural.
+INVALID_ARGUMENT: The name acme.dev/Folder:folders/docs is not of a declared type.
 ```
 
-**Cause:** The first segment of the name is not the `plural` of a declared type, such as a type that the latest
-declaration does not have, or a name without a slash.
+**Cause:** The part of the name before the first `:` is not the name of a type of the latest declaration.
 
-**Fix:** Name the resource with the plural of its type, such as `projects/ledger`, or declare the type.
+**Fix:** Name the resource after its type, such as `acme.dev/Project:organizations/acme/projects/ledger`, or declare the
+type.
 
 **Verify:** `CreateObject` succeeds.
 
-## The id of ... does not match ...
+## The name ... is not of the form type:id
 
 ```text
-INVALID_ARGUMENT: The id of organizations/Acme Corp does not match [a-z]([a-z0-9-]{0,61}[a-z0-9])?.
+INVALID_ARGUMENT: The name 'acme.dev/Organization:organizations/Acme Corp' is not of the form type:id: a type that matches [^:#@\s]{1,254}, and an id without :, #, white space or control characters, in at most 256 characters.
 ```
 
-**Cause:** The id, the last segment of the name, has capitals, spaces or other characters, is longer than 63
-characters, or ends with a hyphen.
+**Cause:** The name is not an object that OpenFGA takes. It has no `:`, such as `organizations/acme`; its type has a
+`#`, an `@` or white space; its id is empty or `*`, or has a second `:`, a `#`, white space or a control character; or
+it is longer than 256 characters.
 
-**Fix:** Give the resource an id of lowercase letters, digits and hyphens that starts with a letter, such as
-`acme-corp`, and use the same name in your table.
+**Fix:** Name the resource as `type:id`, such as `acme.dev/Organization:organizations/acme-corp`, and use the same name
+in your table.
 
 **Verify:** `CreateObject` succeeds.
 
 ## Granting ... on ... to ... makes a cycle
 
 ```text
-FAILED_PRECONDITION: Granting member on groups/audit to group:finance#member makes a cycle.
+FAILED_PRECONDITION: Granting member on acme.dev/Group:groups/audit to acme.dev/Group:groups/finance#member makes a cycle.
 ```
 
 **Cause:** A grant to a set that already holds the set of the relation on the resource, such as the members of
-`groups/finance` as members of `groups/audit` while `groups/audit` is a member of `groups/finance`. A grant to the
-resource's own set fails with `to its own group:audit#member makes a cycle.`
+`acme.dev/Group:groups/finance` as members of `acme.dev/Group:groups/audit` while `acme.dev/Group:groups/audit` is a
+member of `acme.dev/Group:groups/finance`. A grant to the resource's own set fails with `to its own
+acme.dev/Group:groups/audit#member makes a cycle.`
 
 **Fix:** Revoke the grant that makes the other direction, or grant the principals of the set one by one.
 
@@ -217,8 +220,8 @@ resource's own set fails with `to its own group:audit#member makes a cycle.`
 INVALID_ARGUMENT: The type acme.dev/Folder is not declared.
 ```
 
-**Cause:** `ListObjects` or `ListChanges` names a type that the latest declaration does not have, or names it by its
-singular name or plural instead of its name.
+**Cause:** `ListObjects` or `ListChanges` names a type that the latest declaration does not have, such as a type
+without its domain, `Project`.
 
 **Fix:** Name the declared type, such as `acme.dev/Project`.
 
@@ -232,7 +235,7 @@ INVALID_ARGUMENT: The request names no subject type.
 
 **Cause:** `ListSubjects` with an empty `subject_type`.
 
-**Fix:** Name the type of the principals, such as `user`, or a set, such as `group#member`.
+**Fix:** Name the type of the principals, such as `pyrite.dev/Account`, or a set, such as `acme.dev/Group#member`.
 
 **Verify:** `ListSubjects` gives the principals.
 

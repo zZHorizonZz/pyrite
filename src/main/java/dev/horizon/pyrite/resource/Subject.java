@@ -3,45 +3,44 @@ package dev.horizon.pyrite.resource;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.declaration.TypeSystem;
 import io.vertx.grpc.common.GrpcStatus;
-import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
 
 /**
- * The principal that a call runs as, or that a check asks about, such as {@code user:anne}. Pyrite does not verify
- * it: the caller sets it from a credential that it verified.
+ * The principal that a call runs as, or that a check asks about, such as {@code pyrite.dev/Account:accounts/anne}.
+ * Pyrite does not verify it: the caller sets it from a credential that it verified.
  *
- * @param type the OpenFGA type, such as {@code user}
- * @param id the id, such as {@code anne}
+ * @param type the OpenFGA type, such as {@code pyrite.dev/Account}
+ * @param id the id, such as {@code accounts/anne}
  */
 public record Subject(String type, String id) {
 
-  private static final Pattern TYPE = Pattern.compile("[a-z][a-z0-9_]{0,49}");
+  /** The most bytes of a subject in UTF-8, as OpenFGA takes a user. */
+  public static final int MAX_BYTES = 512;
 
   /**
    * Reads a principal.
    *
-   * @param text the principal, such as {@code user:anne}
+   * @param text the principal, such as {@code pyrite.dev/Account:accounts/anne}
    * @return the principal
    * @throws PyriteException with {@code INVALID_ARGUMENT} for text that is not {@code type:id}, with a type that
-   * matches {@code [a-z][a-z0-9_]{0,49}} and an id without {@code #}, {@code *}, white space or control characters
+   * matches {@link TypeSystem#TYPE_NAME} and an id other than {@code *} without {@code :}, {@code #}, white space or
+   * control characters, in at most {@value #MAX_BYTES} bytes
    */
   public static Subject parse(String text) {
-    int colon = text.indexOf(':');
-    if (colon < 0 || !TYPE.matcher(text.substring(0, colon)).matches() || colon == text.length() - 1
-        || text.chars().anyMatch(c -> c == '#' || c == '*' || Character.isWhitespace(c) || Character.isISOControl(c))) {
-      throw new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The subject '" + text + "' is not a principal of the"
-          + " form type:id, such as user:anne.");
-    }
-    return new Subject(text.substring(0, colon), text.substring(colon + 1));
+    return ObjectRef.split(text).filter(object -> text.getBytes(StandardCharsets.UTF_8).length <= MAX_BYTES)
+        .map(object -> new Subject(object.type(), object.id()))
+        .orElseThrow(() -> new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The subject '" + text + "' is not a"
+            + " principal of the form type:id, such as " + TypeSystem.ACCOUNT + ":accounts/anne."));
   }
 
   /**
-   * Gives the subject that an account is.
+   * Gives the subject that an account is: the account's resource.
    *
    * @param account the name of the account, such as {@code accounts/anne}
-   * @return the subject, such as {@code user:anne}
+   * @return the subject, such as {@code pyrite.dev/Account:accounts/anne}
    */
   public static Subject account(String account) {
-    return new Subject(TypeSystem.USER, account.substring(account.indexOf('/') + 1));
+    return new Subject(TypeSystem.ACCOUNT, account);
   }
 
   @Override

@@ -21,8 +21,8 @@ final class DecrypterRevocation extends KeyModule {
   protected void run() {
     preparePayments();
     call(new Encrypt(ANNE, "keys/payments", "card", "a"));
-    call(new GrantRelation(ANNE, "keys/payments", "decrypter", BOB));
-    call(new Revoke(ANNE, "keys/payments", "decrypter", BOB));
+    call(new GrantRelation(ANNE, "pyrite.dev/Key:keys/payments", "decrypter", BOB));
+    call(new Revoke(ANNE, "pyrite.dev/Key:keys/payments", "decrypter", BOB));
     callAndStopOnFailure(
         new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Decrypt(BOB, "keys/payments", Value.CIPHERTEXT, "a")),
         Requirement.KEY_PERMISSION);

@@ -16,10 +16,16 @@ final class GranteeType extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    for (String grantee : List.of("user:*", "project:payroll", "group:finance", "group:finance#manager",
-        "folder:docs", "bob", "", "user:bob#member")) {
-      callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantRelation(ANNE, "projects/ledger", "owner",
-          grantee)), Requirement.GRANT_GRANTEE);
+    for (String grantee : List.of("pyrite.dev/Account:*", "acme.dev/Project:projects/payroll", "acme.dev/Group:groups/finance",
+        "acme.dev/Group:groups/finance#manager",
+        "folder:docs", "bob", "", "pyrite.dev/Account:accounts/bob#member",
+        "acme.dev/Group:groups/finance#", "acme.dev/Group:groups/finance#" + "m".repeat(51),
+        "acme.dev/Group:groups/finance#mem ber", "acme.dev/Group:groups/finance:v2#member",
+        "pyrite.dev/Account:accounts/bob carol", "pyrite.dev/Account:" + "b".repeat(512))) {
+      callAndContinueOnFailure(
+          new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "owner",
+              grantee)),
+          Requirement.GRANT_GRANTEE);
     }
   }
 }

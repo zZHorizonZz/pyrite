@@ -6,17 +6,17 @@ the rule. The fix of each error is in the troubleshooting page of its area, such
 
 ## Statuses
 
-| Status                | Means                                                             | Example of the message                                                       |
-| --------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `INVALID_ARGUMENT`    | The request breaks a rule, whatever the data                      | `The id of projects/Ledger does not match [a-z]([a-z0-9-]{0,61}[a-z0-9])?.`  |
-| `NOT_FOUND`           | The resource, record, exchange or declaration does not exist      | `The resource projects/payroll is not known.`                                |
-| `ALREADY_EXISTS`      | A resource has the name, or an account has the identifier         | `The resource projects/ledger is known already.`                             |
-| `PERMISSION_DENIED`   | The subject lacks the relation, or an answer is wrong             | `The subject user:bob has no owner on projects/ledger.`                      |
-| `FAILED_PRECONDITION` | The request is valid, but the state does not allow it             | `The resource organizations/acme has resources under it; forget them first.` |
-| `ABORTED`             | The resource, key, version or exchange changed since the revision | `The key keys/payments is at revision 2, not 1.`                             |
-| `RESOURCE_EXHAUSTED`  | An exchange took all its answers                                  | `The exchange exchanges/9f1c... took 5 answers; start another.`              |
-| `UNAUTHENTICATED`     | An access or refresh token does not authenticate                  | `The session has ended.`                                                     |
-| `INTERNAL`            | A failure that Pyrite did not expect                              | `Internal error`                                                             |
+| Status                | Means                                                             | Example of the message                                                                             |
+| --------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `INVALID_ARGUMENT`    | The request breaks a rule, whatever the data                      | `The key id 'Payments' does not match [a-z]([a-z0-9-]{0,61}[a-z0-9])?.`                            |
+| `NOT_FOUND`           | The resource, record, exchange or declaration does not exist      | `The resource acme.dev/Project:projects/payroll is not known.`                                     |
+| `ALREADY_EXISTS`      | A resource has the name, or an account has the identifier         | `The resource acme.dev/Project:projects/ledger is known already.`                                  |
+| `PERMISSION_DENIED`   | The subject lacks the relation, or an answer is wrong             | `The subject pyrite.dev/Account:accounts/bob has no owner on acme.dev/Project:projects/ledger.`    |
+| `FAILED_PRECONDITION` | The request is valid, but the state does not allow it             | `The resource acme.dev/Organization:organizations/acme has resources under it; forget them first.` |
+| `ABORTED`             | The resource, key, version or exchange changed since the revision | `The key keys/payments is at revision 2, not 1.`                                                   |
+| `RESOURCE_EXHAUSTED`  | An exchange took all its answers                                  | `The exchange exchanges/9f1c... took 5 answers; start another.`                                    |
+| `UNAUTHENTICATED`     | An access or refresh token does not authenticate                  | `The session has ended.`                                                                           |
+| `INTERNAL`            | A failure that Pyrite did not expect                              | `Internal error`                                                                                   |
 
 A status of OpenFGA passes through with its message, such as `INVALID_ARGUMENT` for a tuple that the model does not
 allow. An `INTERNAL` status gives no details; Pyrite logs the failure under the logger

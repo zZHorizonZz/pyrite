@@ -12,8 +12,9 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
 1. Give the key a rotation period when you create it. Here, 90 days:
 
    ```java
-   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("payments")
-       .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM)
+   cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setKeyId("payments")
+       .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.AES256_GCM)
        .setRotationPeriod(Duration.newBuilder().setSeconds(7_776_000)).build()).await();
    ```
 
@@ -24,9 +25,11 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
 2. To change the period of a key that exists, read the key, and name the revision that you read:
 
    ```java
-   Key key = cryptography.getKey(GetKeyRequest.newBuilder().setSubject("user:anne").setName("keys/payments")
+   Key key = cryptography.getKey(GetKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("keys/payments")
        .build()).await();
-   cryptography.updateKey(UpdateKeyRequest.newBuilder().setSubject("user:anne").setName("keys/payments")
+   cryptography.updateKey(UpdateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("keys/payments")
        .setRotationPeriod(Duration.newBuilder().setSeconds(2_592_000)).setRevision(key.getRevision()).build())
        .await();
    ```
@@ -39,7 +42,7 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
 1. Rotate the key:
 
    ```java
-   Key rotated = cryptography.rotateKey(RotateKeyRequest.newBuilder().setSubject("user:anne")
+   Key rotated = cryptography.rotateKey(RotateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
        .setName("keys/payments").build()).await();
    ```
 
@@ -60,14 +63,15 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
 2. List the versions, oldest first, to read the old version's revision:
 
    ```java
-   KeyVersion old = cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder().setSubject("user:anne")
+   KeyVersion old = cryptography.listKeyVersions(ListKeyVersionsRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setKey("keys/payments").build()).await().getVersions(0);
    ```
 
 3. Disable the old version:
 
    ```java
-   cryptography.updateKeyVersion(UpdateKeyVersionRequest.newBuilder().setSubject("user:anne")
+   cryptography.updateKeyVersion(UpdateKeyVersionRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
        .setName(old.getName()).setState(KeyVersion.State.DISABLED).setRevision(old.getRevision()).build())
        .await();
    ```
@@ -77,7 +81,7 @@ Rotate a key to encrypt and sign with new material, on a schedule or at once, an
 4. Destroy the version when nothing needs it:
 
    ```java
-   cryptography.deleteKeyVersion(DeleteKeyVersionRequest.newBuilder().setSubject("user:anne")
+   cryptography.deleteKeyVersion(DeleteKeyVersionRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
        .setName(old.getName()).build()).await();
    ```
 

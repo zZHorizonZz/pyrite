@@ -6,12 +6,13 @@ and its message.
 ## The subject ... has no ... on keys/...
 
 ```text
-PERMISSION_DENIED: The subject user:bob has no decrypter on keys/payments.
+PERMISSION_DENIED: The subject pyrite.dev/Account:accounts/bob has no decrypter on keys/payments.
 ```
 
 **Cause:** The subject does not hold the relation that the call checks on the key: `viewer` to read it, `admin` to
-change it or its versions, and `encrypter`, `decrypter`, `signer` or `verifier` to use it. `CreateKey` checks the
-type's `create` permission on the parent, and names the parent, such as `has no admin on organizations/acme`.
+change it or its versions, and `encrypter`, `decrypter`, `signer` or `verifier` to use it. `CreateKey` checks the type's
+`create` permission on the parent, and names the parent, such as `has no admin on
+acme.dev/Organization:organizations/acme`.
 
 **Fix:** Grant the relation, or a relation that leads to it in the declaration of `pyrite.dev/Key`, such as `admin`.
 Check that the request names the subject that you expect.

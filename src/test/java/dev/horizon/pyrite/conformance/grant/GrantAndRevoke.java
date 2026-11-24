@@ -18,12 +18,12 @@ final class GrantAndRevoke extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
-    callAndContinueOnFailure(new ExpectGrant("projects/ledger", "viewer", BOB), Requirement.GRANT_WRITE);
-    call(new Check(BOB, "projects/ledger", "can_view"));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    callAndContinueOnFailure(new ExpectGrant("acme.dev/Project:projects/ledger", "viewer", BOB), Requirement.GRANT_WRITE);
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.GRANT_WRITE);
-    call(new Revoke(ANNE, "projects/ledger", "viewer", BOB));
-    call(new Check(BOB, "projects/ledger", "can_view"));
+    call(new Revoke(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.GRANT_REVOKE);
   }
 }

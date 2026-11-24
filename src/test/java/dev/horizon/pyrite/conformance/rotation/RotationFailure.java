@@ -21,7 +21,7 @@ final class RotationFailure extends KeyModule {
   @Override
   protected void run() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "payments", Algorithm.AES256_GCM, Duration.ofHours(1)));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "payments", Algorithm.AES256_GCM, Duration.ofHours(1)));
     call(new MakeResourceOlder("keys/payments", Duration.ofMinutes(61)));
     call(new RenameTable("pyrite_key_version", "pyrite_key_version_away"));
     try {

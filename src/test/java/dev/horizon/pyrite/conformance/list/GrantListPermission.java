@@ -17,8 +17,9 @@ final class GrantListPermission extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "editor", BOB));
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListGrants(BOB, "projects/ledger")),
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB));
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListGrants(BOB, "acme.dev/Project:projects/ledger")),
         Requirement.GRANT_LIST);
   }
 }

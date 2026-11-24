@@ -15,8 +15,9 @@ final class LongPeriod extends KeyModule {
   protected void run() {
     preparePayments();
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKeyWithExactPeriod(
-        "organizations/acme", "eternal", Duration.ofDays(18_263))), Requirement.KEY_PERIOD);
-    callAndContinueOnFailure(new CreateKeyWithExactPeriod("organizations/acme", "patient", Duration.ofDays(18_262)),
+        "acme.dev/Organization:organizations/acme", "eternal", Duration.ofDays(18_263))), Requirement.KEY_PERIOD);
+    callAndContinueOnFailure(
+        new CreateKeyWithExactPeriod("acme.dev/Organization:organizations/acme", "patient", Duration.ofDays(18_262)),
         Requirement.KEY_PERIOD);
   }
 }

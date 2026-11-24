@@ -19,7 +19,7 @@ final class RecoveryCodeOfOtherAccount extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new CreateAccount("bob", "bob@acme.dev", "another long passphrase"));
-    call(new EnrolRecoveryCodes("user:bob", Value.OTHER_RECOVERY_CODES));
+    call(new EnrolRecoveryCodes("pyrite.dev/Account:accounts/bob", Value.OTHER_RECOVERY_CODES));
     call(new EnrolRecoveryCodes(ANNE, Value.RECOVERY_CODES));
     passPasswordStage();
     callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new AnswerRecoveryCode(

@@ -17,9 +17,9 @@ final class SubjectBlock extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "organizations/acme", "member", BOB));
-    call(new GrantRelation(ANNE, "projects/ledger", "blocked", BOB));
-    call(new ListSubjects(ANNE, "projects/ledger", "can_view", "user"));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "member", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "blocked", BOB));
+    call(new ListSubjects(ANNE, "acme.dev/Project:projects/ledger", "can_view", "pyrite.dev/Account"));
     callAndStopOnFailure(new ExpectSubjects(List.of(ANNE)), Requirement.SUBJECT_LIST);
   }
 }

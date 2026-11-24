@@ -17,9 +17,9 @@ final class ConditionValueOverride extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantWithCondition(ANNE, "projects/ledger", "editor", BOB, "not_expired", Map.of("expires_at",
+    call(new GrantWithCondition(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB, "not_expired", Map.of("expires_at",
         "2026-06-01T00:00:00Z")));
-    call(new Check(ANNE, BOB, "projects/ledger", "can_edit", Map.of("current_time", "2026-07-01T00:00:00Z",
+    call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "can_edit", Map.of("current_time", "2026-07-01T00:00:00Z",
         "expires_at", "2030-01-01T00:00:00Z")));
     callAndStopOnFailure(new ExpectCheckAnswer(false), Requirement.ACCESS_CONDITION);
   }

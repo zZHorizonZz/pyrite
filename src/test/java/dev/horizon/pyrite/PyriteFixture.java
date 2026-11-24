@@ -48,10 +48,10 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
 public final class PyriteFixture implements AutoCloseable {
 
-  public static final String ANNE = "user:anne";
-  public static final String BOB = "user:bob";
-  public static final String CAROL = "user:carol";
-  public static final String DAVE = "user:dave";
+  public static final String ANNE = "pyrite.dev/Account:accounts/anne";
+  public static final String BOB = "pyrite.dev/Account:accounts/bob";
+  public static final String CAROL = "pyrite.dev/Account:accounts/carol";
+  public static final String DAVE = "pyrite.dev/Account:accounts/dave";
 
   /**
    * The largest message over HTTP, which a plaintext of a mebibyte and its ciphertext fit in; gRPC on Vert.x takes

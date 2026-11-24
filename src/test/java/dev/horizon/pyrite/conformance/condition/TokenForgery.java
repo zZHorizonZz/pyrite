@@ -9,7 +9,7 @@ import java.util.Base64;
  */
 public enum TokenForgery {
   /**
-   * The claims of user:root, with the header and the signature of the token.
+   * The claims of pyrite.dev/Account:accounts/root, with the header and the signature of the token.
    */
   PAYLOAD,
   /**
@@ -51,7 +51,7 @@ public enum TokenForgery {
     String[] parts = token.split("\\.");
     return switch (this) {
       case PAYLOAD -> parts[0] + "." + encoded("{\"iss\":\"" + SignToken.ISSUER + "\",\"aud\":\""
-          + SignToken.AUDIENCE + "\",\"sub\":\"user:root\",\"exp\":" + (Instant.now().getEpochSecond()
+          + SignToken.AUDIENCE + "\",\"sub\":\"pyrite.dev/Account:accounts/root\",\"exp\":" + (Instant.now().getEpochSecond()
               + EXPIRES_IN)
           + "}") + "." + parts[2];
       case REVERSED_SIGNATURE -> parts[0] + "." + parts[1] + "." + new StringBuilder(parts[2]).reverse();
