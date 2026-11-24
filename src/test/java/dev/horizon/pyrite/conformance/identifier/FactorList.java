@@ -31,7 +31,9 @@ final class FactorList extends AccountModule {
     call(new AnswerTotp(Value.TOTP_SECRET, -1));
     callAndContinueOnFailure(new ExpectFactorKinds(ANNE, "accounts/anne", List.of(Factor.Kind.PASSWORD,
         Factor.Kind.TOTP)), Requirement.FACTOR_LIST);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListFactors("user:mallory",
-        "accounts/anne")), Requirement.FACTOR_LIST);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListFactors("pyrite.dev/Account:accounts/mallory",
+            "accounts/anne")),
+        Requirement.FACTOR_LIST);
   }
 }

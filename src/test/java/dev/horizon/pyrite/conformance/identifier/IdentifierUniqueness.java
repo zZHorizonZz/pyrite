@@ -24,9 +24,10 @@ final class IdentifierUniqueness extends AccountModule {
     call(new StartExchange(ANNE, "verify", EMAIL));
     call(new AnswerCode());
     call(new CreateAccountOfKind("mallory", "HUMAN"));
-    callAndContinueOnFailure(new AddIdentifier("user:mallory", "accounts/mallory", "email", "ANNE@acme.dev"),
+    callAndContinueOnFailure(
+        new AddIdentifier("pyrite.dev/Account:accounts/mallory", "accounts/mallory", "email", "ANNE@acme.dev"),
         Requirement.IDENTIFIER_UNIQUE);
-    call(new StartExchange("user:mallory", "verify", EMAIL));
+    call(new StartExchange("pyrite.dev/Account:accounts/mallory", "verify", EMAIL));
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.ALREADY_EXISTS, new AnswerCode()),
         Requirement.IDENTIFIER_UNIQUE);
     callAndStopOnFailure(new SignIn(EMAIL, PASSWORD), Requirement.IDENTIFIER_UNIQUE);

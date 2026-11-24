@@ -20,8 +20,8 @@ final class UnknownSigningVersion extends KeyModule {
   @Override
   protected void run() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "codes", Algorithm.HMAC_SHA256));
-    call(new CreateKey("organizations/acme", "other", Algorithm.HMAC_SHA256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "codes", Algorithm.HMAC_SHA256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "other", Algorithm.HMAC_SHA256));
     call(new SignData(ANNE, "keys/codes", "482913", Value.SIGNATURE));
     for (String version : List.of("keyVersions/other-1", "keyVersions/codes-7")) {
       call(new VerifyData(ANNE, "keys/codes", "482913", Value.SIGNATURE, version));

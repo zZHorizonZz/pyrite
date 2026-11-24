@@ -29,7 +29,7 @@ public record ExpectSubjectAgreement() implements Condition {
         Set<String> expected = world.oracle().users(resource.getKey(), relation, time);
         Set<String> actual = new TreeSet<>(environment.pyrite().access.listSubjects(ListSubjectsRequest.newBuilder()
             .setSubject(world.admins().get(resource.getKey())).setObject(resource.getKey()).setPermission(relation)
-            .setSubjectType("user").setContext(time).build()).await(TIMEOUT).getSubjectsList());
+            .setSubjectType("pyrite.dev/Account").setContext(time).build()).await(TIMEOUT).getSubjectsList());
         if (!actual.equals(expected)) {
           disagreements.add(relation + " " + resource.getKey() + ": Pyrite " + actual + ", OpenFGA " + expected);
         }

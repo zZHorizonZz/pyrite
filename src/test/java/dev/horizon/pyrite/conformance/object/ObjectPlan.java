@@ -18,7 +18,8 @@ public final class ObjectPlan implements Plan {
   @Override
   public List<Supplier<ConformanceModule>> modules() {
     return List.<Supplier<ConformanceModule>> of(ParentInheritance::new, ObjectOnce::new, CreatePermission::new,
-        ObjectParent::new, ObjectName::new, ObjectForgetting::new, ObjectWithChildren::new, UnknownObject::new,
+        ObjectParent::new, ObjectName::new, ObjectNameKept::new, ObjectForgetting::new, ObjectWithChildren::new,
+        UnknownObject::new,
         DeletePermission::new, ObjectList::new, ObjectListPermission::new, ObjectOfOwnType::new);
   }
 }

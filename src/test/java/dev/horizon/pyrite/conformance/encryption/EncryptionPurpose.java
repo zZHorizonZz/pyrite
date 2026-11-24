@@ -17,8 +17,8 @@ final class EncryptionPurpose extends KeyModule {
   @Override
   protected void run() {
     preparePayments();
-    call(new CreateKey("organizations/acme", "codes", Algorithm.HMAC_SHA256));
-    call(new CreateKey("organizations/acme", "oauth", Algorithm.ES256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "codes", Algorithm.HMAC_SHA256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "oauth", Algorithm.ES256));
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new Encrypt(ANNE, "keys/codes", "x", "")),
         Requirement.KEY_PURPOSE);
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new Encrypt(ANNE, "keys/oauth", "x", "")),

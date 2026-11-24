@@ -17,13 +17,13 @@ final class GroupMembership extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "groups/audit", "member", CAROL));
-    call(new GrantRelation(ANNE, "groups/finance", "member", "group:audit#member"));
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", "group:finance#member"));
-    call(new Check(CAROL, "projects/ledger", "can_view"));
+    call(new GrantRelation(ANNE, "acme.dev/Group:groups/audit", "member", CAROL));
+    call(new GrantRelation(ANNE, "acme.dev/Group:groups/finance", "member", "acme.dev/Group:groups/audit#member"));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", "acme.dev/Group:groups/finance#member"));
+    call(new Check(CAROL, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.GRANT_GROUP);
-    call(new Revoke(ANNE, "groups/audit", "member", CAROL));
-    call(new Check(CAROL, "projects/ledger", "can_view"));
+    call(new Revoke(ANNE, "acme.dev/Group:groups/audit", "member", CAROL));
+    call(new Check(CAROL, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.GRANT_GROUP);
   }
 }

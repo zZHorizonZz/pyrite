@@ -16,10 +16,10 @@ final class SelfCheck extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantRelation(ANNE, "organizations/acme", "member", BOB));
-    call(new Check(BOB, "projects/ledger", "can_view"));
+    call(new GrantRelation(ANNE, "acme.dev/Organization:organizations/acme", "member", BOB));
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.ACCESS_CHECK);
-    call(new Check(BOB, "projects/ledger", "can_edit"));
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "can_edit"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.ACCESS_CHECK);
   }
 }

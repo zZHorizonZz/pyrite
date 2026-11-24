@@ -88,14 +88,14 @@ relation reads, such as `viewer` for `can_view`.
 ## The type ... grants ... to its creator, which has to be a grantable relation...
 
 ```text
-INVALID_ARGUMENT: The type acme.dev/Project grants can_view to its creator, which has to be a grantable relation that takes a user without a condition.
+INVALID_ARGUMENT: The type acme.dev/Project grants can_view to its creator, which has to be a grantable relation that takes pyrite.dev/Account without a condition.
 ```
 
-**Cause:** The `creator` relation is not in `grantable`, or does not take `user` directly without a condition and a
-wildcard.
+**Cause:** The `creator` relation is not in `grantable`, or does not take `pyrite.dev/Account` directly without a
+condition and a wildcard.
 
-**Fix:** Name a grantable relation whose `metadata` has `directly_related_user_types { type: "user" }`, such as
-`owner`, or leave `creator` empty.
+**Fix:** Name a grantable relation whose `metadata` has `directly_related_user_types { type: "pyrite.dev/Account" }`,
+such as `owner`, or leave `creator` empty.
 
 **Verify:** `WriteDeclaration` gives an id, and `CreateObject` grants the creator the relation.
 
@@ -106,8 +106,8 @@ INVALID_ARGUMENT: The relation reader of the type acme.dev/Project reads auditor
 ```
 
 **Cause:** A `tuple_to_userset` reads a relation that a type it reads from does not have: a parent type, for the
-tupleset `parent`, or a direct type of the tupleset relation. For the direct type `user`, the message names the type
-`user` when the declaration has no `pyrite.dev/Account`.
+tupleset `parent`, or a direct type of the tupleset relation. The direct type `pyrite.dev/Account` has no relations
+when the declaration does not declare it.
 
 **Fix:** Declare the relation on each type that the rewrite reads from, or read a relation that they have.
 
@@ -157,35 +157,23 @@ INVALID_ARGUMENT: The relation auditor of the type acme.dev/Project names accoun
 INVALID_ARGUMENT: The type acme.dev/Project grants auditor to the type folder, which is not declared.
 ```
 
-**Cause:** A direct type in `metadata` is not the singular name of a declared type, nor `user`. A direct type names
-the singular name, such as `group`, not the type name `acme.dev/Group`.
+**Cause:** A direct type in `metadata` is not the name of a declared type, nor `pyrite.dev/Account`. A direct type
+names the type by its name, such as `acme.dev/Group`, not `group`.
 
-**Fix:** Name the singular name of a declared type, or declare the type.
+**Fix:** Name a declared type by its name, or declare the type.
 
 **Verify:** `WriteDeclaration` gives an id.
 
 ## The type ... grants ... to ...#..., which is not a relation of that type
 
 ```text
-INVALID_ARGUMENT: The type acme.dev/Project grants auditor to group#owner, which is not a relation of that type.
+INVALID_ARGUMENT: The type acme.dev/Project grants auditor to acme.dev/Group#owner, which is not a relation of that type.
 ```
 
-**Cause:** A direct type with a relation, such as `group#owner`, names a relation that the type does not declare.
+**Cause:** A direct type with a relation, such as `acme.dev/Group#owner`, names a relation that the type does not
+declare. `pyrite.dev/Account` has no relations when the declaration does not declare it.
 
-**Fix:** Name a relation of that type, such as `group#member`.
-
-**Verify:** `WriteDeclaration` gives an id.
-
-## The type ... grants ... to user#..., but the type user has no relations
-
-```text
-INVALID_ARGUMENT: The type acme.dev/Project grants auditor to user#member, but the type user has no relations.
-```
-
-**Cause:** A direct type `user` with a relation. A grant goes to a user, to every user with a wildcard, or to the
-members of a set of another type.
-
-**Fix:** Remove the relation from the direct type `user`, or name a set of another type, such as `group#member`.
+**Fix:** Name a relation of that type, such as `acme.dev/Group#member`.
 
 **Verify:** `WriteDeclaration` gives an id.
 
@@ -219,8 +207,7 @@ INVALID_ARGUMENT: The condition not_expired is named expired.
 INVALID_ARGUMENT: The type acme.dev/Project has the parent type acme.dev/Folder, which is not declared.
 ```
 
-**Cause:** A parent is not the name of a declared type, such as a typo, a singular name, or a type that the
-declaration no longer has.
+**Cause:** A parent is not the name of a declared type, such as a typo, or a type that the declaration no longer has.
 
 **Fix:** Name a declared type, such as `acme.dev/Organization`, or declare the parent type.
 
@@ -238,54 +225,41 @@ INVALID_ARGUMENT: The type acme.dev/Project declares the relation parent, which 
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The type ... has the singular name user, which is Pyrite's accounts'
+## The type ... has a name that does not match ...
 
 ```text
-INVALID_ARGUMENT: The type acme.dev/Member has the singular name user, which is Pyrite's accounts'.
+INVALID_ARGUMENT: The type acme.dev/My Project has a name that does not match [^:#@\s]{1,254}.
 ```
 
-**Cause:** A type other than `pyrite.dev/Account` has the singular name `user`. Subjects such as `user:anne` are
-accounts.
+**Cause:** The type's name is not one that OpenFGA takes: it is longer than 254 characters, or has a `:`, a `#`, an `@`
+or white space.
 
-**Fix:** Give the type another singular name, or declare `pyrite.dev/Account` to give users relations.
+**Fix:** Rename the type, such as `acme.dev/Project`, and the names of its resources with it.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The type ... has the singular name ..., which another type has
+## The type ... has the relation ..., whose name does not match ...
 
 ```text
-INVALID_ARGUMENT: The type acme.dev/Project has the singular name group, which another type has.
+INVALID_ARGUMENT: The type acme.dev/Project has the relation can view, whose name does not match [^:#@\s]{1,50}.
 ```
 
-**Cause:** Two types have the same `definition.type`. OpenFGA names objects by it, so it is unique.
+**Cause:** The relation's name is not one that OpenFGA takes: it is empty or longer than 50 characters, or has a `:`, a
+`#`, an `@` or white space.
 
-**Fix:** Give each type its own singular name.
+**Fix:** Rename the relation, such as `can_view` or `acme.dev/projects.get`.
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The type ... has the plural name ..., which another type has
+## The type ... sets definition.type to ...
 
 ```text
-INVALID_ARGUMENT: The type acme.dev/Project has the plural name groups, which another type has.
+INVALID_ARGUMENT: The type acme.dev/Project sets definition.type to project; leave it empty, because the type's name is its type in the authorization model.
 ```
 
-**Cause:** Two types have the same `plural`. A name such as `groups/finance` finds its type by the plural. A type of
-yours with the plural `keys` or `accounts` meets Pyrite's types, which take them.
+**Cause:** The `definition` of the type has a `type`. The type's `name` is its type in OpenFGA.
 
-**Fix:** Give each type its own plural.
-
-**Verify:** `WriteDeclaration` gives an id.
-
-## The type ... has the ... name ..., which does not match ...
-
-```text
-INVALID_ARGUMENT: The type acme.dev/Project has the plural name pro-jects, which does not match [a-z][a-zA-Z0-9]{0,62}.
-```
-
-**Cause:** A singular name, a plural or a relation name breaks its pattern. The message says which: `has the singular
-name`, `has the plural name` or `has the relation`. A singular name and a relation name match `[a-z][a-z0-9_]{0,49}`.
-
-**Fix:** Rename it, such as `projects` for the plural and `can_view` for a relation.
+**Fix:** Remove `type` from the `definition`, and name the type by its name in the direct types of other relations.
 
 **Verify:** `WriteDeclaration` gives an id.
 
@@ -298,19 +272,6 @@ INVALID_ARGUMENT: The type acme.dev/Project has metadata for auditor, which is n
 **Cause:** `metadata` describes a relation that the definition does not declare, such as one that was removed.
 
 **Fix:** Remove the entry from `metadata`, or declare the relation.
-
-**Verify:** `WriteDeclaration` gives an id.
-
-## The type ... is Pyrite's own, which names its resources itself
-
-```text
-INVALID_ARGUMENT: The type pyrite.dev/Key is Pyrite's own, which names its resources itself; its declaration leaves plural empty.
-```
-
-**Cause:** `pyrite.dev/Key` or `pyrite.dev/Account` has a `plural`. Pyrite names their resources `keys/<id>` and
-`accounts/<id>`.
-
-**Fix:** Leave `plural` empty.
 
 **Verify:** `WriteDeclaration` gives an id.
 
@@ -339,30 +300,16 @@ INVALID_ARGUMENT: The type pyrite.dev/Key lacks the relation verifier, which Pyr
 
 **Verify:** `WriteDeclaration` gives an id.
 
-## The relation owner of pyrite.dev/Account takes a user directly
+## The relation owner of pyrite.dev/Account takes pyrite.dev/Account directly
 
 ```text
-INVALID_ARGUMENT: The relation owner of pyrite.dev/Account takes a user directly; Pyrite grants it to each account on itself.
+INVALID_ARGUMENT: The relation owner of pyrite.dev/Account takes pyrite.dev/Account directly; Pyrite grants it to each account on itself.
 ```
 
-**Cause:** The `owner` of `pyrite.dev/Account` does not take `user` directly, or takes it only with a condition or a
-wildcard.
+**Cause:** The `owner` of `pyrite.dev/Account` does not take `pyrite.dev/Account` directly, or takes it only with a
+condition or a wildcard.
 
-**Fix:** Add `directly_related_user_types { type: "user" }` to the `metadata` of `owner`.
-
-**Verify:** `WriteDeclaration` gives an id.
-
-## The type pyrite.dev/Account has the singular name ..., but its singular name is user
-
-```text
-INVALID_ARGUMENT: The type pyrite.dev/Account has the singular name person, but its singular name is user: subjects of calls, such as user:anne, are accounts.
-```
-
-**Cause:** The `definition.type` of `pyrite.dev/Account` is not `user`. Pyrite names the subject of each call, and the
-owner of each account, as `user:<id>`.
-
-**Fix:** Set `definition.type` of `pyrite.dev/Account` to `user`, and name `user` in the direct types that take
-accounts.
+**Fix:** Add `directly_related_user_types { type: "pyrite.dev/Account" }` to the `metadata` of `owner`.
 
 **Verify:** `WriteDeclaration` gives an id.
 
@@ -397,13 +344,12 @@ FAILED_PRECONDITION: The declaration has accounts, which need the type pyrite.de
 ## The declaration drops the type ..., but Pyrite knows resources of the type
 
 ```text
-FAILED_PRECONDITION: The declaration changes the plural of the type acme.dev/Project from projects to ventures, but Pyrite knows resources of the type; forget them first, or keep the type as it is.
+FAILED_PRECONDITION: The declaration drops the type acme.dev/Project, but Pyrite knows resources of the type; forget them first, or keep the type as it is.
 ```
 
-**Cause:** The declaration drops a type of the latest declaration, or changes its `plural`, its `definition.type` or
-its `parents`, and Pyrite knows resources of the type. The message starts with `drops the type`, `changes the plural`,
-`changes the singular name` or `changes the parents`. A known resource finds its type by its plural, its grants by the
-singular name, and its parent among the parent types, so the change would leave it out of reach.
+**Cause:** The declaration drops a type of the latest declaration, or changes its `parents`, and Pyrite knows resources
+of the type. The message starts with `drops the type` or `changes the parents`. A known resource finds its type by its
+name, and its parent among the parent types, so the change would leave it out of reach.
 
 **Fix:** Keep the type as the latest declaration has it. To change it all the same, forget each resource of the type
 with `DeleteObject`, those under it first, and write the declaration again.

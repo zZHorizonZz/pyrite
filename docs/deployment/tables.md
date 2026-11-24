@@ -79,15 +79,15 @@ indexed.
 
 ## pyrite_node
 
-| Column        | Type        | Description                                                                   |
-| ------------- | ----------- | ----------------------------------------------------------------------------- |
-| `name`        | `TEXT(255)` | The resource's name, such as `projects/ledger`. The primary key               |
-| `type`        | `TEXT(255)` | The declared type, such as `acme.dev/Project`                                 |
-| `parent`      | `TEXT(255)` | The name of the resource it is under; null for a resource at the top. Indexed |
-| `create_time` | `TIMESTAMP` | When the resource became known                                                |
+| Column        | Type        | Description                                                                      |
+| ------------- | ----------- | -------------------------------------------------------------------------------- |
+| `name`        | `TEXT(256)` | The resource's name, such as `acme.dev/Project:projects/ledger`. The primary key |
+| `type`        | `TEXT(254)` | The declared type, such as `acme.dev/Project`                                    |
+| `parent`      | `TEXT(256)` | The name of the resource it is under; null for a resource at the top. Indexed    |
+| `create_time` | `TIMESTAMP` | When the resource became known                                                   |
 
 `CreateObject`, `CreateKey` and `CreateAccount` add a row. `DeleteObject` and `DeleteAccount` remove it, and with it
-the row of the key or the account of that name.
+the row of the key or the account whose `resource` it is.
 
 ## pyrite_key
 
@@ -98,8 +98,9 @@ the row of the key or the account of that name.
 | `rotation_period`    | `BIGINT`    | How often the key rotates on its own, in seconds; `0` for never                   |
 | `next_rotation_time` | `TIMESTAMP` | When the key rotates next; null when it does not rotate on its own                |
 | `primary_version`    | `TEXT(255)` | The name of the version that encrypts and signs, such as `keyVersions/payments-2` |
+| `resource`           | `TEXT(256)` | The key's resource, such as `pyrite.dev/Key:keys/payments`. Unique                |
 
-The `name` of a key is a foreign key to its node. Its `parent` is the name of the resource that it is under, and is
+The `resource` of a key is a foreign key to its node. Its `parent` is the name of the resource that it is under, and is
 indexed.
 
 ## pyrite_key_version
@@ -117,11 +118,12 @@ indexed.
 
 ## pyrite_account
 
-| Column | Type | Description          |
-| ------ | ---- | -------------------- |
-| `kind` | Enum | `HUMAN` or `SERVICE` |
+| Column     | Type        | Description                                                                |
+| ---------- | ----------- | -------------------------------------------------------------------------- |
+| `kind`     | Enum        | `HUMAN` or `SERVICE`                                                       |
+| `resource` | `TEXT(256)` | The account's resource, such as `pyrite.dev/Account:accounts/anne`. Unique |
 
-The `name` of an account is a foreign key to its node.
+The `resource` of an account is a foreign key to its node.
 
 ## pyrite_identifier
 

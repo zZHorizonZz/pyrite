@@ -18,7 +18,7 @@ final class MacKey extends KeyModule {
   @Override
   protected void run() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "codes", Algorithm.HMAC_SHA256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "codes", Algorithm.HMAC_SHA256));
     call(new SignToken(ANNE, "keys/codes", 600, "at+jwt"));
     call(new VerifyToken(ANNE, "keys/codes"));
     callAndContinueOnFailure(new ExpectSignatureVerification(""), Requirement.KEY_JWT);

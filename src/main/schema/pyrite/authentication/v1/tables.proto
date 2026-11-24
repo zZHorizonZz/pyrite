@@ -8,7 +8,8 @@ option java_multiple_files = false;
 option java_outer_classname = "Tables";
 option java_package = "dev.horizon.pyrite.schema.authentication.v1";
 
-// An account: the resource pyrite.dev/Account, whose principals are user:<id>.
+// An account: the resource pyrite.dev/Account, whose subject is its resource, such as
+// pyrite.dev/Account:accounts/anne.
 message Account {
   option (leadseal.v1.table) = {
     name: "pyrite_account"
@@ -28,7 +29,6 @@ message Account {
         { key: "sqlserver" value: "Latin1_General_100_BIN2" }
       ]
     }
-    foreign_key: { message: "pyrite.declaration.v1.Node" field: "name" on_delete: ACTION_CASCADE }
   }];
 
   optional string parent = 3 [(leadseal.v1.column).text = { length: 255 }];
@@ -54,6 +54,21 @@ message Account {
   }
 
   Kind kind = 11;
+
+  // The account's resource, which is also its object in OpenFGA and its subject, such as
+  // pyrite.dev/Account:accounts/anne. Deleting the resource's row in pyrite_node deletes the account.
+  string resource = 12 [(leadseal.v1.column) = {
+    unique: true
+    text: {
+      length: 256
+      collation: [
+        { key: "postgresql" value: "C" },
+        { key: "mariadb" value: "utf8mb4_bin" },
+        { key: "sqlserver" value: "Latin1_General_100_BIN2" }
+      ]
+    }
+    foreign_key: { message: "pyrite.declaration.v1.Node" field: "name" on_delete: ACTION_CASCADE }
+  }];
 }
 
 // An identifier of an account: the resource pyrite.dev/Identifier, under its account.
@@ -258,9 +273,6 @@ message Session {
   optional string delete_time = 9 [(leadseal.v1.column).timestamp = {}];
 
   optional string purge_time = 10 [(leadseal.v1.column).timestamp = {}];
-
-  reserved 11;
-  reserved "token_mac";
 
   string expire_time = 12 [(leadseal.v1.column).timestamp = {}];
 

@@ -1,20 +1,63 @@
-CREATE TYPE "account_kind" AS ENUM ('KIND_UNSPECIFIED', 'HUMAN', 'SERVICE');
-
-CREATE TYPE "factor_kind" AS ENUM ('KIND_UNSPECIFIED', 'PASSWORD', 'TOTP', 'PASSKEY', 'RECOVERY_CODES', 'PROVIDER');
-
-CREATE TYPE "factor_state" AS ENUM ('STATE_UNSPECIFIED', 'PENDING', 'ACTIVE');
-
 CREATE TYPE "key_purpose" AS ENUM ('PURPOSE_UNSPECIFIED', 'ENCRYPTION', 'MAC', 'SIGNING');
 
 CREATE TYPE "key_algorithm" AS ENUM ('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA');
 
 CREATE TYPE "key_version_state" AS ENUM ('STATE_UNSPECIFIED', 'ENABLED', 'DISABLED');
 
-CREATE TABLE "pyrite_account" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "kind" "account_kind" NOT NULL, CONSTRAINT "pk_pyrite_account" PRIMARY KEY ("uid"));
+CREATE TYPE "account_kind" AS ENUM ('KIND_UNSPECIFIED', 'HUMAN', 'SERVICE');
+
+CREATE TYPE "factor_kind" AS ENUM ('KIND_UNSPECIFIED', 'PASSWORD', 'TOTP', 'PASSKEY', 'RECOVERY_CODES', 'PROVIDER');
+
+CREATE TYPE "factor_state" AS ENUM ('STATE_UNSPECIFIED', 'PENDING', 'ACTIVE');
+
+CREATE TABLE "pyrite_key" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(256), "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "purpose" "key_purpose" NOT NULL, "algorithm" "key_algorithm" NOT NULL, "rotation_period" bigint NOT NULL, "next_rotation_time" timestamptz, "primary_version" varchar(255) NOT NULL, "resource" varchar(256) COLLATE "C" NOT NULL, CONSTRAINT "pk_pyrite_key" PRIMARY KEY ("uid"));
+
+CREATE UNIQUE INDEX "ux_pyrite_key_resource" ON "pyrite_key" ("resource");
+
+CREATE UNIQUE INDEX "ux_pyrite_key_name" ON "pyrite_key" ("name");
+
+CREATE INDEX "ix_pyrite_key_parent" ON "pyrite_key" ("parent");
+
+COMMENT ON TABLE "pyrite_key" IS 'A key: the resource pyrite.dev/Key, with the standard fields and its own.';
+
+COMMENT ON COLUMN "pyrite_key"."parent" IS 'The name of the resource it is under, such as acme.dev/Organization:organizations/acme.';
+
+COMMENT ON COLUMN "pyrite_key"."rotation_period" IS 'How often the key gets a new primary version, in seconds; 0 for never.';
+
+COMMENT ON COLUMN "pyrite_key"."next_rotation_time" IS 'When the key next gets a new primary version, if it rotates.';
+
+COMMENT ON COLUMN "pyrite_key"."primary_version" IS 'The name of the version that encrypts and signs.';
+
+COMMENT ON COLUMN "pyrite_key"."resource" IS 'The key''s resource, which is also its object in OpenFGA, such as pyrite.dev/Key:keys/payments. Deleting the
+resource''s row in pyrite_node deletes the key.';
+
+CREATE TABLE "pyrite_key_version" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(255) COLLATE "C", "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "number" bigint NOT NULL, "state" "key_version_state" NOT NULL, "algorithm" "key_algorithm" NOT NULL, "public_key" jsonb, "sealed" bytea NOT NULL, "public_key_info" bytea, CONSTRAINT "pk_pyrite_key_version" PRIMARY KEY ("uid"));
+
+CREATE UNIQUE INDEX "ux_pyrite_key_version_name" ON "pyrite_key_version" ("name");
+
+CREATE UNIQUE INDEX "ux_pyrite_key_version_parent_number" ON "pyrite_key_version" ("parent", "number");
+
+COMMENT ON TABLE "pyrite_key_version" IS 'A version of a key: the resource pyrite.dev/KeyVersion, under its key.';
+
+COMMENT ON COLUMN "pyrite_key_version"."number" IS '1 for the first version of the key, and one more for each after it.';
+
+COMMENT ON COLUMN "pyrite_key_version"."public_key" IS 'The public key of a signing version, as a JWK; empty for the others.';
+
+COMMENT ON COLUMN "pyrite_key_version"."sealed" IS 'The key material, encrypted by the root key.';
+
+COMMENT ON COLUMN "pyrite_key_version"."public_key_info" IS 'The X.509 SubjectPublicKeyInfo of a signing version; empty for the others.';
+
+CREATE TABLE "pyrite_account" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "kind" "account_kind" NOT NULL, "resource" varchar(256) COLLATE "C" NOT NULL, CONSTRAINT "pk_pyrite_account" PRIMARY KEY ("uid"));
+
+CREATE UNIQUE INDEX "ux_pyrite_account_resource" ON "pyrite_account" ("resource");
 
 CREATE UNIQUE INDEX "ux_pyrite_account_name" ON "pyrite_account" ("name");
 
-COMMENT ON TABLE "pyrite_account" IS 'An account: the resource pyrite.dev/Account, whose principals are user:<id>.';
+COMMENT ON TABLE "pyrite_account" IS 'An account: the resource pyrite.dev/Account, whose subject is its resource, such as
+pyrite.dev/Account:accounts/anne.';
+
+COMMENT ON COLUMN "pyrite_account"."resource" IS 'The account''s resource, which is also its object in OpenFGA and its subject, such as
+pyrite.dev/Account:accounts/anne. Deleting the resource''s row in pyrite_node deletes the account.';
 
 CREATE TABLE "pyrite_identifier" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(255) COLLATE "C", "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "kind" varchar(16) NOT NULL, "value" varchar(320) COLLATE "C" NOT NULL, "verified" boolean NOT NULL, "primary" boolean NOT NULL, "claim" varchar(340) NOT NULL, CONSTRAINT "pk_pyrite_identifier" PRIMARY KEY ("uid"));
 
@@ -140,7 +183,7 @@ COMMENT ON COLUMN "pyrite_declaration"."model_id" IS 'The authorization model th
 
 COMMENT ON COLUMN "pyrite_declaration"."previous_id" IS 'The id of the declaration that was the latest when this one was written; empty for the first.';
 
-CREATE TABLE "pyrite_node" ("name" varchar(255) COLLATE "C" NOT NULL, "type" varchar(255) NOT NULL, "parent" varchar(255) COLLATE "C", "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "pk_pyrite_node" PRIMARY KEY ("name"));
+CREATE TABLE "pyrite_node" ("name" varchar(256) COLLATE "C" NOT NULL, "type" varchar(254) NOT NULL, "parent" varchar(256) COLLATE "C", "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "pk_pyrite_node" PRIMARY KEY ("name"));
 
 CREATE INDEX "ix_pyrite_node_parent" ON "pyrite_node" ("parent");
 
@@ -149,43 +192,18 @@ CREATE INDEX "ix_pyrite_node_type" ON "pyrite_node" ("type");
 COMMENT ON TABLE "pyrite_node" IS 'A resource that Pyrite knows: its type and the resource it is under. The application keeps the resource itself;
 Pyrite keeps where it sits, so that grants reach it from its parents and nothing is made twice.';
 
-COMMENT ON COLUMN "pyrite_node"."name" IS 'The resource''s name, such as projects/ledger.';
+COMMENT ON COLUMN "pyrite_node"."name" IS 'The resource''s name, which is also its object in OpenFGA, such as
+acme.dev/Project:organizations/acme/projects/ledger.';
 
 COMMENT ON COLUMN "pyrite_node"."type" IS 'The declared type, such as acme.dev/Project.';
 
 COMMENT ON COLUMN "pyrite_node"."parent" IS 'The name of the resource it is under; unset for a resource at the top.';
 
-CREATE TABLE "pyrite_key" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(255), "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "purpose" "key_purpose" NOT NULL, "algorithm" "key_algorithm" NOT NULL, "rotation_period" bigint NOT NULL, "next_rotation_time" timestamptz, "primary_version" varchar(255) NOT NULL, CONSTRAINT "pk_pyrite_key" PRIMARY KEY ("uid"));
+ALTER TABLE "pyrite_key" ADD CONSTRAINT "fk_pyrite_key_resource" FOREIGN KEY ("resource") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX "ux_pyrite_key_name" ON "pyrite_key" ("name");
+ALTER TABLE "pyrite_key_version" ADD CONSTRAINT "fk_pyrite_key_version_parent" FOREIGN KEY ("parent") REFERENCES "pyrite_key" ("name") ON DELETE CASCADE;
 
-CREATE INDEX "ix_pyrite_key_parent" ON "pyrite_key" ("parent");
-
-COMMENT ON TABLE "pyrite_key" IS 'A key: the resource pyrite.dev/Key, with the standard fields and its own.';
-
-COMMENT ON COLUMN "pyrite_key"."rotation_period" IS 'How often the key gets a new primary version, in seconds; 0 for never.';
-
-COMMENT ON COLUMN "pyrite_key"."next_rotation_time" IS 'When the key next gets a new primary version, if it rotates.';
-
-COMMENT ON COLUMN "pyrite_key"."primary_version" IS 'The name of the version that encrypts and signs.';
-
-CREATE TABLE "pyrite_key_version" ("uid" uuid NOT NULL DEFAULT gen_random_uuid(), "name" varchar(255) COLLATE "C" NOT NULL, "parent" varchar(255) COLLATE "C", "display_name" varchar(255), "labels" jsonb NOT NULL DEFAULT '{}', "revision" bigint NOT NULL DEFAULT 1, "create_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "update_time" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, "delete_time" timestamptz, "purge_time" timestamptz, "number" bigint NOT NULL, "state" "key_version_state" NOT NULL, "algorithm" "key_algorithm" NOT NULL, "public_key" jsonb, "sealed" bytea NOT NULL, "public_key_info" bytea, CONSTRAINT "pk_pyrite_key_version" PRIMARY KEY ("uid"));
-
-CREATE UNIQUE INDEX "ux_pyrite_key_version_name" ON "pyrite_key_version" ("name");
-
-CREATE UNIQUE INDEX "ux_pyrite_key_version_parent_number" ON "pyrite_key_version" ("parent", "number");
-
-COMMENT ON TABLE "pyrite_key_version" IS 'A version of a key: the resource pyrite.dev/KeyVersion, under its key.';
-
-COMMENT ON COLUMN "pyrite_key_version"."number" IS '1 for the first version of the key, and one more for each after it.';
-
-COMMENT ON COLUMN "pyrite_key_version"."public_key" IS 'The public key of a signing version, as a JWK; empty for the others.';
-
-COMMENT ON COLUMN "pyrite_key_version"."sealed" IS 'The key material, encrypted by the root key.';
-
-COMMENT ON COLUMN "pyrite_key_version"."public_key_info" IS 'The X.509 SubjectPublicKeyInfo of a signing version; empty for the others.';
-
-ALTER TABLE "pyrite_account" ADD CONSTRAINT "fk_pyrite_account_name" FOREIGN KEY ("name") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE;
+ALTER TABLE "pyrite_account" ADD CONSTRAINT "fk_pyrite_account_resource" FOREIGN KEY ("resource") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE;
 
 ALTER TABLE "pyrite_identifier" ADD CONSTRAINT "fk_pyrite_identifier_parent" FOREIGN KEY ("parent") REFERENCES "pyrite_account" ("name") ON DELETE CASCADE;
 
@@ -201,9 +219,25 @@ ALTER TABLE "pyrite_exchange" ADD CONSTRAINT "fk_pyrite_exchange_account" FOREIG
 
 ALTER TABLE "pyrite_node" ADD CONSTRAINT "fk_pyrite_node_parent" FOREIGN KEY ("parent") REFERENCES "pyrite_node" ("name") ON DELETE RESTRICT;
 
-ALTER TABLE "pyrite_key" ADD CONSTRAINT "fk_pyrite_key_name" FOREIGN KEY ("name") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE;
+CREATE FUNCTION "rw_pyrite_key"() RETURNS trigger LANGUAGE plpgsql AS $leadseal$
+BEGIN
+  NEW."revision" := (OLD."revision" + 1);
+  NEW."update_time" := CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$leadseal$;
 
-ALTER TABLE "pyrite_key_version" ADD CONSTRAINT "fk_pyrite_key_version_parent" FOREIGN KEY ("parent") REFERENCES "pyrite_key" ("name") ON DELETE CASCADE;
+CREATE TRIGGER "rw_pyrite_key" BEFORE UPDATE ON "pyrite_key" FOR EACH ROW EXECUTE FUNCTION "rw_pyrite_key"();
+
+CREATE FUNCTION "rw_pyrite_key_version"() RETURNS trigger LANGUAGE plpgsql AS $leadseal$
+BEGIN
+  NEW."revision" := (OLD."revision" + 1);
+  NEW."update_time" := CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$leadseal$;
+
+CREATE TRIGGER "rw_pyrite_key_version" BEFORE UPDATE ON "pyrite_key_version" FOR EACH ROW EXECUTE FUNCTION "rw_pyrite_key_version"();
 
 CREATE FUNCTION "rw_pyrite_account"() RETURNS trigger LANGUAGE plpgsql AS $leadseal$
 BEGIN
@@ -244,23 +278,3 @@ END;
 $leadseal$;
 
 CREATE TRIGGER "rw_pyrite_session" BEFORE UPDATE ON "pyrite_session" FOR EACH ROW EXECUTE FUNCTION "rw_pyrite_session"();
-
-CREATE FUNCTION "rw_pyrite_key"() RETURNS trigger LANGUAGE plpgsql AS $leadseal$
-BEGIN
-  NEW."revision" := (OLD."revision" + 1);
-  NEW."update_time" := CURRENT_TIMESTAMP;
-  RETURN NEW;
-END;
-$leadseal$;
-
-CREATE TRIGGER "rw_pyrite_key" BEFORE UPDATE ON "pyrite_key" FOR EACH ROW EXECUTE FUNCTION "rw_pyrite_key"();
-
-CREATE FUNCTION "rw_pyrite_key_version"() RETURNS trigger LANGUAGE plpgsql AS $leadseal$
-BEGIN
-  NEW."revision" := (OLD."revision" + 1);
-  NEW."update_time" := CURRENT_TIMESTAMP;
-  RETURN NEW;
-END;
-$leadseal$;
-
-CREATE TRIGGER "rw_pyrite_key_version" BEFORE UPDATE ON "pyrite_key_version" FOR EACH ROW EXECUTE FUNCTION "rw_pyrite_key_version"();

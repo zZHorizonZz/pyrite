@@ -16,8 +16,9 @@ final class NegativePeriod extends KeyModule {
   protected void run() {
     preparePayments();
     callAndStopOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKey("organizations/acme", "invalid", Algorithm.AES256_GCM,
-            Duration.ofSeconds(-1))),
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new CreateKey("acme.dev/Organization:organizations/acme", "invalid", Algorithm.AES256_GCM,
+                Duration.ofSeconds(-1))),
         Requirement.KEY_CREATE);
   }
 }

@@ -19,9 +19,11 @@ final class AccountOwner extends AccountModule {
   protected void run() {
     prepareAnne();
     call(new CreateAccountOfKind("mallory", "HUMAN"));
-    call(new Check(ANNE, "accounts/anne", "owner"));
+    call(new Check(ANNE, "pyrite.dev/Account:accounts/anne", "owner"));
     callAndContinueOnFailure(new ExpectCheckAnswer(true), Requirement.ACCOUNT_OWNER);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new GetAccount("user:mallory",
-        "accounts/anne")), Requirement.ACCOUNT_OWNER);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new GetAccount("pyrite.dev/Account:accounts/mallory",
+            "accounts/anne")),
+        Requirement.ACCOUNT_OWNER);
   }
 }

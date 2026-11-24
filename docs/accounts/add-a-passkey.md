@@ -46,7 +46,8 @@ one in place of the password.
 1. Start the enrolment as the account, and take the creation options from its challenge:
 
    ```java
-   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
+   Exchange enrolment = authentication.startExchange(StartExchangeRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setDefinition("enrol-passkey").build()).await();
    String options = enrolment.getChallenges(0).getParameters().unpack(PasskeyOptions.class).getOptions();
    ```

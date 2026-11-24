@@ -1,18 +1,23 @@
 # Pyrite's types
 
 Pyrite has two types of its own, `pyrite.dev/Key` and `pyrite.dev/Account`. You declare them with their relations,
-permissions and parents, and leave `plural` empty. Pyrite keeps their resources, and the records that each holds: the
+permissions and parents. Pyrite keeps their resources, and the records that each holds: the
 versions of a key, and the identifiers, factors and sessions of an account. Those records are not declared types;
 each call on them checks a relation on their key or their account.
 
-| Type or record       | Name                    | Table                | Under             | Service          |
-| -------------------- | ----------------------- | -------------------- | ----------------- | ---------------- |
-| `pyrite.dev/Key`     | `keys/<id>`             | `pyrite_key`         | A declared parent | `Cryptography`   |
-| Key version          | `keyVersions/<key>-<n>` | `pyrite_key_version` | Its key           | `Cryptography`   |
-| `pyrite.dev/Account` | `accounts/<id>`         | `pyrite_account`     | Nothing           | `Authentication` |
-| Identifier           | `identifiers/<id>`      | `pyrite_identifier`  | Its account       | `Authentication` |
-| Factor               | `factors/<id>`          | `pyrite_factor`      | Its account       | `Authentication` |
-| Session              | `sessions/<id>`         | `pyrite_session`     | Its account       | `Authentication` |
+| Type or record       | Name                    | Resource                           | Table                | Under             | Service          |
+| -------------------- | ----------------------- | ---------------------------------- | -------------------- | ----------------- | ---------------- |
+| `pyrite.dev/Key`     | `keys/<id>`             | `pyrite.dev/Key:keys/<id>`         | `pyrite_key`         | A declared parent | `Cryptography`   |
+| Key version          | `keyVersions/<key>-<n>` | None                               | `pyrite_key_version` | Its key           | `Cryptography`   |
+| `pyrite.dev/Account` | `accounts/<id>`         | `pyrite.dev/Account:accounts/<id>` | `pyrite_account`     | Nothing           | `Authentication` |
+
+A key and an account have a name in their own service, such as `keys/payments`, and a resource in the access service,
+which is that name under the type, such as `pyrite.dev/Key:keys/payments`. Grant and check relations on the resource.
+The id, the last segment of the name, has 1 to 63 lowercase letters, digits and hyphens, starts with a letter and does
+not end with a hyphen.
+| Identifier | `identifiers/<id>` | `pyrite_identifier` | Its account | `Authentication` |
+| ---------- | ------------------ | ------------------- | ----------- | ---------------- |
+| Session    | `sessions/<id>`    | `pyrite_session`    | Its account | `Authentication` |
 
 Keys and accounts are known resources, as your own are: `Check`, `CreateGrant` and the other methods of the access
 service work on them, with the same rules of ids. `DeleteObject` of a key deletes it with its versions, and
@@ -30,7 +35,6 @@ types {
   name: "pyrite.dev/Key"
   parents: "acme.dev/Organization"
   definition {
-    type: "key"
     relations {
       key: "admin"
       value {
@@ -49,12 +53,12 @@ types {
     relations { key: "signer" value { union { child { this {} } child { computed_userset { relation: "admin" } } } } }
     relations { key: "verifier" value { union { child { this {} } child { computed_userset { relation: "signer" } } } } }
     metadata {
-      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
-      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
-      relations { key: "encrypter" value { directly_related_user_types { type: "user" } } }
-      relations { key: "decrypter" value { directly_related_user_types { type: "user" } } }
-      relations { key: "signer" value { directly_related_user_types { type: "user" } } }
-      relations { key: "verifier" value { directly_related_user_types { type: "user" } } }
+      relations { key: "admin" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "encrypter" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "decrypter" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "signer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "verifier" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { create: "admin" grant: "admin" }
@@ -78,18 +82,18 @@ these relations:
 `CreateKey` takes the `key_id`, the `parent`, the `algorithm` and the `rotation_period`, and gives the creator the
 type's `creator` relation. It gives a `Key`:
 
-| Field                | Type                        | Description                                                                                     |
-| -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| `name`               | `string`                    | The name, such as `keys/payments`                                                               |
-| `parent`             | `string`                    | The resource it is under; empty for a key at the top                                            |
-| `purpose`            | `Key.Purpose`               | `ENCRYPTION`, `MAC` or `SIGNING`, which the algorithm decides                                   |
-| `algorithm`          | `Algorithm`                 | The algorithm; see the table below                                                              |
+| Field                | Type                        | Description                                                                                    |
+| -------------------- | --------------------------- | ---------------------------------------------------------------------------------------------- |
+| `name`               | `string`                    | The name, such as `keys/payments`                                                              |
+| `parent`             | `string`                    | The resource it is under; empty for a key at the top                                           |
+| `purpose`            | `Key.Purpose`               | `ENCRYPTION`, `MAC` or `SIGNING`, which the algorithm decides                                  |
+| `algorithm`          | `Algorithm`                 | The algorithm; see the table below                                                             |
 | `rotation_period`    | `google.protobuf.Duration`  | How often the key rotates on its own: whole seconds, from a minute to 50 years; zero for never |
-| `next_rotation_time` | `google.protobuf.Timestamp` | When the key rotates next; unset when it does not rotate on its own                             |
-| `primary_version`    | `string`                    | The version that encrypts and signs, such as `keyVersions/payments-1`                           |
-| `revision`           | `int64`                     | The revision that `UpdateKey` names                                                             |
-| `create_time`        | `google.protobuf.Timestamp` | When the key was created                                                                        |
-| `update_time`        | `google.protobuf.Timestamp` | When the key last changed                                                                       |
+| `next_rotation_time` | `google.protobuf.Timestamp` | When the key rotates next; unset when it does not rotate on its own                            |
+| `primary_version`    | `string`                    | The version that encrypts and signs, such as `keyVersions/payments-1`                          |
+| `revision`           | `int64`                     | The revision that `UpdateKey` names                                                            |
+| `create_time`        | `google.protobuf.Timestamp` | When the key was created                                                                       |
+| `update_time`        | `google.protobuf.Timestamp` | When the key last changed                                                                      |
 
 `UpdateKey` changes only `rotation_period`.
 
@@ -123,16 +127,15 @@ No call gives the material of a version. Pyrite keeps it sealed by the root key.
 
 ## pyrite.dev/Account
 
-The declaration has the relations `owner`, `admin` and `viewer`, and `owner` takes `user` directly, without a
-condition or a wildcard. Pyrite grants each account `owner` on itself when it creates the account. The singular name
-is `user`, so `accounts/anne` is the principal `user:anne`. Declare the type without parents: `CreateAccount` names no
-parent, so it fails for a type with parents. For example:
+The declaration has the relations `owner`, `admin` and `viewer`, and `owner` takes `pyrite.dev/Account` directly,
+without a condition or a wildcard. Pyrite grants each account `owner` on itself when it creates the account. An account
+calls as its resource, so `accounts/anne` is the principal `pyrite.dev/Account:accounts/anne`. Declare the type without
+parents: `CreateAccount` names no parent, so it fails for a type with parents. For example:
 
 ```textproto
 types {
   name: "pyrite.dev/Account"
   definition {
-    type: "user"
     relations { key: "owner" value { this {} } }
     relations {
       key: "admin"
@@ -143,9 +146,9 @@ types {
       value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
     }
     metadata {
-      relations { key: "owner" value { directly_related_user_types { type: "user" } } }
-      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
-      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+      relations { key: "owner" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "admin" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { grant: "admin" }

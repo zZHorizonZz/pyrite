@@ -20,7 +20,7 @@ final class KeyIdBorrowing extends KeyModule {
   @Override
   protected void run() {
     prepareOauth();
-    call(new CreateKey("organizations/acme", "other", Algorithm.ES256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "other", Algorithm.ES256));
     call(new SignToken(ANNE, "keys/other", 600, "at+jwt"));
     call(new ForgeToken(TokenForgery.OAUTH_KEY_ID));
     call(new VerifyToken(ANNE, "keys/oauth"));

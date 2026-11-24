@@ -22,7 +22,7 @@ final class SigningRelation extends KeyModule {
     call(new SignToken(ANNE, "keys/oauth", 600, "at+jwt"));
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new VerifyToken(BOB, "keys/oauth")),
         Requirement.KEY_PERMISSION);
-    call(new GrantRelation(ANNE, "keys/oauth", "verifier", "user:*"));
+    call(new GrantRelation(ANNE, "pyrite.dev/Key:keys/oauth", "verifier", "pyrite.dev/Account:*"));
     callAndContinueOnFailure(new VerifyToken(BOB, "keys/oauth"), Requirement.KEY_PERMISSION);
     callAndContinueOnFailure(new ExpectSignatureVerification(""), Requirement.KEY_PERMISSION);
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new SignToken(BOB, "keys/oauth", 600, "at+jwt")),

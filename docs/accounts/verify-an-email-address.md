@@ -20,7 +20,8 @@ Prove that a person receives mail at an address of their account, and mark the a
 2. Start the exchange as the account, with the address:
 
    ```java
-   Exchange exchange = authentication.startExchange(StartExchangeRequest.newBuilder().setSubject("user:anne")
+   Exchange exchange = authentication.startExchange(StartExchangeRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/anne")
        .setDefinition("verify").setIdentifierKind("email").setIdentifier("anne@acme.dev").build()).await();
    ```
 

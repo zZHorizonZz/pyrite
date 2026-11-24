@@ -19,7 +19,7 @@ final class OldSigningVersion extends KeyModule {
   @Override
   protected void run() {
     prepareOrganization();
-    call(new CreateKey("organizations/acme", "codes", Algorithm.HMAC_SHA256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "codes", Algorithm.HMAC_SHA256));
     call(new SignData(ANNE, "keys/codes", "482913", Value.SIGNATURE));
     call(new RotateKey(ANNE, "keys/codes"));
     callAndStopOnFailure(new VerifyData(ANNE, "keys/codes", "482913", Value.SIGNATURE, ""), Requirement.KEY_ROTATION);

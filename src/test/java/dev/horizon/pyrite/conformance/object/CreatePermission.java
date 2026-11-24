@@ -15,9 +15,10 @@ final class CreatePermission extends AccessModule {
 
   @Override
   protected void run() {
-    call(new CreateObject(ANNE, "organizations/acme", ""));
+    call(new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", ""));
     callAndStopOnFailure(
-        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new CreateObject(BOB, "projects/ledger", "organizations/acme")),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED,
+            new CreateObject(BOB, "acme.dev/Project:projects/ledger", "acme.dev/Organization:organizations/acme")),
         Requirement.OBJECT_PERMISSION);
   }
 }

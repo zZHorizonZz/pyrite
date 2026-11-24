@@ -14,7 +14,6 @@ import dev.horizon.spectrum.openfga.v1.TupleKey;
 import io.vertx.core.Future;
 import io.vertx.grpc.common.GrpcStatus;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * The tree of resources: each a node of the database under its parent, and an object of OpenFGA whose relation
@@ -23,8 +22,6 @@ import java.util.regex.Pattern;
 public final class ResourceTree {
 
   private static final System.Logger LOGGER = System.getLogger(ResourceTree.class.getName());
-
-  private static final Pattern ID = Pattern.compile("[a-z]([a-z0-9-]{0,61}[a-z0-9])?");
 
   private final TypeSystem types;
   private final OpenFga openFga;
@@ -50,24 +47,27 @@ public final class ResourceTree {
    * the grant of the creator to OpenFGA.
    *
    * @param creator the subject that makes the resource known
-   * @param name the name, such as {@code projects/ledger}
+   * @param name the name, which is the resource's object in OpenFGA, such as
+   * {@code acme.dev/Project:organizations/acme/projects/ledger}
    * @param parent the parent's name; empty for a type without parents
    * @param context the values that the conditions of grants read, for the check of the create permission
-   * @return the resource, or a failure with {@code INVALID_ARGUMENT} for a name of no declared type, an id that does
-   * not match, or a missing or wrong parent, with {@code NOT_FOUND} for a parent that is not known, with
-   * {@code PERMISSION_DENIED} without the create permission, and with {@code ALREADY_EXISTS} when the name is known
+   * @return the resource, or a failure with {@code INVALID_ARGUMENT} for a name that is not an object that OpenFGA
+   * takes, a name of no declared type, or a missing or wrong parent, with {@code NOT_FOUND} for a parent that is not
+   * known, with {@code PERMISSION_DENIED} without the create permission, and with {@code ALREADY_EXISTS} when the name
+   * is known
    */
   public Future<Resource> create(Subject creator, String name, String parent, Struct context) {
+    if (ObjectRef.parse(name).isEmpty()) {
+      return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The name '" + name + "' is not"
+          + " of the form type:id: a type that matches " + TypeSystem.TYPE_NAME.pattern() + ", and an id without :,"
+          + " #, white space or control characters, in at most " + ObjectRef.MAX_LENGTH + " characters."));
+    }
     Optional<ResourceType> declared = types.typeOf(name);
     if (declared.isEmpty()) {
       return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The name " + name + " is not of"
-          + " a declared type: its first segment is no type's plural."));
+          + " a declared type."));
     }
     ResourceType type = declared.get();
-    if (!ID.matcher(type.id(name)).matches()) {
-      return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The id of " + name + " does not"
-          + " match " + ID.pattern() + "."));
-    }
     Resource resource = new Resource(this, type, name);
     return place(type, parent)
         .compose(above -> above.isEmpty() ? Future.succeededFuture(above)
@@ -128,7 +128,7 @@ public final class ResourceTree {
   /**
    * Finds a resource.
    *
-   * @param name the name of the resource, such as {@code projects/ledger}
+   * @param name the name of the resource, such as {@code acme.dev/Project:organizations/acme/projects/ledger}
    * @return the resource, or empty when the name is of no declared type, or not known
    */
   public Future<Optional<Resource>> get(String name) {
@@ -141,7 +141,7 @@ public final class ResourceTree {
   /**
    * Finds a resource that is known.
    *
-   * @param name the name of the resource, such as {@code projects/ledger}
+   * @param name the name of the resource, such as {@code acme.dev/Project:organizations/acme/projects/ledger}
    * @return the resource, or a failure with {@code NOT_FOUND} when the name is of no declared type, or not known
    */
   public Future<Resource> require(String name) {
@@ -152,20 +152,21 @@ public final class ResourceTree {
   /**
    * Gives the grant that a tuple holds.
    *
-   * @param tuple the tuple, such as {@code user:bob viewer project:ledger}
-   * @return the grant on the resource of the object, such as {@code projects/ledger}, or empty for a tuple on an object
-   * of no declared type
+   * @param tuple the tuple, such as
+   * {@code pyrite.dev/Account:accounts/bob viewer acme.dev/Project:organizations/acme/projects/ledger}
+   * @return the grant on the resource whose name is the tuple's object, or empty for a tuple on an object of no
+   * declared type
    */
   public Optional<Grant> grant(TupleKey tuple) {
-    return ObjectRef.parse(tuple.getObject()).flatMap(object -> types.singular(object.type()).map(type -> {
-      Grant.Builder grant = Grant.newBuilder().setObject(type.resource(object.id())).setRelation(tuple.getRelation())
+    return types.typeOf(tuple.getObject()).map(type -> {
+      Grant.Builder grant = Grant.newBuilder().setObject(tuple.getObject()).setRelation(tuple.getRelation())
           .setGrantee(tuple.getUser());
       if (tuple.hasCondition()) {
         grant.setCondition(Condition.newBuilder().setName(tuple.getCondition().getName())
             .setContext(tuple.getCondition().getContext()));
       }
       return grant.build();
-    }));
+    });
   }
 
   /**

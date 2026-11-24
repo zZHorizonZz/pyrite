@@ -19,7 +19,7 @@ final class CiphertextOfOtherKey extends KeyModule {
   @Override
   protected void run() {
     preparePayments();
-    call(new CreateKey("organizations/acme", "billing", Algorithm.AES256_GCM));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "billing", Algorithm.AES256_GCM));
     call(new Encrypt(ANNE, "keys/payments", "card", "a"));
     callAndStopOnFailure(
         new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new Decrypt(ANNE, "keys/billing", Value.CIPHERTEXT, "a")),

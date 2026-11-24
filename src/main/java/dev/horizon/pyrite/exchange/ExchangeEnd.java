@@ -4,7 +4,6 @@ import com.google.protobuf.Any;
 import dev.horizon.pyrite.PyriteException;
 import dev.horizon.pyrite.authentication.v1.ProviderAccount;
 import dev.horizon.pyrite.authentication.v1.Result;
-import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.identity.AccountService;
 import dev.horizon.pyrite.identity.FactorService;
 import dev.horizon.pyrite.identity.IdentifierService;
@@ -94,7 +93,7 @@ final class ExchangeEnd {
           + " creates an account, but no answer named a provider account."));
     }
     String id = "u" + UUID.randomUUID().toString().replace("-", "");
-    return accounts.create(new Subject(TypeSystem.USER, id), id,
+    return accounts.create(Subject.account(AccountService.PREFIX + id), id,
         dev.horizon.pyrite.authentication.v1.Account.Kind.HUMAN)
         .compose(account -> factors.enrolProvider(account.getName(), provider.get())
             .compose(pending -> factors.activate(pending.getName())).map(active -> {

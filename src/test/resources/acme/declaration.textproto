@@ -3,9 +3,7 @@
 
 types {
   name: "acme.dev/Organization"
-  plural: "organizations"
   definition {
-    type: "organization"
     relations { key: "admin" value { this {} } }
     relations {
       key: "member"
@@ -20,26 +18,26 @@ types {
       }
     }
     metadata {
-      relations { key: "binding" value { directly_related_user_types { type: "binding" } } }
+      relations { key: "binding" value { directly_related_user_types { type: "acme.dev/Binding" } } }
       relations {
         key: "admin"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
       relations {
         key: "member"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
       relations {
         key: "blocked"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
     }
@@ -51,10 +49,8 @@ types {
 
 types {
   name: "acme.dev/Group"
-  plural: "groups"
   parents: "acme.dev/Organization"
   definition {
-    type: "group"
     relations { key: "member" value { this {} } }
     relations {
       key: "manager"
@@ -78,11 +74,11 @@ types {
       relations {
         key: "member"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
-      relations { key: "manager" value { directly_related_user_types { type: "user" } } }
+      relations { key: "manager" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { create: "admin" grant: "manager" }
@@ -92,10 +88,8 @@ types {
 
 types {
   name: "acme.dev/Project"
-  plural: "projects"
   parents: "acme.dev/Organization"
   definition {
-    type: "project"
     relations { key: "owner" value { this {} } }
     relations {
       key: "editor"
@@ -159,35 +153,35 @@ types {
       }
     }
     metadata {
-      relations { key: "binding" value { directly_related_user_types { type: "binding" } } }
+      relations { key: "binding" value { directly_related_user_types { type: "acme.dev/Binding" } } }
       relations {
         key: "owner"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
       relations {
         key: "editor"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
-          directly_related_user_types { type: "user" condition: "not_expired" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" condition: "not_expired" }
         }
       }
       relations {
         key: "viewer"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
-          directly_related_user_types { type: "user" wildcard {} }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" wildcard {} }
         }
       }
       relations {
         key: "blocked"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
     }
@@ -199,17 +193,15 @@ types {
 
 types {
   name: "acme.dev/Role"
-  plural: "roles"
   parents: "acme.dev/Organization"
   definition {
-    type: "role"
     relations {
       key: "admin"
       value { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
     }
     relations { key: "can_manage_stock" value { this {} } }
     metadata {
-      relations { key: "can_manage_stock" value { directly_related_user_types { type: "user" wildcard {} } } }
+      relations { key: "can_manage_stock" value { directly_related_user_types { type: "pyrite.dev/Account" wildcard {} } } }
     }
   }
   permissions { create: "admin" grant: "admin" }
@@ -218,10 +210,8 @@ types {
 
 types {
   name: "acme.dev/Binding"
-  plural: "bindings"
   parents: "acme.dev/Organization"
   definition {
-    type: "binding"
     relations {
       key: "admin"
       value { tuple_to_userset { tupleset { relation: "parent" } computed_userset { relation: "admin" } } }
@@ -238,12 +228,12 @@ types {
       }
     }
     metadata {
-      relations { key: "role" value { directly_related_user_types { type: "role" } } }
+      relations { key: "role" value { directly_related_user_types { type: "acme.dev/Role" } } }
       relations {
         key: "member"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
     }
@@ -256,7 +246,6 @@ types {
   name: "pyrite.dev/Key"
   parents: "acme.dev/Organization"
   definition {
-    type: "key"
     relations {
       key: "admin"
       value {
@@ -293,28 +282,28 @@ types {
       value { union { child { this {} } child { computed_userset { relation: "signer" } } } }
     }
     metadata {
-      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
-      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+      relations { key: "admin" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
       relations {
         key: "encrypter"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
       relations {
         key: "decrypter"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "group" relation: "member" }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "acme.dev/Group" relation: "member" }
         }
       }
-      relations { key: "signer" value { directly_related_user_types { type: "user" } } }
+      relations { key: "signer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
       relations {
         key: "verifier"
         value {
-          directly_related_user_types { type: "user" }
-          directly_related_user_types { type: "user" wildcard {} }
+          directly_related_user_types { type: "pyrite.dev/Account" }
+          directly_related_user_types { type: "pyrite.dev/Account" wildcard {} }
         }
       }
     }
@@ -327,7 +316,6 @@ types {
 types {
   name: "pyrite.dev/Account"
   definition {
-    type: "user"
     relations { key: "owner" value { this {} } }
     relations {
       key: "admin"
@@ -338,9 +326,9 @@ types {
       value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
     }
     metadata {
-      relations { key: "owner" value { directly_related_user_types { type: "user" } } }
-      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
-      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+      relations { key: "owner" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "admin" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { grant: "admin" }

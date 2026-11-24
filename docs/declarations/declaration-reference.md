@@ -34,18 +34,17 @@ A condition is OpenFGA's: a `name`, a CEL `expression`, and its `parameters` wit
 
 ## Type
 
-| Field         | Type                        | Description                                                                                                        |
-| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `name`        | `string`                    | The name of the type, such as `acme.dev/Project`                                                                   |
-| `plural`      | `string`                    | The first segment of the names of its resources, such as `projects`; empty for Pyrite's types                      |
-| `parents`     | repeated `string`           | The types that its resources sit under; none for a type at the top                                                 |
-| `definition`  | `openfga.v1.TypeDefinition` | The OpenFGA type: its singular name in `type`, its relations, and in `metadata` the types that each relation takes |
-| `permissions` | `Permissions`               | The relations that Pyrite checks                                                                                   |
-| `grantable`   | repeated `string`           | The relations that the access service grants and revokes                                                           |
-| `creator`     | `string`                    | The relation that the creator of a resource is granted on it; empty for none                                       |
+| Field         | Type                        | Description                                                                                                               |
+| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `string`                    | The name of the type, such as `acme.dev/Project`, which is also its type in OpenFGA and starts the names of its resources |
+| `parents`     | repeated `string`           | The types that its resources sit under; none for a type at the top                                                        |
+| `definition`  | `openfga.v1.TypeDefinition` | The OpenFGA type, with an empty `type`: its relations, and in `metadata` the types that each relation takes, by name      |
+| `permissions` | `Permissions`               | The relations that Pyrite checks                                                                                          |
+| `grantable`   | repeated `string`           | The relations that the access service grants and revokes                                                                  |
+| `creator`     | `string`                    | The relation that the creator of a resource is granted on it; empty for none                                              |
 
-Pyrite adds the relation `parent` to the OpenFGA type of each type that has parents. It takes the singular names of
-the parent types directly. `pyrite.dev/Key` and `pyrite.dev/Account` have their own requirements; see
+Pyrite adds the relation `parent` to the OpenFGA type of each type that has parents. It takes the parent types
+directly. `pyrite.dev/Key` and `pyrite.dev/Account` have their own requirements; see
 [Pyrite's types](pyrite-types.md).
 
 ## Permissions
@@ -127,50 +126,44 @@ A value is of a kind when it meets `match`, and its normalized value meets `matc
 
 ## Rules of types
 
-| Rule                                                                                                         | Message                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A type has a `name`.                                                                                         | `A type has no name.`                                                                                                                              |
-| No two types have the same name.                                                                             | `The type <type> is declared twice.`                                                                                                               |
-| A name that starts with `pyrite.dev/` is `pyrite.dev/Key` or `pyrite.dev/Account`.                           | `The type <type> is Pyrite's; a declaration does not declare it.`                                                                                  |
-| `pyrite.dev/Key` and `pyrite.dev/Account` leave `plural` empty.                                              | `The type <type> is Pyrite's own, which names its resources itself; its declaration leaves plural empty.`                                          |
-| The singular name, `definition.type`, matches `[a-z][a-z0-9_]{0,49}`.                                        | `The type <type> has the singular name <singular>, which does not match [a-z][a-z0-9_]{0,49}.`                                                     |
-| No two types have the same singular name.                                                                    | `The type <type> has the singular name <singular>, which another type has.`                                                                        |
-| Only `pyrite.dev/Account` has the singular name `user`.                                                      | `The type <type> has the singular name user, which is Pyrite's accounts'.`                                                                         |
-| `pyrite.dev/Account` has the singular name `user`.                                                           | `The type pyrite.dev/Account has the singular name <singular>, but its singular name is user: subjects of calls, such as user:anne, are accounts.` |
-| `plural` matches `[a-z][a-zA-Z0-9]{0,62}`.                                                                   | `The type <type> has the plural name <plural>, which does not match [a-z][a-zA-Z0-9]{0,62}.`                                                       |
-| No two types have the same plural. `pyrite.dev/Key` takes `keys`, and `pyrite.dev/Account` takes `accounts`. | `The type <type> has the plural name <plural>, which another type has.`                                                                            |
-| Each parent is a declared type.                                                                              | `The type <type> has the parent type <parent>, which is not declared.`                                                                             |
+| Rule                                                                               | Message                                                                                                                            |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| A type has a `name`.                                                               | `A type has no name.`                                                                                                              |
+| No two types have the same name.                                                   | `The type <type> is declared twice.`                                                                                               |
+| A name that starts with `pyrite.dev/` is `pyrite.dev/Key` or `pyrite.dev/Account`. | `The type <type> is Pyrite's; a declaration does not declare it.`                                                                  |
+| A name has 1 to 254 characters, without `:`, `#`, `@` or white space.              | `The type <type> has a name that does not match [^:#@\s]{1,254}.`                                                                  |
+| `definition.type` is empty: the name is the type in OpenFGA.                       | `The type <type> sets definition.type to <value>; leave it empty, because the type's name is its type in the authorization model.` |
+| Each parent is a declared type.                                                    | `The type <type> has the parent type <parent>, which is not declared.`                                                             |
 
 ## Rules of relations
 
-| Rule                                                                                                                                                                                                               | Message                                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| A relation name matches `[a-z][a-z0-9_]{0,49}`.                                                                                                                                                                    | `The type <type> has the relation <relation>, which does not match [a-z][a-z0-9_]{0,49}.`                                         |
-| No relation is named `parent`.                                                                                                                                                                                     | `The type <type> declares the relation parent, which is Pyrite's: it holds the resource that a resource is under.`                |
-| `metadata` describes only relations of the type.                                                                                                                                                                   | `The type <type> has metadata for <name>, which is not a relation.`                                                               |
-| A relation has direct types in `metadata` exactly when its rewrite has `this`, anywhere in it.                                                                                                                     | `The relation <relation> of the type <type> has directly related types exactly when its rewrite has this.`                        |
-| A direct type `user` names no relation.                                                                                                                                                                            | `The type <type> grants <relation> to user#<name>, but the type user has no relations.`                                           |
-| Any other direct type is a declared singular name.                                                                                                                                                                 | `The type <type> grants <relation> to the type <singular>, which is not declared.`                                                |
-| A direct type with a relation, such as `group#member`, names a relation of that type.                                                                                                                              | `The type <type> grants <relation> to <singular>#<name>, which is not a relation of that type.`                                   |
-| A direct type's condition is a declared condition.                                                                                                                                                                 | `The type <type> grants <relation> with the condition <condition>, which is not declared.`                                        |
-| A `computed_userset` names a relation of the same type.                                                                                                                                                            | `The relation <relation> of the type <type> names <name>, which is not a relation of the type.`                                   |
-| A `tuple_to_userset` through `parent` is on a type with parents.                                                                                                                                                   | `The relation <relation> of the type <type> reads <name> from parent, but the type has no parents.`                               |
-| A `tuple_to_userset` through another relation goes through a relation of the type with direct types.                                                                                                               | `The relation <relation> of the type <type> reads <name> from <tupleset>, which is not a relation of the type with direct types.` |
-| Each type that a `tuple_to_userset` reads from, each parent type or each direct type of the tupleset, has the relation that it reads. The direct type `user` is `pyrite.dev/Account`, when the declaration has it. | `The relation <relation> of the type <type> reads <name> from <tupleset>, but the type <target> has no relation <name>.`          |
-| Each key of `conditions` is the `name` of its condition.                                                                                                                                                           | `The condition <key> is named <name>.`                                                                                            |
+| Rule                                                                                                                                  | Message                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| A relation name has 1 to 50 characters, without `:`, `#`, `@` or white space.                                                         | `The type <type> has the relation <relation>, whose name does not match [^:#@\s]{1,50}.`                                          |
+| No relation is named `parent`.                                                                                                        | `The type <type> declares the relation parent, which is Pyrite's: it holds the resource that a resource is under.`                |
+| `metadata` describes only relations of the type.                                                                                      | `The type <type> has metadata for <name>, which is not a relation.`                                                               |
+| A relation has direct types in `metadata` exactly when its rewrite has `this`, anywhere in it.                                        | `The relation <relation> of the type <type> has directly related types exactly when its rewrite has this.`                        |
+| A direct type is a declared type, or `pyrite.dev/Account`, which the model has without relations when it is not declared.             | `The type <type> grants <relation> to the type <direct>, which is not declared.`                                                  |
+| A direct type with a relation, such as `acme.dev/Group#member`, names a relation of that type.                                        | `The type <type> grants <relation> to <direct>#<name>, which is not a relation of that type.`                                     |
+| A direct type's condition is a declared condition.                                                                                    | `The type <type> grants <relation> with the condition <condition>, which is not declared.`                                        |
+| A `computed_userset` names a relation of the same type.                                                                               | `The relation <relation> of the type <type> names <name>, which is not a relation of the type.`                                   |
+| A `tuple_to_userset` through `parent` is on a type with parents.                                                                      | `The relation <relation> of the type <type> reads <name> from parent, but the type has no parents.`                               |
+| A `tuple_to_userset` through another relation goes through a relation of the type with direct types.                                  | `The relation <relation> of the type <type> reads <name> from <tupleset>, which is not a relation of the type with direct types.` |
+| Each type that a `tuple_to_userset` reads from, each parent type or each direct type of the tupleset, has the relation that it reads. | `The relation <relation> of the type <type> reads <name> from <tupleset>, but the type <target> has no relation <name>.`          |
+| Each key of `conditions` is the `name` of its condition.                                                                              | `The condition <key> is named <name>.`                                                                                            |
 
 ## Rules of permissions
 
-| Rule                                                                                                           | Message                                                                                                                        |
-| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `grant` is a relation of the type.                                                                             | `The type <type> needs the relation <grant> for its grant permission, but does not declare it.`                                |
-| A type without parents has an empty `create`.                                                                  | `The type <type> has no parents, so its create permission is empty; anyone that the caller names creates one.`                 |
-| A type with parents has a `create` that is a relation of every parent type.                                    | `The type <type> is created with the relation <create> on its parent, but the type <parent> does not declare it.`              |
-| Each `grantable` relation is a relation of the type with direct types.                                         | `The type <type> grants <relation>, which is not a relation of the type with direct types.`                                    |
-| A non-empty `creator` is a `grantable` relation that takes `user` directly, without a condition or a wildcard. | `The type <type> grants <creator> to its creator, which has to be a grantable relation that takes a user without a condition.` |
-| `pyrite.dev/Key` has the relations `viewer`, `admin`, `encrypter`, `decrypter`, `signer` and `verifier`.       | `The type pyrite.dev/Key lacks the relation <relation>, which Pyrite checks.`                                                  |
-| `pyrite.dev/Account` has the relations `owner`, `viewer` and `admin`.                                          | `The type pyrite.dev/Account lacks the relation <relation>, which Pyrite checks.`                                              |
-| The `owner` of `pyrite.dev/Account` takes `user` directly, without a condition or a wildcard.                  | `The relation owner of pyrite.dev/Account takes a user directly; Pyrite grants it to each account on itself.`                  |
+| Rule                                                                                                                         | Message                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `grant` is a relation of the type.                                                                                           | `The type <type> needs the relation <grant> for its grant permission, but does not declare it.`                                            |
+| A type without parents has an empty `create`.                                                                                | `The type <type> has no parents, so its create permission is empty; anyone that the caller names creates one.`                             |
+| A type with parents has a `create` that is a relation of every parent type.                                                  | `The type <type> is created with the relation <create> on its parent, but the type <parent> does not declare it.`                          |
+| Each `grantable` relation is a relation of the type with direct types.                                                       | `The type <type> grants <relation>, which is not a relation of the type with direct types.`                                                |
+| A non-empty `creator` is a `grantable` relation that takes `pyrite.dev/Account` directly, without a condition or a wildcard. | `The type <type> grants <creator> to its creator, which has to be a grantable relation that takes pyrite.dev/Account without a condition.` |
+| `pyrite.dev/Key` has the relations `viewer`, `admin`, `encrypter`, `decrypter`, `signer` and `verifier`.                     | `The type pyrite.dev/Key lacks the relation <relation>, which Pyrite checks.`                                                              |
+| `pyrite.dev/Account` has the relations `owner`, `viewer` and `admin`.                                                        | `The type pyrite.dev/Account lacks the relation <relation>, which Pyrite checks.`                                                          |
+| The `owner` of `pyrite.dev/Account` takes `pyrite.dev/Account` directly, without a condition or a wildcard.                  | `The relation owner of pyrite.dev/Account takes pyrite.dev/Account directly; Pyrite grants it to each account on itself.`                  |
 
 ## Rules of identifier kinds
 
@@ -219,17 +212,15 @@ For the options, see [Options](../deployment/options.md).
 
 ## Rules of changes
 
-A resource that Pyrite knows finds its type by the plural of its name, its object in the store of grants by the
-singular name of the type, and the resource that it is under among the parents of the type. These rules compare the
+A resource that Pyrite knows finds its type by the part of its name before the first `:`, and the resource that it is
+under among the parents of the type. These rules compare the
 declaration with the latest one, and fail `WriteDeclaration` with `FAILED_PRECONDITION` while the table `pyrite_node`
 has resources of the type:
 
-| Rule                                                           | Message                                                                                                                                                                             |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A declaration keeps each type whose resources Pyrite knows.    | `The declaration drops the type <type>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.`                                                      |
-| It keeps the `plural` of such a type.                          | `The declaration changes the plural of the type <type> from <plural> to <plural>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.`            |
-| It keeps the singular name, `definition.type`, of such a type. | `The declaration changes the singular name of the type <type> from <singular> to <singular>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.` |
-| It keeps the `parents` of such a type; their order may change. | `The declaration changes the parents of the type <type> from [<parents>] to [<parents>], but Pyrite knows resources of the type; forget them first, or keep the type as it is.`     |
+| Rule                                                           | Message                                                                                                                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A declaration keeps each type whose resources Pyrite knows.    | `The declaration drops the type <type>, but Pyrite knows resources of the type; forget them first, or keep the type as it is.`                                                  |
+| It keeps the `parents` of such a type; their order may change. | `The declaration changes the parents of the type <type> from [<parents>] to [<parents>], but Pyrite knows resources of the type; forget them first, or keep the type as it is.` |
 
 ## Related
 

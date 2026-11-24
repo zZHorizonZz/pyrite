@@ -202,10 +202,11 @@ message Rejected {
 }
 
 message Key {
-  // The name, such as keys/payments.
+  // The name, such as keys/payments. The key's resource in pyrite.access.v1.Access is the name under the type, such
+  // as pyrite.dev/Key:keys/payments.
   string name = 1;
 
-  // The resource it is under; empty for a key at the top.
+  // The resource it is under, such as acme.dev/Organization:organizations/acme; empty for a key at the top.
   string parent = 2;
 
   Purpose purpose = 3;
@@ -278,7 +279,7 @@ message CreateKeyRequest {
   // The key's id, the last segment of its name.
   string key_id = 2;
 
-  // The resource it is under; empty for a key at the top.
+  // The resource it is under, such as acme.dev/Organization:organizations/acme; empty for a key at the top.
   string parent = 3;
 
   Algorithm algorithm = 4;

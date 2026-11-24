@@ -31,8 +31,8 @@ import java.util.Optional;
  * Pyrite's calls to OpenFGA's API, on the store and the authorization model of one declaration.
  *
  * <p>
- * Objects, users and relations are OpenFGA's: an object is a type's singular name and an id, such as
- * {@code project:ledger}. The adapter knows nothing of Pyrite's hierarchy: a {@code parent} tuple is a tuple to it as
+ * Objects, users and relations are OpenFGA's: an object is a type's name and an id, such as
+ * {@code acme.dev/Project:projects/ledger}, which is also the name of the resource. The adapter knows nothing of Pyrite's hierarchy: a {@code parent} tuple is a tuple to it as
  * any other. Each call fails with the failure of OpenFGA, such as an {@code InvalidStatusException} with its status.
  *
  * @param client the client of OpenFGA's API
@@ -45,9 +45,10 @@ public record OpenFga(OpenFGAServiceGrpcClient client, String id, String model, 
   /**
    * Asks whether a user has a relation on an object.
    *
-   * @param user the user, such as {@code user:bob}, or a set, such as {@code project:ledger#editor}
+   * @param user the user, such as {@code pyrite.dev/Account:accounts/bob}, or a set, such as
+   * {@code acme.dev/Project:projects/ledger#editor}
    * @param relation the relation, such as {@code can_view}
-   * @param object the object, such as {@code project:ledger}
+   * @param object the object, such as {@code acme.dev/Project:projects/ledger}
    * @param context the values that the conditions of tuples read
    * @return whether the user has the relation
    */
@@ -96,8 +97,8 @@ public record OpenFga(OpenFGAServiceGrpcClient client, String id, String model, 
   /**
    * Deletes every tuple that matches a key, {@code tuplesPerRead} at a time, until none is left.
    *
-   * @param key the object, such as {@code project:ledger} or every object of a type, {@code project:}, and the user
-   * to match, if any
+   * @param key the object, such as {@code acme.dev/Project:projects/ledger} or every object of a type,
+   * {@code acme.dev/Project:}, and the user to match, if any
    * @return a future that completes once the store holds no tuple of the key
    */
   public Future<Void> forget(ReadRequestTupleKey key) {
@@ -110,11 +111,11 @@ public record OpenFga(OpenFGAServiceGrpcClient client, String id, String model, 
   /**
    * Lists the objects of a type that a user has a relation on.
    *
-   * @param type the singular name of the type, such as {@code project}
+   * @param type the name of the type, such as {@code acme.dev/Project}
    * @param relation the relation, such as {@code can_view}
-   * @param user the user, such as {@code user:bob}
+   * @param user the user, such as {@code pyrite.dev/Account:accounts/bob}
    * @param context the values that the conditions of tuples read
-   * @return the objects, such as {@code project:ledger}, in the order of OpenFGA
+   * @return the objects, such as {@code acme.dev/Project:projects/ledger}, in the order of OpenFGA
    */
   public Future<List<String>> objects(String type, String relation, String user, Struct context) {
     return client.listObjects(ListObjectsRequest.newBuilder().setStoreId(id).setAuthorizationModelId(model)
@@ -125,10 +126,11 @@ public record OpenFga(OpenFGAServiceGrpcClient client, String id, String model, 
   /**
    * Lists the users of a type that have a relation on an object.
    *
-   * @param type the singular name of the type of the object, such as {@code project}
-   * @param object the id of the object, such as {@code ledger}
+   * @param type the name of the type of the object, such as {@code acme.dev/Project}
+   * @param object the id of the object, such as {@code projects/ledger}
    * @param relation the relation, such as {@code can_view}
-   * @param filter the type of the users, such as {@code user}, or of a set, such as {@code group#member}
+   * @param filter the type of the users, such as {@code pyrite.dev/Account}, or of a set, such as
+   * {@code acme.dev/Group#member}
    * @param context the values that the conditions of tuples read
    * @return the users, in the order of OpenFGA
    */
@@ -143,7 +145,7 @@ public record OpenFga(OpenFGAServiceGrpcClient client, String id, String model, 
   /**
    * Reads a page of the changes of the tuples on the objects of a type, oldest first.
    *
-   * @param type the singular name of the type, such as {@code project}
+   * @param type the name of the type, such as {@code acme.dev/Project}
    * @param pageSize the most changes to read, up to {@code tuplesPerRead}
    * @param token the continuation token of the page before; empty for the first page
    * @param start the time of the first change to read; empty for the first change of the store

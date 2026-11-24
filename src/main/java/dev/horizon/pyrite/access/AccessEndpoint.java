@@ -24,7 +24,6 @@ import dev.horizon.pyrite.declaration.ResourceType;
 import dev.horizon.pyrite.declaration.TypeSystem;
 import dev.horizon.pyrite.deployment.Deployment;
 import dev.horizon.pyrite.deployment.Schema;
-import dev.horizon.pyrite.resource.ObjectRef;
 import dev.horizon.pyrite.resource.Resource;
 import dev.horizon.pyrite.resource.Subject;
 import dev.horizon.spectrum.openfga.v1.TupleChange;
@@ -57,12 +56,11 @@ public final class AccessEndpoint extends AccessGrpcService {
   @Override
   public Future<Empty> createObject(CreateObjectRequest request) {
     return deployment.schema().compose(schema -> {
-      for (String own : List.of(TypeSystem.KEY, TypeSystem.ACCOUNT)) {
-        Optional<ResourceType> type = schema.types().type(own);
-        if (type.isPresent() && request.getName().startsWith(type.get().plural() + "/")) {
-          return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The resource "
-              + request.getName() + " is of the type " + own + ", which its own service creates."));
-        }
+      Optional<String> own = schema.types().typeOf(request.getName()).map(ResourceType::name)
+          .filter(type -> type.equals(TypeSystem.KEY) || type.equals(TypeSystem.ACCOUNT));
+      if (own.isPresent()) {
+        return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The resource "
+            + request.getName() + " is of the type " + own.get() + ", which its own service creates."));
       }
       return schema.resources().create(Subject.parse(request.getSubject()), request.getName(), request.getParent(),
           request.getContext());
@@ -85,10 +83,9 @@ public final class AccessEndpoint extends AccessGrpcService {
         return Future.failedFuture(new PyriteException(GrpcStatus.INVALID_ARGUMENT, "The type " + type.name()
             + " has no relation " + request.getPermission() + "."));
       }
-      return schema.openFga().objects(type.singular(), request.getPermission(),
+      return schema.openFga().objects(type.name(), request.getPermission(),
           Subject.parse(request.getSubject()).toString(), request.getContext())
-          .map(objects -> ListObjectsResponse.newBuilder().addAllNames(objects.stream().flatMap(object -> ObjectRef
-              .parse(object).stream()).map(object -> type.resource(object.id())).sorted().toList()).build());
+          .map(objects -> ListObjectsResponse.newBuilder().addAllNames(objects.stream().sorted().toList()).build());
     })).recover(PyriteException::fail);
   }
 
@@ -162,7 +159,7 @@ public final class AccessEndpoint extends AccessGrpcService {
     return deployment.schema().compose(schema -> {
       Subject subject = Subject.parse(request.getSubject());
       return schema.type(request.getType())
-          .compose(type -> schema.openFga().changes(type.singular(), schema.options().pageSize(request.getPageSize()),
+          .compose(type -> schema.openFga().changes(type.name(), schema.options().pageSize(request.getPageSize()),
               request.getPageToken(), request.hasStartTime() ? Optional.of(request.getStartTime()) : Optional.empty())
               .compose(changes -> {
                 List<Future<Optional<Change>>> visible = changes.getChangesList().stream()

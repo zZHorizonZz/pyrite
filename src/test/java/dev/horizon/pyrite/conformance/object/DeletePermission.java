@@ -19,10 +19,11 @@ final class DeletePermission extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantRelation(ANNE, "projects/ledger", "editor", BOB));
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new DeleteObject(BOB, "projects/ledger")),
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB));
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new DeleteObject(BOB, "acme.dev/Project:projects/ledger")),
         Requirement.OBJECT_DELETE);
-    call(new Check(BOB, "projects/ledger", "editor"));
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "editor"));
     callAndStopOnFailure(new ExpectCheckAnswer(true), Requirement.OBJECT_DELETE);
   }
 }

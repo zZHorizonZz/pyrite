@@ -20,12 +20,14 @@ final class ObjectForgetting extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
-    callAndStopOnFailure(new DeleteObject(ANNE, "projects/ledger"), Requirement.OBJECT_DELETE);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new Check(BOB, "projects/ledger", "can_view")),
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    callAndStopOnFailure(new DeleteObject(ANNE, "acme.dev/Project:projects/ledger"), Requirement.OBJECT_DELETE);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.NOT_FOUND, new Check(BOB, "acme.dev/Project:projects/ledger", "can_view")),
         Requirement.OBJECT_DELETE);
-    callAndStopOnFailure(new CreateObject(ANNE, "projects/ledger", "organizations/acme"), Requirement.OBJECT_DELETE);
-    call(new Check(BOB, "projects/ledger", "can_view"));
+    callAndStopOnFailure(new CreateObject(ANNE, "acme.dev/Project:projects/ledger", "acme.dev/Organization:organizations/acme"),
+        Requirement.OBJECT_DELETE);
+    call(new Check(BOB, "acme.dev/Project:projects/ledger", "can_view"));
     callAndContinueOnFailure(new ExpectCheckAnswer(false), Requirement.OBJECT_DELETE);
   }
 }

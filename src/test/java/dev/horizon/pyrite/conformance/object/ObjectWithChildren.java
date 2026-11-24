@@ -15,9 +15,10 @@ final class ObjectWithChildren extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new DeleteObject(ANNE, "organizations/acme")),
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new DeleteObject(ANNE, "acme.dev/Organization:organizations/acme")),
         Requirement.OBJECT_DELETE);
-    callAndStopOnFailure(new DeleteObject(ANNE, "projects/ledger"), Requirement.OBJECT_DELETE);
-    callAndStopOnFailure(new DeleteObject(ANNE, "organizations/acme"), Requirement.OBJECT_DELETE);
+    callAndStopOnFailure(new DeleteObject(ANNE, "acme.dev/Project:projects/ledger"), Requirement.OBJECT_DELETE);
+    callAndStopOnFailure(new DeleteObject(ANNE, "acme.dev/Organization:organizations/acme"), Requirement.OBJECT_DELETE);
   }
 }

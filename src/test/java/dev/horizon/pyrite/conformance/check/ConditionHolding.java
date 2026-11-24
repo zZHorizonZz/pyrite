@@ -18,10 +18,10 @@ final class ConditionHolding extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    call(new GrantWithCondition(ANNE, "projects/ledger", "editor", BOB, "not_expired", Map.of("expires_at",
+    call(new GrantWithCondition(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB, "not_expired", Map.of("expires_at",
         "2026-06-01T00:00:00Z")));
     for (String time : List.of("2026-05-01T00:00:00Z", "2026-06-01T00:00:00Z", "2026-07-01T00:00:00Z")) {
-      call(new Check(ANNE, BOB, "projects/ledger", "can_edit", Check.at(time)));
+      call(new Check(ANNE, BOB, "acme.dev/Project:projects/ledger", "can_edit", Check.at(time)));
       callAndContinueOnFailure(new ExpectCheckAnswer(time.startsWith("2026-05")), Requirement.ACCESS_CONDITION);
     }
   }

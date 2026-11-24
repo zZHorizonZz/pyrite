@@ -18,14 +18,14 @@ import java.util.UUID;
 /**
  * Creates an account with an email address and a password, as its own subject.
  *
- * @param id the id of the account, which is also the id of its subject {@code user:id}
+ * @param id the id of the account, which is also the id of its subject {@code pyrite.dev/Account:accounts/id}
  */
 public record CreateAccount(String id, String email, String password) implements Condition {
 
   @Override
   public void evaluate(Environment environment) throws Exception {
     AuthenticationGrpcClient authentication = environment.pyrite().authentication;
-    String subject = "user:" + id;
+    String subject = "pyrite.dev/Account:accounts/" + id;
     authentication.createAccount(CreateAccountRequest.newBuilder().setSubject(subject).setAccountId(id)
         .setKind(Account.Kind.HUMAN).build()).await(TIMEOUT);
     authentication.addIdentifier(AddIdentifierRequest.newBuilder().setSubject(subject).setAccount("accounts/" + id)

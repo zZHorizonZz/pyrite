@@ -24,7 +24,7 @@ public record NodeBackend(Database database) implements Backend<Tables.Node, Str
   /**
    * Tells whether resources are under a resource.
    *
-   * @param parent the name of the resource, such as {@code organizations/acme}
+   * @param parent the name of the resource, such as {@code acme.dev/Organization:organizations/acme}
    * @return whether a row names it as its parent
    */
   public Future<Boolean> occupied(String parent) {

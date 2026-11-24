@@ -19,7 +19,9 @@ final class NoDeclaration extends ConformanceModule {
   protected void run() {
     call(new ForgetDeclarations());
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new ReadDeclaration("")), Requirement.DECLARATION_NONE);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new CreateObject(ANNE, "organizations/acme", "")),
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.FAILED_PRECONDITION,
+            new CreateObject(ANNE, "acme.dev/Organization:organizations/acme", "")),
         Requirement.DECLARATION_NONE);
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.FAILED_PRECONDITION, new AuthenticateToken("x.y")),
         Requirement.DECLARATION_NONE);

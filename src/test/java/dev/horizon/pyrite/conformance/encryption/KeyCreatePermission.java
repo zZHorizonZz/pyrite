@@ -18,8 +18,9 @@ final class KeyCreatePermission extends KeyModule {
   protected void run() {
     preparePayments();
     callAndStopOnFailure(
-        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new CreateKey(BOB, "organizations/acme", "mine", Algorithm.AES256_GCM,
-            Duration.ZERO)),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED,
+            new CreateKey(BOB, "acme.dev/Organization:organizations/acme", "mine", Algorithm.AES256_GCM,
+                Duration.ZERO)),
         Requirement.KEY_CREATE);
   }
 }

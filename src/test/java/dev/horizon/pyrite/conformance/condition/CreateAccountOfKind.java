@@ -17,7 +17,9 @@ public record CreateAccountOfKind(String id, String kind) implements Condition {
   public void evaluate(Environment environment) throws Exception {
     Account.Kind named = Arrays.stream(Account.Kind.values()).filter(known -> known.name().equals(kind))
         .findFirst().orElse(Account.Kind.KIND_UNSPECIFIED);
-    environment.pyrite().authentication.createAccount(CreateAccountRequest.newBuilder().setSubject("user:" + id)
-        .setAccountId(id).setKind(named).build()).await(TIMEOUT);
+    environment.pyrite().authentication
+        .createAccount(CreateAccountRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/" + id)
+            .setAccountId(id).setKind(named).build())
+        .await(TIMEOUT);
   }
 }

@@ -4,17 +4,20 @@ Most calls of Pyrite run as a subject, and Pyrite checks the permission of the s
 anything. A permission is a relation of a declared type, which OpenFGA evaluates.
 
 ```java
-boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
+boolean allowed = access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/bob")
+    .setObject("acme.dev/Project:projects/ledger")
     .setPermission("can_edit").build()).await().getAllowed();
 ```
 
-Bob asks whether he has `can_edit` on `projects/ledger`. Pyrite finds the project, asks OpenFGA about the object
-`project:ledger`, and gives `allowed: true` or `allowed: false`.
+Bob asks whether he has `can_edit` on `acme.dev/Project:projects/ledger`. Pyrite finds the project, asks OpenFGA about
+the object `acme.dev/Project:projects/ledger`, and gives `allowed: true` or `allowed: false`.
 
 ## The subject
 
-The subject is a principal of the form `type:id`, such as `user:anne`, which each request names in its `subject`
-field. The type matches `[a-z][a-z0-9_]{0,49}`, and the id has no `#`, `*`, white space or control characters.
+The subject is a principal of the form `type:id`, such as `pyrite.dev/Account:accounts/anne`, which each request names
+in its `subject` field. It follows OpenFGA's rules for a user: the type has 1 to 254 characters, without `:`, `#`, `@`
+or white space; the id has no `:`, `#`, white space or control characters, and is not `*`; and the whole subject has at
+most 512 bytes.
 Pyrite does not verify the subject. The caller sets it from a credential that it verified, such as an access token
 that `Authenticate` accepted.
 
@@ -25,14 +28,16 @@ A few calls take no subject: `WriteDeclaration` and `ReadDeclaration`, which you
 and `ContinueExchange`, `Authenticate` and `RefreshSession`, which prove who the caller is. `StartExchange` takes one
 only for an exchange whose input is the account that calls.
 
-The type `user` is an account, so `user:anne` is the principal of `accounts/anne`. A grant names its grantee in one of
-three forms:
+An account is a principal of the type `pyrite.dev/Account`, named by its resource: `pyrite.dev/Account:accounts/anne`
+is the principal of `accounts/anne`. The type is in the authorization model even when the declaration does not declare
+it, so a declaration without accounts can still grant to principals of it. A grant names its grantee in one of three
+forms:
 
-| Grantee                | Means                                                 |
-| ---------------------- | ----------------------------------------------------- |
-| `user:anne`            | One principal                                         |
-| `user:*`               | Every principal of the type                           |
-| `group:finance#member` | Every principal that has `member` on `groups/finance` |
+| Grantee                                | Means                                                                |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `pyrite.dev/Account:accounts/anne`     | One principal                                                        |
+| `pyrite.dev/Account:*`                 | Every principal of the type                                          |
+| `acme.dev/Group:groups/finance#member` | Every principal that has `member` on `acme.dev/Group:groups/finance` |
 
 The relation decides which forms and types it takes, in its `metadata`. A grant that makes a cycle of sets, such as
 the members of one group as members of another that is already in it, fails with `FAILED_PRECONDITION`.
@@ -40,8 +45,8 @@ the members of one group as members of another that is already in it, fails with
 ## Checks
 
 A check asks whether a principal has a relation on a known resource. Pyrite asks OpenFGA, with the object of the
-resource, such as `project:ledger`. OpenFGA follows the whole rewrite of the relation: direct grants, computed
-relations, tuple to usersets, unions, intersections and differences.
+resource, such as `acme.dev/Project:projects/ledger`. OpenFGA follows the whole rewrite of the relation: direct grants,
+computed relations, tuple to usersets, unions, intersections and differences.
 
 A relation that reads from the parent needs nothing more. Pyrite wrote the `parent` tuple when the resource became
 known, so OpenFGA walks up to the organization itself. A block on the organization reaches the project the same way,
@@ -58,8 +63,9 @@ parameters. The caller gives the values of the rest, such as `current_time`, in 
 that the grant holds wins over a value of the same name in the context:
 
 ```java
-access.check(CheckRequest.newBuilder().setSubject("user:anne").setPrincipal("user:bob")
-    .setObject("projects/ledger").setPermission("can_edit").setContext(Struct.newBuilder()
+access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+    .setPrincipal("pyrite.dev/Account:accounts/bob")
+    .setObject("acme.dev/Project:projects/ledger").setPermission("can_edit").setContext(Struct.newBuilder()
         .putFields("current_time", Value.newBuilder().setStringValue("2026-05-01T00:00:00Z").build()))
     .build()).await();
 ```
@@ -75,8 +81,9 @@ ListObjects, which follows the same rewrites as a check, `parent` included. The 
 one message. Use it to narrow a read of your own table, such as the projects that a person may view, and filter,
 order and page the rows in your application.
 
-`ListSubjects` gives the principals of a type, such as `user`, or of a set, such as `group#member`, that have a
-permission on a resource, sorted. A grant to every user gives `user:*`.
+`ListSubjects` gives the principals of a type, such as `pyrite.dev/Account`, or of a set, such as
+`acme.dev/Group#member`, that have a
+permission on a resource, sorted. A grant to every user gives `pyrite.dev/Account:*`.
 
 `ListGrants` gives a page of the grants on a resource, with an optional relation and grantee. A page holds at most
 the smaller of the page size and `tuplesPerRead` grants. `ListChanges` gives a page of the grants and revocations on

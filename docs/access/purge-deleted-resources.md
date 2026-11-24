@@ -17,14 +17,16 @@ Pyrite does not forget a resource on its own. Forget it as a subject with the ty
 1. Forget the resources under it first, from the lowest level up:
 
    ```java
-   access.deleteObject(DeleteObjectRequest.newBuilder().setSubject("user:anne").setName("projects/ledger").build())
+   access.deleteObject(DeleteObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("acme.dev/Project:projects/ledger").build())
        .await();
    ```
 
 2. Forget the resource:
 
    ```java
-   access.deleteObject(DeleteObjectRequest.newBuilder().setSubject("user:anne").setName("organizations/acme")
+   access.deleteObject(DeleteObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("acme.dev/Organization:organizations/acme")
        .build()).await();
    ```
 

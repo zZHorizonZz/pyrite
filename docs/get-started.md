@@ -103,17 +103,15 @@ member of an organization views its projects, and the creator of each resource g
 
 types {
   name: "acme.dev/Organization"
-  plural: "organizations"
   definition {
-    type: "organization"
     relations { key: "admin" value { this {} } }
     relations {
       key: "member"
       value { union { child { this {} } child { computed_userset { relation: "admin" } } } }
     }
     metadata {
-      relations { key: "admin" value { directly_related_user_types { type: "user" } } }
-      relations { key: "member" value { directly_related_user_types { type: "user" } } }
+      relations { key: "admin" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "member" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { grant: "admin" }
@@ -123,10 +121,8 @@ types {
 
 types {
   name: "acme.dev/Project"
-  plural: "projects"
   parents: "acme.dev/Organization"
   definition {
-    type: "project"
     relations { key: "owner" value { this {} } }
     relations {
       key: "viewer"
@@ -139,8 +135,8 @@ types {
       }
     }
     metadata {
-      relations { key: "owner" value { directly_related_user_types { type: "user" } } }
-      relations { key: "viewer" value { directly_related_user_types { type: "user" } } }
+      relations { key: "owner" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
+      relations { key: "viewer" value { directly_related_user_types { type: "pyrite.dev/Account" } } }
     }
   }
   permissions { create: "admin" grant: "owner" }
@@ -189,49 +185,55 @@ Every service reads the latest declaration from then on.
 
 ## 6. Call the services
 
-1. Your application creates an organization in its own table. Make it known to Pyrite as `user:anne`. Anne gets
-   `admin`, the type's `creator` relation:
+1. Your application creates an organization in its own table. Make it known to Pyrite as
+   `pyrite.dev/Account:accounts/anne`. Anne gets `admin`, the type's `creator` relation:
 
    ```java
    AccessGrpcClient access = AccessGrpcClient.create(client);
-   access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("organizations/acme")
+   access.createObject(CreateObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("acme.dev/Organization:organizations/acme")
        .build()).await();
    ```
 
 2. Make a project in it known. Anne needs `admin` on the organization, the type's `create` permission:
 
    ```java
-   access.createObject(CreateObjectRequest.newBuilder().setSubject("user:anne").setName("projects/ledger")
-       .setParent("organizations/acme").build()).await();
+   access.createObject(CreateObjectRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+       .setName("acme.dev/Project:projects/ledger")
+       .setParent("acme.dev/Organization:organizations/acme").build()).await();
    ```
 
 3. Grant Bob the relation `member` on the organization:
 
    ```java
-   access.createGrant(CreateGrantRequest.newBuilder().setSubject("user:anne").setGrant(Grant.newBuilder()
-       .setObject("organizations/acme").setRelation("member").setGrantee("user:bob")).build()).await();
+   access.createGrant(CreateGrantRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setGrant(Grant
+       .newBuilder()
+       .setObject("acme.dev/Organization:organizations/acme").setRelation("member")
+       .setGrantee("pyrite.dev/Account:accounts/bob")).build()).await();
    ```
 
 4. Check whether Bob views the project, before your application shows it to him:
 
    ```java
-   boolean allowed = access.check(CheckRequest.newBuilder().setSubject("user:bob").setObject("projects/ledger")
+   boolean allowed = access.check(CheckRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/bob")
+       .setObject("acme.dev/Project:projects/ledger")
        .setPermission("viewer").build()).await().getAllowed();
    ```
 
 5. List the projects that Bob views:
 
    ```java
-   List<String> projects = access.listObjects(ListObjectsRequest.newBuilder().setSubject("user:bob")
+   List<String> projects = access.listObjects(ListObjectsRequest.newBuilder()
+       .setSubject("pyrite.dev/Account:accounts/bob")
        .setType("acme.dev/Project").setPermission("viewer").build()).await().getNamesList();
    ```
 
 ## Verify
 
 `allowed` is `true`, because Bob is a member of the organization of the project, and `projects` is
-`[projects/ledger]`. The same check as `user:carol` returns `false`. A call before step 5 fails with
-`FAILED_PRECONDITION: No declaration is written; write one with pyrite.schema.v1.Schema.WriteDeclaration.` See
-[Troubleshooting deployment](deployment/troubleshooting-deployment.md).
+`[acme.dev/Project:projects/ledger]`. The same check as `pyrite.dev/Account:accounts/carol` returns `false`. A call
+before step 5 fails with `FAILED_PRECONDITION: No declaration is written; write one with
+pyrite.schema.v1.Schema.WriteDeclaration.` See [Troubleshooting deployment](deployment/troubleshooting-deployment.md).
 
 ## Next steps
 

@@ -1,8 +1,9 @@
 # About accounts and exchanges
 
-An account is a resource of the type `pyrite.dev/Account`, such as `accounts/anne`, whose principal is `user:anne`. The
-authentication service keeps accounts, proves through exchanges that a caller holds one, and issues sessions. The
-declaration defines each exchange: what it starts from, what each of its stages requires, and what it does at the end.
+An account is a resource of the type `pyrite.dev/Account`, such as `accounts/anne`, whose principal is
+`pyrite.dev/Account:accounts/anne`. The authentication service keeps accounts, proves through exchanges that a caller
+holds one, and issues sessions. The declaration defines each exchange: what it starts from, what each of its stages
+requires, and what it does at the end.
 
 ```textproto
 exchanges { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: ISSUE_SESSION }
@@ -11,7 +12,7 @@ exchanges { name: "sign-in" input: IDENTIFIER stages { factors: 1 } completes: I
 `StartExchange` of `sign-in` with `anne@acme.dev` gives an exchange whose challenges name the answers that its stage
 takes, such as `pyrite.authentication.v1.PasswordAnswer`. `ContinueExchange` with Anne's password meets the stage. The
 exchange is done, and its result holds a `TokenSet`. `Authenticate` with its access token gives the principal
-`user:anne` on later calls.
+`pyrite.dev/Account:accounts/anne` on later calls.
 
 ## Accounts and what they hold
 
@@ -196,9 +197,10 @@ tell whether an account exists.
 A session is the server's record of one sign-in. An exchange with `ISSUE_SESSION` issues one, and gives its first
 tokens once, in `issued` of its result, as a `TokenSet`:
 
-- The **access token** is a JWT of type `at+jwt`, which the access token key of the options signs. Its claims are
-  `iss`, the issuer of the options; `sub`, the subject of the account, such as `user:anne`; `sid`, the session; `iat`,
-  `exp` and `jti`. It lasts `accessTokenLifetime`, 5 minutes by default. A caller sends it with each call.
+- The **access token** is a JWT of type `at+jwt`, which the access token key of the options signs. Its claims are `iss`,
+  the issuer of the options; `sub`, the subject of the account, such as `pyrite.dev/Account:accounts/anne`; `sid`, the
+  session; `iat`, `exp` and `jti`. It lasts `accessTokenLifetime`, 5 minutes by default. A caller sends it with each
+  call.
 - The **refresh token** is opaque: the id of its row, a dot, and a random secret. Pyrite keeps only a MAC of the secret,
   made with the MAC key of the options. A client keeps it to itself, and trades it with `RefreshSession` for a new
   access token and a new refresh token before the access token expires.

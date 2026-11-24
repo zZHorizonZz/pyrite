@@ -15,15 +15,18 @@ final class ObjectParent extends AccessModule {
   @Override
   protected void run() {
     prepareLedger();
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new CreateObject(ANNE, "projects/payroll",
-        "organizations/globex")), Requirement.OBJECT_PARENT);
+    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new CreateObject(ANNE, "acme.dev/Project:projects/payroll",
+        "acme.dev/Organization:organizations/globex")), Requirement.OBJECT_PARENT);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "projects/payroll", "projects/ledger")),
-        Requirement.OBJECT_PARENT);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "projects/payroll", "")),
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new CreateObject(ANNE, "acme.dev/Project:projects/payroll", "acme.dev/Project:projects/ledger")),
         Requirement.OBJECT_PARENT);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "organizations/globex", "organizations/acme")),
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateObject(ANNE, "acme.dev/Project:projects/payroll", "")),
+        Requirement.OBJECT_PARENT);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new CreateObject(ANNE, "acme.dev/Organization:organizations/globex", "acme.dev/Organization:organizations/acme")),
         Requirement.OBJECT_PARENT);
   }
 }

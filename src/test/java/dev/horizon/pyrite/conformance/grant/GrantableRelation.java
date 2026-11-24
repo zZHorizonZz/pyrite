@@ -19,7 +19,7 @@ final class GrantableRelation extends AccessModule {
     prepareGroups();
     for (String relation : List.of("can_view", "can_edit", "flies", "parent", "")) {
       callAndContinueOnFailure(
-          new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantRelation(ANNE, "projects/ledger", relation,
+          new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", relation,
               BOB)),
           Requirement.GRANT_RELATION);
     }

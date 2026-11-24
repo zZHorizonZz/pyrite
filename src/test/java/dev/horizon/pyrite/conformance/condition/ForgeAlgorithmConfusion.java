@@ -15,7 +15,7 @@ import java.time.Instant;
 import java.util.Date;
 
 /**
- * Signs a JWT of user:root with HS256, keyed with the published public key of a version of a key, and takes it as the
+ * Signs a JWT of pyrite.dev/Account:accounts/root with HS256, keyed with the published public key of a version of a key, and takes it as the
  * last token: a forgery that confuses the algorithm of the key.
  */
 public record ForgeAlgorithmConfusion(String key, String version) implements Condition {
@@ -29,7 +29,8 @@ public record ForgeAlgorithmConfusion(String key, String version) implements Con
     SignedJWT forged = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.HS256).type(new JOSEObjectType("at+jwt"))
         .keyID(version.substring(version.indexOf('/') + 1)).build(),
         new JWTClaimsSet.Builder()
-            .issuer(SignToken.ISSUER).audience(SignToken.AUDIENCE).subject("user:root").expirationTime(new Date(
+            .issuer(SignToken.ISSUER).audience(SignToken.AUDIENCE).subject("pyrite.dev/Account:accounts/root")
+            .expirationTime(new Date(
                 (Instant.now().getEpochSecond() + EXPIRES_IN) * 1000))
             .build());
     forged.sign(new MACSigner(secret));

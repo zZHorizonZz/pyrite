@@ -17,36 +17,38 @@ import java.util.regex.Pattern;
  *
  * <p>
  * The relations hold what the declaration declares, without the relation {@code parent} that Pyrite adds to the
- * authorization model of a type with parents. Pyrite's own types have the plural that Pyrite gives them, {@code keys}
- * or {@code accounts}.
+ * authorization model of a type with parents. The type's name is also its type in the authorization model, and the
+ * type of its resources' objects: the resource {@code acme.dev/Project:organizations/acme/projects/ledger} is of the
+ * type {@code acme.dev/Project}.
  *
  * @param type the type, as the declaration declares it
  * @param relations the relations, by name
  */
 public record ResourceType(Type type, Map<String, Definition> relations) {
 
-  private static final Pattern SINGULAR = Pattern.compile("[a-z][a-z0-9_]{0,49}");
-  private static final Pattern PLURAL = Pattern.compile("[a-z][a-zA-Z0-9]{0,62}");
-
   public ResourceType {
     relations = Map.copyOf(relations);
   }
 
   /**
-   * Reads a type of a declaration, and checks the rules that it keeps on its own: its names, and that each relation
-   * has directly related types exactly when its rewrite takes subjects directly.
+   * Reads a type of a declaration, and checks the rules that it keeps on its own: its name and the names of its
+   * relations, which OpenFGA takes, and that each relation has directly related types exactly when its rewrite takes
+   * subjects directly.
    *
-   * @param type the type, as the declaration declares it, with the plural of Pyrite's own types
+   * @param type the type, as the declaration declares it
    * @return the type
    * @throws IllegalArgumentException when the type breaks a rule
    */
   static ResourceType of(Type type) {
-    if (type.getName().isBlank()) {
+    if (type.getName().isEmpty()) {
       throw new IllegalArgumentException("A type has no name.");
     }
+    matches(TypeSystem.TYPE_NAME, type.getName(), "The type ", " has a name that");
     String where = "The type " + type.getName();
-    matches(SINGULAR, type.getDefinition().getType(), where + " has the singular name ");
-    matches(PLURAL, type.getPlural(), where + " has the plural name ");
+    if (!type.getDefinition().getType().isEmpty()) {
+      throw new IllegalArgumentException(where + " sets definition.type to " + type.getDefinition().getType()
+          + "; leave it empty, because the type's name is its type in the authorization model.");
+    }
     Map<String, RelationMetadata> metadata = type.getDefinition().getMetadata().getRelationsMap();
     for (String relation : metadata.keySet()) {
       if (!type.getDefinition().getRelationsMap().containsKey(relation)) {
@@ -55,7 +57,7 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
     }
     Map<String, Definition> relations = new LinkedHashMap<>();
     type.getDefinition().getRelationsMap().forEach((name, rewrite) -> {
-      matches(SINGULAR, name, where + " has the relation ");
+      matches(TypeSystem.RELATION_NAME, name, where + " has the relation ", ", whose name");
       if (name.equals(TypeSystem.PARENT)) {
         throw new IllegalArgumentException(where + " declares the relation parent, which is Pyrite's: it holds the"
             + " resource that a resource is under.");
@@ -75,14 +77,6 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
     return type.getName();
   }
 
-  public String singular() {
-    return type.getDefinition().getType();
-  }
-
-  public String plural() {
-    return type.getPlural();
-  }
-
   public List<String> parents() {
     return type.getParentsList();
   }
@@ -100,23 +94,24 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
   }
 
   /**
-   * Gives the name of the resource of an id.
+   * Gives the name of the resource of an id, which is also its object in OpenFGA.
    *
-   * @param id the id, such as {@code ledger}
-   * @return the name, such as {@code projects/ledger}
+   * @param id the id, such as {@code organizations/acme/projects/ledger}
+   * @return the name, such as {@code acme.dev/Project:organizations/acme/projects/ledger}
    */
   public String resource(String id) {
-    return plural() + "/" + id;
+    return name() + ":" + id;
   }
 
   /**
    * Gives the id of the resource of a name.
    *
-   * @param resource the name of a resource of the type, such as {@code projects/ledger}
-   * @return the id, such as {@code ledger}
+   * @param resource the name of a resource of the type, such as
+   * {@code acme.dev/Project:organizations/acme/projects/ledger}
+   * @return the id, such as {@code organizations/acme/projects/ledger}
    */
   public String id(String resource) {
-    return resource.substring(plural().length() + 1);
+    return resource.substring(name().length() + 1);
   }
 
   /**
@@ -145,9 +140,9 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
     }
     if (name().equals(TypeSystem.ACCOUNT)) {
       requireRelations(TypeSystem.ACCOUNT_RELATIONS);
-      if (!takesUser(TypeSystem.OWNER)) {
-        throw new IllegalArgumentException("The relation owner of " + TypeSystem.ACCOUNT + " takes a user directly;"
-            + " Pyrite grants it to each account on itself.");
+      if (!takesAccount(TypeSystem.OWNER)) {
+        throw new IllegalArgumentException("The relation owner of " + TypeSystem.ACCOUNT + " takes "
+            + TypeSystem.ACCOUNT + " directly; Pyrite grants it to each account on itself.");
       }
     }
   }
@@ -215,26 +210,25 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
 
       @Override
       public Void tupleToUserset(String tupleset, String name) {
-        List<Optional<ResourceType>> targets;
+        List<String> targets;
         if (tupleset.equals(TypeSystem.PARENT)) {
           if (parents().isEmpty()) {
             throw new IllegalArgumentException(where + " reads " + name + " from parent, but the type has no"
                 + " parents.");
           }
-          targets = types.parents(ResourceType.this).stream().map(Optional::of).toList();
+          targets = parents();
         } else {
           Definition through = relations.get(tupleset);
           if (through == null || through.direct().isEmpty()) {
             throw new IllegalArgumentException(where + " reads " + name + " from " + tupleset + ", which is not"
                 + " a relation of the type with direct types.");
           }
-          targets = through.direct().stream().map(reference -> types.singular(reference.getType())).toList();
+          targets = through.direct().stream().map(RelationReference::getType).toList();
         }
-        for (Optional<ResourceType> target : targets) {
-          if (target.isEmpty() || !target.get().relations().containsKey(name)) {
-            throw new IllegalArgumentException(where + " reads " + name + " from " + tupleset + ", but "
-                + target.map(other -> "the type " + other.name()).orElse("the type user") + " has no relation "
-                + name + ".");
+        for (String target : targets) {
+          if (types.type(target).filter(other -> other.relations().containsKey(name)).isEmpty()) {
+            throw new IllegalArgumentException(where + " reads " + name + " from " + tupleset + ", but the type "
+                + target + " has no relation " + name + ".");
           }
         }
         return null;
@@ -264,18 +258,14 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
 
   private void checkDirect(TypeSystem types, String relation, RelationReference reference) {
     String where = "The type " + name() + " grants " + relation;
-    if (reference.getType().equals(TypeSystem.USER)) {
-      if (!reference.getRelation().isEmpty()) {
-        throw new IllegalArgumentException(where + " to user#" + reference.getRelation() + ", but the type user has"
-            + " no relations.");
-      }
-    } else {
-      ResourceType target = types.singular(reference.getType()).orElseThrow(() -> new IllegalArgumentException(
-          where + " to the type " + reference.getType() + ", which is not declared."));
-      if (!reference.getRelation().isEmpty() && !target.relations().containsKey(reference.getRelation())) {
-        throw new IllegalArgumentException(where + " to " + reference.getType() + "#" + reference.getRelation()
-            + ", which is not a relation of that type.");
-      }
+    Optional<ResourceType> target = types.type(reference.getType());
+    if (target.isEmpty() && !reference.getType().equals(TypeSystem.ACCOUNT)) {
+      throw new IllegalArgumentException(where + " to the type " + reference.getType() + ", which is not declared.");
+    }
+    if (!reference.getRelation().isEmpty()
+        && target.filter(type -> type.relations().containsKey(reference.getRelation())).isEmpty()) {
+      throw new IllegalArgumentException(where + " to " + reference.getType() + "#" + reference.getRelation()
+          + ", which is not a relation of that type.");
     }
     if (!reference.getCondition().isEmpty() && !types.conditions().containsKey(reference.getCondition())) {
       throw new IllegalArgumentException(where + " with the condition " + reference.getCondition() + ", which is not"
@@ -308,18 +298,18 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
             + " with direct types.");
       }
     }
-    if (!creator().isEmpty() && (!grantable().contains(creator()) || !takesUser(creator()))) {
+    if (!creator().isEmpty() && (!grantable().contains(creator()) || !takesAccount(creator()))) {
       throw new IllegalArgumentException(where + " grants " + creator() + " to its creator, which has to be a"
-          + " grantable relation that takes a user without a condition.");
+          + " grantable relation that takes " + TypeSystem.ACCOUNT + " without a condition.");
     }
   }
 
   /**
-   * Tells whether a relation takes a single user directly, without a wildcard or a condition.
+   * Tells whether a relation takes a single account directly, without a wildcard or a condition.
    */
-  private boolean takesUser(String relation) {
+  private boolean takesAccount(String relation) {
     return relations.get(relation).direct().stream().anyMatch(reference -> reference.getType().equals(
-        TypeSystem.USER) && reference.getRelation().isEmpty() && !reference.hasWildcard()
+        TypeSystem.ACCOUNT) && reference.getRelation().isEmpty() && !reference.hasWildcard()
         && reference.getCondition().isEmpty());
   }
 
@@ -332,9 +322,9 @@ public record ResourceType(Type type, Map<String, Definition> relations) {
     }
   }
 
-  private static void matches(Pattern pattern, String value, String where) {
+  private static void matches(Pattern pattern, String value, String before, String after) {
     if (!pattern.matcher(value).matches()) {
-      throw new IllegalArgumentException(where + value + ", which does not match " + pattern.pattern() + ".");
+      throw new IllegalArgumentException(before + value + after + " does not match " + pattern.pattern() + ".");
     }
   }
 }

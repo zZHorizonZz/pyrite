@@ -17,7 +17,7 @@ final class RotationPermission extends KeyModule {
   @Override
   protected void run() {
     preparePayments();
-    call(new GrantRelation(ANNE, "keys/payments", "encrypter", BOB));
+    call(new GrantRelation(ANNE, "pyrite.dev/Key:keys/payments", "encrypter", BOB));
     callAndStopOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new RotateKey(BOB, "keys/payments")),
         Requirement.KEY_PERMISSION);
   }

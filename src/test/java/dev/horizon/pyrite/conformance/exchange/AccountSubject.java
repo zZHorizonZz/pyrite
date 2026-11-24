@@ -15,9 +15,9 @@ final class AccountSubject extends AccountModule {
     prepareAnne();
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new StartExchange("", "enrol-password", "")),
         Requirement.EXCHANGE_SUBJECT);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new StartExchange("group:finance",
+    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new StartExchange("acme.dev/Group:groups/finance",
         "enrol-password", "")), Requirement.EXCHANGE_SUBJECT);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new StartExchange("user:mallory",
+    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new StartExchange("pyrite.dev/Account:accounts/mallory",
         "enrol-password", "")), Requirement.EXCHANGE_SUBJECT);
   }
 }

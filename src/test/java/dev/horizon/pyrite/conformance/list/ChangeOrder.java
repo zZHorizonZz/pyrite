@@ -18,10 +18,13 @@ final class ChangeOrder extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
-    call(new Revoke(ANNE, "projects/ledger", "viewer", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
+    call(new Revoke(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
     call(new ListChanges(ANNE, "acme.dev/Project"));
-    callAndStopOnFailure(new ExpectChanges(List.of("owner user:anne GRANTED", "viewer user:bob GRANTED",
-        "viewer user:bob REVOKED")), Requirement.CHANGE_LIST);
+    callAndStopOnFailure(
+        new ExpectChanges(List.of("acme.dev/Project:projects/ledger owner pyrite.dev/Account:accounts/anne GRANTED",
+            "acme.dev/Project:projects/ledger viewer pyrite.dev/Account:accounts/bob GRANTED",
+            "acme.dev/Project:projects/ledger viewer pyrite.dev/Account:accounts/bob REVOKED")),
+        Requirement.CHANGE_LIST);
   }
 }

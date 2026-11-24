@@ -17,14 +17,18 @@ final class SubjectListRefusal extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    call(new GrantRelation(ANNE, "projects/ledger", "viewer", BOB));
+    call(new GrantRelation(ANNE, "acme.dev/Project:projects/ledger", "viewer", BOB));
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new ListSubjects(ANNE, "projects/ledger", "can_view", "")),
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new ListSubjects(ANNE, "acme.dev/Project:projects/ledger", "can_view", "")),
         Requirement.SUBJECT_LIST);
-    callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListSubjects(BOB, "projects/ledger", "can_view",
-        "user")), Requirement.SUBJECT_LIST);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new ListSubjects(ANNE, "projects/ledger", "flies", "user")),
+        new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new ListSubjects(BOB, "acme.dev/Project:projects/ledger", "can_view",
+            "pyrite.dev/Account")),
+        Requirement.SUBJECT_LIST);
+    callAndContinueOnFailure(
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new ListSubjects(ANNE, "acme.dev/Project:projects/ledger", "flies", "pyrite.dev/Account")),
         Requirement.SUBJECT_LIST);
   }
 }

@@ -16,7 +16,8 @@ final class GrantOnMissingResource extends AccessModule {
   @Override
   protected void run() {
     prepareGroups();
-    callAndStopOnFailure(new ExpectStatus(GrpcStatus.NOT_FOUND, new GrantRelation(ANNE, "projects/payroll", "viewer", BOB)),
+    callAndStopOnFailure(
+        new ExpectStatus(GrpcStatus.NOT_FOUND, new GrantRelation(ANNE, "acme.dev/Project:projects/payroll", "viewer", BOB)),
         Requirement.OBJECT_MISSING);
   }
 }

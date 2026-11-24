@@ -20,7 +20,7 @@ final class FractionalPeriod extends KeyModule {
   protected void run() {
     preparePayments();
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new CreateKeyWithExactPeriod(
-        "organizations/acme", "fraction", Duration.ofSeconds(90, 500_000_000))), Requirement.KEY_PERIOD);
+        "acme.dev/Organization:organizations/acme", "fraction", Duration.ofSeconds(90, 500_000_000))), Requirement.KEY_PERIOD);
     call(new GetKey(ANNE, "keys/payments", Value.KEY_BEFORE));
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new UpdateKeyWithExactPeriod(
         Value.KEY_BEFORE, Duration.ofSeconds(3600, 1))), Requirement.KEY_PERIOD);

@@ -21,7 +21,7 @@ final class TokenOfOtherKey extends KeyModule {
   @Override
   protected void run() {
     prepareOauth();
-    call(new CreateKey("organizations/acme", "other", Algorithm.ES256));
+    call(new CreateKey("acme.dev/Organization:organizations/acme", "other", Algorithm.ES256));
     call(new SignToken(ANNE, "keys/other", 600, "at+jwt"));
     call(new VerifyToken(ANNE, "keys/oauth"));
     callAndContinueOnFailure(new ExpectRejection(Rejected.Reason.UNKNOWN_VERSION), Requirement.JWT_FORGERY);

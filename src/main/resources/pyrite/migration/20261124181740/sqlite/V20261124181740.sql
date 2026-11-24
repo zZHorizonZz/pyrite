@@ -1,4 +1,20 @@
-CREATE TABLE "pyrite_account" ("uid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))), "name" TEXT NOT NULL, "parent" TEXT, "display_name" TEXT, "labels" TEXT NOT NULL DEFAULT '{}', "revision" INTEGER NOT NULL DEFAULT 1, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "update_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "delete_time" TEXT, "purge_time" TEXT, "kind" TEXT NOT NULL, CONSTRAINT "pk_pyrite_account" PRIMARY KEY ("uid"), CONSTRAINT "ck_pyrite_account_kind" CHECK (("kind" IN ('KIND_UNSPECIFIED', 'HUMAN', 'SERVICE'))), CONSTRAINT "fk_pyrite_account_name" FOREIGN KEY ("name") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE);
+CREATE TABLE "pyrite_key" ("uid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))), "name" TEXT NOT NULL, "parent" TEXT, "display_name" TEXT, "labels" TEXT NOT NULL DEFAULT '{}', "revision" INTEGER NOT NULL DEFAULT 1, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "update_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "delete_time" TEXT, "purge_time" TEXT, "purpose" TEXT NOT NULL, "algorithm" TEXT NOT NULL, "rotation_period" INTEGER NOT NULL, "next_rotation_time" TEXT, "primary_version" TEXT NOT NULL, "resource" TEXT NOT NULL, CONSTRAINT "pk_pyrite_key" PRIMARY KEY ("uid"), CONSTRAINT "ck_pyrite_key_purpose" CHECK (("purpose" IN ('PURPOSE_UNSPECIFIED', 'ENCRYPTION', 'MAC', 'SIGNING'))), CONSTRAINT "ck_pyrite_key_algorithm" CHECK (("algorithm" IN ('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA'))), CONSTRAINT "fk_pyrite_key_resource" FOREIGN KEY ("resource") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE);
+
+CREATE UNIQUE INDEX "ux_pyrite_key_resource" ON "pyrite_key" ("resource");
+
+CREATE UNIQUE INDEX "ux_pyrite_key_name" ON "pyrite_key" ("name");
+
+CREATE INDEX "ix_pyrite_key_parent" ON "pyrite_key" ("parent");
+
+CREATE TABLE "pyrite_key_version" ("uid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))), "name" TEXT NOT NULL, "parent" TEXT, "display_name" TEXT, "labels" TEXT NOT NULL DEFAULT '{}', "revision" INTEGER NOT NULL DEFAULT 1, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "update_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "delete_time" TEXT, "purge_time" TEXT, "number" INTEGER NOT NULL, "state" TEXT NOT NULL, "algorithm" TEXT NOT NULL, "public_key" TEXT, "sealed" BLOB NOT NULL, "public_key_info" BLOB, CONSTRAINT "pk_pyrite_key_version" PRIMARY KEY ("uid"), CONSTRAINT "ck_pyrite_key_version_state" CHECK (("state" IN ('STATE_UNSPECIFIED', 'ENABLED', 'DISABLED'))), CONSTRAINT "ck_pyrite_key_version_algorithm" CHECK (("algorithm" IN ('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA'))), CONSTRAINT "fk_pyrite_key_version_parent" FOREIGN KEY ("parent") REFERENCES "pyrite_key" ("name") ON DELETE CASCADE);
+
+CREATE UNIQUE INDEX "ux_pyrite_key_version_name" ON "pyrite_key_version" ("name");
+
+CREATE UNIQUE INDEX "ux_pyrite_key_version_parent_number" ON "pyrite_key_version" ("parent", "number");
+
+CREATE TABLE "pyrite_account" ("uid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))), "name" TEXT NOT NULL, "parent" TEXT, "display_name" TEXT, "labels" TEXT NOT NULL DEFAULT '{}', "revision" INTEGER NOT NULL DEFAULT 1, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "update_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "delete_time" TEXT, "purge_time" TEXT, "kind" TEXT NOT NULL, "resource" TEXT NOT NULL, CONSTRAINT "pk_pyrite_account" PRIMARY KEY ("uid"), CONSTRAINT "ck_pyrite_account_kind" CHECK (("kind" IN ('KIND_UNSPECIFIED', 'HUMAN', 'SERVICE'))), CONSTRAINT "fk_pyrite_account_resource" FOREIGN KEY ("resource") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE);
+
+CREATE UNIQUE INDEX "ux_pyrite_account_resource" ON "pyrite_account" ("resource");
 
 CREATE UNIQUE INDEX "ux_pyrite_account_name" ON "pyrite_account" ("name");
 
@@ -48,17 +64,13 @@ CREATE INDEX "ix_pyrite_node_parent" ON "pyrite_node" ("parent");
 
 CREATE INDEX "ix_pyrite_node_type" ON "pyrite_node" ("type");
 
-CREATE TABLE "pyrite_key" ("uid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))), "name" TEXT NOT NULL, "parent" TEXT, "display_name" TEXT, "labels" TEXT NOT NULL DEFAULT '{}', "revision" INTEGER NOT NULL DEFAULT 1, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "update_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "delete_time" TEXT, "purge_time" TEXT, "purpose" TEXT NOT NULL, "algorithm" TEXT NOT NULL, "rotation_period" INTEGER NOT NULL, "next_rotation_time" TEXT, "primary_version" TEXT NOT NULL, CONSTRAINT "pk_pyrite_key" PRIMARY KEY ("uid"), CONSTRAINT "ck_pyrite_key_purpose" CHECK (("purpose" IN ('PURPOSE_UNSPECIFIED', 'ENCRYPTION', 'MAC', 'SIGNING'))), CONSTRAINT "ck_pyrite_key_algorithm" CHECK (("algorithm" IN ('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA'))), CONSTRAINT "fk_pyrite_key_name" FOREIGN KEY ("name") REFERENCES "pyrite_node" ("name") ON DELETE CASCADE);
+CREATE TRIGGER "tg_pyrite_key_update" AFTER UPDATE ON "pyrite_key" BEGIN
+  UPDATE "pyrite_key" SET "revision" = (OLD."revision" + 1), "update_time" = (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') WHERE "pyrite_key"."uid" = NEW."uid";
+END;
 
-CREATE UNIQUE INDEX "ux_pyrite_key_name" ON "pyrite_key" ("name");
-
-CREATE INDEX "ix_pyrite_key_parent" ON "pyrite_key" ("parent");
-
-CREATE TABLE "pyrite_key_version" ("uid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)))), "name" TEXT NOT NULL, "parent" TEXT, "display_name" TEXT, "labels" TEXT NOT NULL DEFAULT '{}', "revision" INTEGER NOT NULL DEFAULT 1, "create_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "update_time" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z'), "delete_time" TEXT, "purge_time" TEXT, "number" INTEGER NOT NULL, "state" TEXT NOT NULL, "algorithm" TEXT NOT NULL, "public_key" TEXT, "sealed" BLOB NOT NULL, "public_key_info" BLOB, CONSTRAINT "pk_pyrite_key_version" PRIMARY KEY ("uid"), CONSTRAINT "ck_pyrite_key_version_state" CHECK (("state" IN ('STATE_UNSPECIFIED', 'ENABLED', 'DISABLED'))), CONSTRAINT "ck_pyrite_key_version_algorithm" CHECK (("algorithm" IN ('ALGORITHM_UNSPECIFIED', 'AES256_GCM', 'HMAC_SHA256', 'RS256', 'ES256', 'EDDSA'))), CONSTRAINT "fk_pyrite_key_version_parent" FOREIGN KEY ("parent") REFERENCES "pyrite_key" ("name") ON DELETE CASCADE);
-
-CREATE UNIQUE INDEX "ux_pyrite_key_version_name" ON "pyrite_key_version" ("name");
-
-CREATE UNIQUE INDEX "ux_pyrite_key_version_parent_number" ON "pyrite_key_version" ("parent", "number");
+CREATE TRIGGER "tg_pyrite_key_version_update" AFTER UPDATE ON "pyrite_key_version" BEGIN
+  UPDATE "pyrite_key_version" SET "revision" = (OLD."revision" + 1), "update_time" = (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') WHERE "pyrite_key_version"."uid" = NEW."uid";
+END;
 
 CREATE TRIGGER "tg_pyrite_account_update" AFTER UPDATE ON "pyrite_account" BEGIN
   UPDATE "pyrite_account" SET "revision" = (OLD."revision" + 1), "update_time" = (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') WHERE "pyrite_account"."uid" = NEW."uid";
@@ -74,12 +86,4 @@ END;
 
 CREATE TRIGGER "tg_pyrite_session_update" AFTER UPDATE ON "pyrite_session" BEGIN
   UPDATE "pyrite_session" SET "revision" = (OLD."revision" + 1), "update_time" = (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') WHERE "pyrite_session"."uid" = NEW."uid";
-END;
-
-CREATE TRIGGER "tg_pyrite_key_update" AFTER UPDATE ON "pyrite_key" BEGIN
-  UPDATE "pyrite_key" SET "revision" = (OLD."revision" + 1), "update_time" = (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') WHERE "pyrite_key"."uid" = NEW."uid";
-END;
-
-CREATE TRIGGER "tg_pyrite_key_version_update" AFTER UPDATE ON "pyrite_key_version" BEGIN
-  UPDATE "pyrite_key_version" SET "revision" = (OLD."revision" + 1), "update_time" = (strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z') WHERE "pyrite_key_version"."uid" = NEW."uid";
 END;

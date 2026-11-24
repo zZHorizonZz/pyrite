@@ -15,7 +15,7 @@ public record DeleteFactor(String account, String subject, Factor.Kind kind) imp
 
   @Override
   public void evaluate(Environment environment) throws Exception {
-    String owner = "user:" + account.substring(account.indexOf('/') + 1);
+    String owner = "pyrite.dev/Account:" + account;
     Factor factor = environment.pyrite().authentication.listFactors(ListFactorsRequest.newBuilder().setSubject(owner)
         .setAccount(account).build()).await(TIMEOUT).getFactorsList().stream()
         .filter(found -> found.getKind() == kind).findFirst()

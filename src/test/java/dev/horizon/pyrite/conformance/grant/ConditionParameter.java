@@ -18,11 +18,11 @@ final class ConditionParameter extends AccessModule {
   protected void run() {
     prepareGroups();
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantWithCondition(ANNE, "projects/ledger", "editor",
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantWithCondition(ANNE, "acme.dev/Project:projects/ledger", "editor",
             BOB, "not_expired", Map.of("expires_at", "next week"))),
         Requirement.GRANT_CONDITION);
     callAndContinueOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantWithCondition(ANNE, "projects/ledger", "editor",
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantWithCondition(ANNE, "acme.dev/Project:projects/ledger", "editor",
             BOB, "not_expired", Map.of("budget", 3))),
         Requirement.GRANT_CONDITION);
   }

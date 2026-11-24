@@ -24,8 +24,8 @@ final class KeyRelationSeparation extends KeyModule {
     preparePayments();
     call(new Encrypt(ANNE, "keys/payments", "card", "a"));
     call(new KeepCiphertext(Value.OLD_CIPHERTEXT));
-    call(new GrantRelation(ANNE, "keys/payments", "decrypter", BOB));
-    call(new GrantRelation(ANNE, "keys/payments", "encrypter", CAROL));
+    call(new GrantRelation(ANNE, "pyrite.dev/Key:keys/payments", "decrypter", BOB));
+    call(new GrantRelation(ANNE, "pyrite.dev/Key:keys/payments", "encrypter", CAROL));
     callAndContinueOnFailure(new Decrypt(BOB, "keys/payments", Value.OLD_CIPHERTEXT, "a"), Requirement.KEY_PERMISSION);
     callAndContinueOnFailure(new ExpectPlaintext("card"), Requirement.KEY_PERMISSION);
     callAndContinueOnFailure(new ExpectStatus(GrpcStatus.PERMISSION_DENIED, new Encrypt(BOB, "keys/payments", "x", "a")),

@@ -5,13 +5,14 @@ encrypts, decrypts, signs and verifies with it. A key has versions, which hold i
 primary: it encrypts and signs. Every enabled version decrypts and verifies what it made.
 
 ```java
-cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("user:anne").setKeyId("payments")
-    .setParent("organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
-EncryptResponse first = cryptography.encrypt(EncryptRequest.newBuilder().setSubject("user:anne")
+cryptography.createKey(CreateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne").setKeyId("payments")
+    .setParent("acme.dev/Organization:organizations/acme").setAlgorithm(Algorithm.AES256_GCM).build()).await();
+EncryptResponse first = cryptography.encrypt(EncryptRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
     .setKey("keys/payments").setPlaintext(ByteString.copyFromUtf8("4111 1111 1111 1111")).build()).await();
-cryptography.rotateKey(RotateKeyRequest.newBuilder().setSubject("user:anne").setName("keys/payments").build())
+cryptography.rotateKey(RotateKeyRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
+    .setName("keys/payments").build())
     .await();
-EncryptResponse second = cryptography.encrypt(EncryptRequest.newBuilder().setSubject("user:anne")
+EncryptResponse second = cryptography.encrypt(EncryptRequest.newBuilder().setSubject("pyrite.dev/Account:accounts/anne")
     .setKey("keys/payments").setPlaintext(ByteString.copyFromUtf8("4111 1111 1111 1111")).build()).await();
 ```
 
@@ -51,7 +52,8 @@ Each call checks a relation of its subject on the key. You declare the relations
 | `Verify`                                                         | `verifier`                                   |
 
 The declaration of `pyrite.dev/Key` has the relations `admin`, `viewer`, `encrypter`, `decrypter`, `signer` and
-`verifier`, and leaves `plural` empty: Pyrite names keys `keys/<id>`. Keys sit under the parents that the declaration
+`verifier`. Pyrite names keys `keys/<id>`, and the resource of a key in the access service is
+`pyrite.dev/Key:keys/<id>`. Keys sit under the parents that the declaration
 names, such as an organization. The subject that creates a key gets the type's `creator` relation on it. See
 [Pyrite's types](../declarations/pyrite-types.md).
 

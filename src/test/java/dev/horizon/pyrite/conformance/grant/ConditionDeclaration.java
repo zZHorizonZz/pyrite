@@ -18,8 +18,9 @@ final class ConditionDeclaration extends AccessModule {
   protected void run() {
     prepareGroups();
     callAndStopOnFailure(
-        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT, new GrantWithCondition(ANNE, "projects/ledger", "editor", BOB,
-            "on_weekdays", Map.of())),
+        new ExpectStatus(GrpcStatus.INVALID_ARGUMENT,
+            new GrantWithCondition(ANNE, "acme.dev/Project:projects/ledger", "editor", BOB,
+                "on_weekdays", Map.of())),
         Requirement.GRANT_CONDITION);
   }
 }

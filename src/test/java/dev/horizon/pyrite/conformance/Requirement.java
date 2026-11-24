@@ -90,7 +90,9 @@ public enum Requirement {
   OBJECT_CREATE("A resource is made known once, and inherits what is granted on its parent."),
   OBJECT_PERMISSION("Creating under a parent needs the create permission on it."),
   OBJECT_PARENT("A parent is known, and of a parent type of the resource."),
-  OBJECT_NAME("A name is of a declared type, with an id that OpenFGA takes."),
+  OBJECT_NAME("A name is an object that OpenFGA takes, type:id of at most 256 characters, of a declared type."),
+  OBJECT_NAME_KEPT("A name that OpenFGA takes, such as a relative resource name with slashes and dots, is kept as it is:"
+      + " lists, checks and changes give it back unchanged."),
   OBJECT_DELETE("A resource is forgotten with its grants, only when nothing is under it, by who may grant on it."),
   OBJECT_MISSING("A resource that is not known is not found."),
   OBJECT_OWN_TYPES("CreateObject makes no account or key, which their own services create."),
@@ -163,8 +165,8 @@ public enum Requirement {
   KEY_PERIOD("A rotation period is zero, or whole seconds from a minute to 50 years."),
 
   // Writes of declarations
-  DECLARATION_REACH("A declaration that drops a type, or changes its plural, singular name or parents, while resources"
-      + " of the type are known, is refused with FAILED_PRECONDITION, and the latest stays."),
+  DECLARATION_REACH("A declaration that drops a type, or changes its parents, while resources of the type are known,"
+      + " is refused with FAILED_PRECONDITION, and the latest stays."),
   DECLARATION_FIRST("Declarations written at once before any are each stored, one on the other, and share the one"
       + " store of grants that the first creates.");
 
